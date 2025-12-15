@@ -49,6 +49,33 @@ class ChallengeType(str, Enum):
 
 
 # =============================================================================
+# THEORY SOURCE SCHEMAS
+# =============================================================================
+
+class TheorySourceBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500)
+    short_name: Optional[str] = Field(None, max_length=100)
+    source_type: Optional[str] = "article"
+    description: Optional[str] = None
+    author: Optional[str] = None
+
+
+class TheorySourceCreate(TheorySourceBase):
+    pass
+
+
+class TheorySourceResponse(TheorySourceBase):
+    id: int
+    created_at: datetime
+    concept_count: Optional[int] = 0
+    dialectic_count: Optional[int] = 0
+    claim_count: Optional[int] = 0
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
 # CONCEPT SCHEMAS
 # =============================================================================
 
@@ -57,6 +84,7 @@ class ConceptBase(BaseModel):
     definition: str = Field(..., min_length=1)
     category: Optional[str] = None
     source_notes: Optional[str] = None
+    source_id: Optional[int] = None
 
 
 class ConceptCreate(ConceptBase):
@@ -70,6 +98,7 @@ class ConceptUpdate(BaseModel):
     status: Optional[ConceptStatus] = None
     confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
     source_notes: Optional[str] = None
+    source_id: Optional[int] = None
 
 
 class ConceptResponse(ConceptBase):
@@ -79,6 +108,7 @@ class ConceptResponse(ConceptBase):
     created_at: datetime
     updated_at: datetime
     challenge_count: Optional[int] = 0
+    source_title: Optional[str] = None  # Populated from source relationship
 
     class Config:
         from_attributes = True
@@ -94,10 +124,11 @@ class DialecticBase(BaseModel):
     tension_b: str = Field(..., min_length=1)
     description: Optional[str] = None
     category: Optional[str] = None
+    source_id: Optional[int] = None
 
 
 class DialecticCreate(DialecticBase):
-    pass
+    source_notes: Optional[str] = None
 
 
 class DialecticUpdate(BaseModel):
@@ -108,15 +139,18 @@ class DialecticUpdate(BaseModel):
     status: Optional[DialecticStatus] = None
     weight_toward_a: Optional[float] = Field(None, ge=0.0, le=1.0)
     category: Optional[str] = None
+    source_id: Optional[int] = None
 
 
 class DialecticResponse(DialecticBase):
     id: int
     status: DialecticStatus
     weight_toward_a: float
+    source_notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     challenge_count: Optional[int] = 0
+    source_title: Optional[str] = None  # Populated from source relationship
 
     class Config:
         from_attributes = True
@@ -131,6 +165,7 @@ class ClaimBase(BaseModel):
     elaboration: Optional[str] = None
     claim_type: Optional[str] = None
     category: Optional[str] = None
+    source_id: Optional[int] = None
 
 
 class ClaimCreate(ClaimBase):
@@ -144,6 +179,7 @@ class ClaimUpdate(BaseModel):
     category: Optional[str] = None
     confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
     is_active: Optional[bool] = None
+    source_id: Optional[int] = None
 
 
 class ClaimResponse(ClaimBase):
@@ -152,6 +188,7 @@ class ClaimResponse(ClaimBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    source_title: Optional[str] = None  # Populated from source relationship
 
     class Config:
         from_attributes = True
@@ -238,6 +275,7 @@ class ChallengeReview(BaseModel):
 
 class TheorySyncResponse(BaseModel):
     """Complete theory state for essay-flow to sync."""
+    sources: List[TheorySourceResponse]
     concepts: List[ConceptResponse]
     dialectics: List[DialecticResponse]
     claims: List[ClaimResponse]
