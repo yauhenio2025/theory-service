@@ -367,6 +367,7 @@ function App() {
   const [toasts, setToasts] = useState([])
 
   // Data states
+  const [sources, setSources] = useState([])
   const [concepts, setConcepts] = useState([])
   const [dialectics, setDialectics] = useState([])
   const [claims, setClaims] = useState([])
@@ -384,6 +385,7 @@ function App() {
   const [editingItem, setEditingItem] = useState(null)
 
   // Filters
+  const [sourceFilter, setSourceFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -395,6 +397,15 @@ function App() {
   const removeToast = (id) => setToasts(t => t.filter(toast => toast.id !== id))
 
   // Load data
+  const loadSources = useCallback(async () => {
+    try {
+      const data = await api('/sources')
+      setSources(data)
+    } catch (err) {
+      console.error('Failed to load sources:', err)
+    }
+  }, [])
+
   const loadStats = useCallback(async () => {
     try {
       const data = await api('/stats')
@@ -407,6 +418,7 @@ function App() {
   const loadConcepts = useCallback(async () => {
     try {
       const params = new URLSearchParams()
+      if (sourceFilter) params.set('source_id', sourceFilter)
       if (statusFilter) params.set('status', statusFilter)
       if (searchQuery) params.set('search', searchQuery)
       const data = await api(`/concepts?${params}`)
@@ -414,27 +426,31 @@ function App() {
     } catch (err) {
       setError(err.message)
     }
-  }, [statusFilter, searchQuery])
+  }, [sourceFilter, statusFilter, searchQuery])
 
   const loadDialectics = useCallback(async () => {
     try {
       const params = new URLSearchParams()
+      if (sourceFilter) params.set('source_id', sourceFilter)
       if (statusFilter) params.set('status', statusFilter)
       const data = await api(`/dialectics?${params}`)
       setDialectics(data)
     } catch (err) {
       setError(err.message)
     }
-  }, [statusFilter])
+  }, [sourceFilter, statusFilter])
 
   const loadClaims = useCallback(async () => {
     try {
-      const data = await api('/claims?active_only=false')
+      const params = new URLSearchParams()
+      if (sourceFilter) params.set('source_id', sourceFilter)
+      params.set('active_only', 'false')
+      const data = await api(`/claims?${params}`)
       setClaims(data)
     } catch (err) {
       setError(err.message)
     }
-  }, [])
+  }, [sourceFilter])
 
   const loadChallenges = useCallback(async () => {
     try {
@@ -449,11 +465,11 @@ function App() {
     const loadAll = async () => {
       setLoading(true)
       setError(null)
-      await Promise.all([loadStats(), loadConcepts(), loadDialectics(), loadClaims(), loadChallenges()])
+      await Promise.all([loadSources(), loadStats(), loadConcepts(), loadDialectics(), loadClaims(), loadChallenges()])
       setLoading(false)
     }
     loadAll()
-  }, [loadStats, loadConcepts, loadDialectics, loadClaims, loadChallenges])
+  }, [loadSources, loadStats, loadConcepts, loadDialectics, loadClaims, loadChallenges])
 
   // CRUD operations
   const saveConcept = async (data) => {
@@ -572,6 +588,23 @@ function App() {
             </div>
           </div>
         )}
+        {sources.length > 0 && (
+          <div className="source-filter">
+            <label>Source:</label>
+            <select
+              className="source-select"
+              value={sourceFilter}
+              onChange={e => setSourceFilter(e.target.value)}
+            >
+              <option value="">All Sources</option>
+              {sources.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.short_name || s.title} ({s.concept_count + s.dialectic_count + s.claim_count})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </header>
 
       {error && <div className="error-alert">{error}</div>}
@@ -631,7 +664,10 @@ function App() {
                     onClick={() => setSelectedConcept(c)}
                   >
                     <div className="list-item-header">
-                      <span className="list-item-title">{c.term}</span>
+                      <span className="list-item-title">
+                        {c.term}
+                        {c.source_title && !sourceFilter && <span className="source-badge">{c.source_title.split(':')[0]}</span>}
+                      </span>
                       <span className={`status ${c.status}`}>{c.status}</span>
                     </div>
                     <div className="list-item-meta">
@@ -668,6 +704,12 @@ function App() {
                   <div className="detail-section">
                     <h4>Category</h4>
                     <div className="detail-content">{selectedConcept.category}</div>
+                  </div>
+                )}
+                {selectedConcept.source_title && (
+                  <div className="detail-section">
+                    <h4>Source</h4>
+                    <div className="detail-content">{selectedConcept.source_title}</div>
                   </div>
                 )}
                 {selectedConcept.source_thinkers?.length > 0 && (
@@ -715,7 +757,10 @@ function App() {
                     onClick={() => setSelectedDialectic(d)}
                   >
                     <div className="list-item-header">
-                      <span className="list-item-title">{d.name}</span>
+                      <span className="list-item-title">
+                        {d.name}
+                        {d.source_title && !sourceFilter && <span className="source-badge">{d.source_title.split(':')[0]}</span>}
+                      </span>
                       <span className={`status ${d.status}`}>{d.status}</span>
                     </div>
                     <div className="list-item-meta">
@@ -754,6 +799,12 @@ function App() {
                   <h4>Description</h4>
                   <div className="detail-content">{selectedDialectic.description}</div>
                 </div>
+                {selectedDialectic.source_title && (
+                  <div className="detail-section">
+                    <h4>Source</h4>
+                    <div className="detail-content">{selectedDialectic.source_title}</div>
+                  </div>
+                )}
                 {selectedDialectic.resolution_notes && (
                   <div className="detail-section">
                     <h4>Resolution Notes</h4>
@@ -790,14 +841,17 @@ function App() {
                     onClick={() => setSelectedClaim(c)}
                   >
                     <div className="list-item-header">
-                      <span className="list-item-title">{c.statement.slice(0, 80)}{c.statement.length > 80 ? '...' : ''}</span>
+                      <span className="list-item-title">
+                        {c.statement.slice(0, 70)}{c.statement.length > 70 ? '...' : ''}
+                        {c.source_title && !sourceFilter && <span className="source-badge">{c.source_title.split(':')[0]}</span>}
+                      </span>
                       <span className={`status ${c.is_active ? 'active' : 'deprecated'}`}>
                         {c.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                     <div className="list-item-meta">
                       {c.category && <span>{c.category}</span>}
-                      {c.confidence_level && <span> • Confidence: {Math.round(c.confidence_level * 100)}%</span>}
+                      {c.confidence && <span> • Confidence: {Math.round(c.confidence * 100)}%</span>}
                     </div>
                   </div>
                 ))
@@ -827,6 +881,12 @@ function App() {
                   <div className="detail-section">
                     <h4>Evidence Summary</h4>
                     <div className="detail-content">{selectedClaim.evidence_summary}</div>
+                  </div>
+                )}
+                {selectedClaim.source_title && (
+                  <div className="detail-section">
+                    <h4>Source</h4>
+                    <div className="detail-content">{selectedClaim.source_title}</div>
                   </div>
                 )}
                 {selectedClaim.source_thinkers?.length > 0 && (
