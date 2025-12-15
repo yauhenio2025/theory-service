@@ -1,0 +1,10 @@
+#!/bin/bash
+# Theory Service - Start Script
+
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+
+# Default port
+PORT=${PORT:-8000}
+
+# Run with uvicorn
+uvicorn api.main:app --host 0.0.0.0 --port $PORT --reload
