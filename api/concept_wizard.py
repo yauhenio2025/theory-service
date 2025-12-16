@@ -933,6 +933,7 @@ async def get_stage1_questions(request: StartWizardRequest):
             )
 
             # Call Claude with extended thinking to analyze notes
+            client = get_claude_client()
             notes_analysis = {}
             prefilled_answers = []
 
