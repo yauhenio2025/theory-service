@@ -980,8 +980,10 @@ async def update_emerging_dialectic(
     if data.status == EmergingStatusSchema.PROMOTED:
         if not data.promoted_to_dialectic_id:
             # Create a new dialectic from this emerging dialectic
+            # Truncate name to fit VARCHAR(255) - leave room for "Emerging: " prefix
+            name_content = (ed.proposed_question or ed.proposed_tension_a)[:240]
             new_dialectic = Dialectic(
-                name=f"Emerging: {ed.proposed_question or ed.proposed_tension_a[:50]}",
+                name=f"Emerging: {name_content}",
                 tension_a=ed.proposed_tension_a,
                 tension_b=ed.proposed_tension_b,
                 description=ed.proposed_question,
