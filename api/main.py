@@ -112,16 +112,16 @@ async def run_migrations(db: AsyncSession = Depends(get_db)):
     """))
     migrations_run.append("Ensured idx_challenges_cluster_group index exists")
 
-    # Fix evidence_strength column length (VARCHAR(20) -> VARCHAR(100))
+    # Fix evidence_strength column type (VARCHAR -> TEXT for unlimited length)
     result = await db.execute(text("""
-        SELECT character_maximum_length FROM information_schema.columns
+        SELECT data_type FROM information_schema.columns
         WHERE table_name = 'emerging_concepts' AND column_name = 'evidence_strength'
     """))
     row = result.fetchone()
-    if row and row[0] and row[0] < 100:
-        await db.execute(text("ALTER TABLE emerging_concepts ALTER COLUMN evidence_strength TYPE VARCHAR(100)"))
-        await db.execute(text("ALTER TABLE emerging_dialectics ALTER COLUMN evidence_strength TYPE VARCHAR(100)"))
-        migrations_run.append("Extended evidence_strength column to VARCHAR(100)")
+    if row and row[0] and row[0] != 'text':
+        await db.execute(text("ALTER TABLE emerging_concepts ALTER COLUMN evidence_strength TYPE TEXT"))
+        await db.execute(text("ALTER TABLE emerging_dialectics ALTER COLUMN evidence_strength TYPE TEXT"))
+        migrations_run.append("Changed evidence_strength column to TEXT")
 
     await db.commit()
 

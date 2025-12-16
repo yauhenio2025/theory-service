@@ -306,7 +306,7 @@ class EmergingConcept(Base):
     proposed_name = Column(String(300), nullable=False)
     proposed_definition = Column(Text)
     emergence_rationale = Column(Text, nullable=False)
-    evidence_strength = Column(String(20))  # strong, moderate, suggestive
+    evidence_strength = Column(Text)  # strong, moderate, suggestive, or longer descriptions
 
     # Relationship to existing theory
     related_concept_ids = Column(ARRAY(Integer))  # Existing concepts this relates to
@@ -352,7 +352,7 @@ class EmergingDialectic(Base):
     proposed_tension_b = Column(Text, nullable=False)
     proposed_question = Column(Text)  # The question this dialectic addresses
     emergence_rationale = Column(Text, nullable=False)
-    evidence_strength = Column(String(20))
+    evidence_strength = Column(Text)
 
     # Relationship to existing theory
     related_dialectic_ids = Column(ARRAY(Integer))
