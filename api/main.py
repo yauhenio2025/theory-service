@@ -1006,7 +1006,12 @@ async def list_challenge_clusters(
     db: AsyncSession = Depends(get_db)
 ):
     """List challenge clusters, optionally filtered."""
-    query = select(ChallengeCluster).options(selectinload(ChallengeCluster.members))
+    # Eagerly load members and their nested relationships
+    query = select(ChallengeCluster).options(
+        selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.challenge),
+        selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.emerging_concept),
+        selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.emerging_dialectic),
+    )
 
     if status:
         query = query.where(ChallengeCluster.status == status)
@@ -1050,7 +1055,11 @@ async def get_challenge_cluster(
     """Get a specific challenge cluster with optional members."""
     result = await db.execute(
         select(ChallengeCluster)
-        .options(selectinload(ChallengeCluster.members))
+        .options(
+            selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.challenge),
+            selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.emerging_concept),
+            selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.emerging_dialectic),
+        )
         .where(ChallengeCluster.id == cluster_id)
     )
     cluster = result.scalar_one_or_none()
