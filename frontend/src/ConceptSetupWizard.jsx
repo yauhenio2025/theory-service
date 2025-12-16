@@ -52,6 +52,100 @@ const CUSTOM_CATEGORIES = [
   { key: 'refinement', label: 'Refinement', description: 'Improve or refine an option' }
 ]
 
+// 9 concept dimensions for impact topology
+const CONCEPT_DIMENSIONS = [
+  { id: 'genesis', label: 'Genesis', icon: '🌱' },
+  { id: 'problem_space', label: 'Problem Space', icon: '🎯' },
+  { id: 'definition', label: 'Definition', icon: '📖' },
+  { id: 'differentiations', label: 'Differentiations', icon: '↔️' },
+  { id: 'paradigmatic_cases', label: 'Cases', icon: '📋' },
+  { id: 'recognition_markers', label: 'Recognition', icon: '👁️' },
+  { id: 'core_claims', label: 'Claims', icon: '💡' },
+  { id: 'falsification', label: 'Falsification', icon: '❌' },
+  { id: 'dialectics', label: 'Dialectics', icon: '⚡' }
+]
+
+/**
+ * Generate impact topology based on question and selected options
+ * Maps how choices affect different concept dimensions
+ */
+function generateImpactTopology(question, selectedOptions, options) {
+  if (!selectedOptions || selectedOptions.length === 0 || !question) return null
+
+  // Get selected option objects
+  const selectedOpts = options?.filter(o => selectedOptions.includes(o.value)) || []
+  if (selectedOpts.length === 0) return null
+
+  // Question-specific impact mappings
+  const questionImpacts = {
+    genesis_type: {
+      theoretical_innovation: [
+        { dimension: 'definition', effect: 'NEEDS', note: 'Strong theoretical grounding required' },
+        { dimension: 'differentiations', effect: 'FOCUS', note: 'Must distinguish from existing frameworks' },
+        { dimension: 'core_claims', effect: 'CENTER', note: 'Ontological claims become central' }
+      ],
+      empirical_discovery: [
+        { dimension: 'paradigmatic_cases', effect: 'CENTER', note: 'Concrete examples become crucial' },
+        { dimension: 'recognition_markers', effect: 'EXPAND', note: 'Need observable indicators' },
+        { dimension: 'falsification', effect: 'EASIER', note: 'Empirical tests more direct' }
+      ],
+      synthetic_unification: [
+        { dimension: 'differentiations', effect: 'COMPLEX', note: 'Must show what synthesis adds' },
+        { dimension: 'problem_space', effect: 'BRIDGE', note: 'Gap between synthesized concepts' },
+        { dimension: 'core_claims', effect: 'INTEGRATIVE', note: 'Claims span multiple domains' }
+      ],
+      paradigm_shift: [
+        { dimension: 'definition', effect: 'RADICAL', note: 'Fundamentally new framing needed' },
+        { dimension: 'genesis', effect: 'JUSTIFY', note: 'Must explain what it replaces' },
+        { dimension: 'dialectics', effect: 'LIKELY', note: 'Old vs new paradigm tension' }
+      ],
+      normative_reframing: [
+        { dimension: 'core_claims', effect: 'NORMATIVE', note: 'Evaluative criteria central' },
+        { dimension: 'falsification', effect: 'VALUES', note: 'Tests involve value judgments' },
+        { dimension: 'recognition_markers', effect: 'EVALUATIVE', note: 'Look for normative language' }
+      ]
+    },
+    domain_scope: {
+      domain_specific: [
+        { dimension: 'paradigmatic_cases', effect: 'FOCUSED', note: 'Single domain examples' },
+        { dimension: 'recognition_markers', effect: 'SPECIFIC', note: 'Domain-specific language' },
+        { dimension: 'differentiations', effect: 'SHARPER', note: 'Clear boundaries within domain' }
+      ],
+      cross_domain: [
+        { dimension: 'paradigmatic_cases', effect: 'DIVERSE', note: 'Need examples from each domain' },
+        { dimension: 'definition', effect: 'ABSTRACT', note: 'Must work across contexts' },
+        { dimension: 'falsification', effect: 'COMPLEX', note: 'Domain-specific tests needed' }
+      ],
+      meta_level: [
+        { dimension: 'core_claims', effect: 'METHODOLOGICAL', note: 'Claims about how we think' },
+        { dimension: 'recognition_markers', effect: 'REFLEXIVE', note: 'Look in analytical moves' },
+        { dimension: 'paradigmatic_cases', effect: 'EXEMPLARY', note: 'Analytical examples needed' }
+      ]
+    }
+  }
+
+  // Get impacts for this question
+  const questionId = question.id
+  const impacts = []
+
+  for (const opt of selectedOpts) {
+    const optImpacts = questionImpacts[questionId]?.[opt.value]
+    if (optImpacts) {
+      impacts.push(...optImpacts)
+    }
+  }
+
+  // If no specific impacts, generate generic ones based on option implications
+  if (impacts.length === 0 && selectedOpts[0]?.implications) {
+    impacts.push(
+      { dimension: 'definition', effect: 'SHAPES', note: selectedOpts[0].implications },
+      { dimension: 'differentiations', effect: 'AFFECTS', note: 'May change how we distinguish concept' }
+    )
+  }
+
+  return impacts.length > 0 ? impacts : null
+}
+
 export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   // Wizard state
   const [stage, setStage] = useState(STAGES.NOTES)
@@ -1343,6 +1437,44 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                         </div>
                       )
                     })}
+                  </div>
+                )}
+
+                {/* Impact Topology Panel - show when options are selected */}
+                {(currentQuestion.type === QUESTION_TYPES.CHOICE || currentQuestion.type === QUESTION_TYPES.MULTI) &&
+                  currentAnswer.selectedOptions.length > 0 && (
+                  <div className="impact-topology-panel">
+                    <div className="topology-header">
+                      <span className="topology-icon">🔗</span>
+                      <h4>How This Choice Affects Your Concept</h4>
+                    </div>
+                    {(() => {
+                      const impacts = generateImpactTopology(
+                        currentQuestion,
+                        currentAnswer.selectedOptions,
+                        currentQuestion.options
+                      )
+                      if (!impacts) return (
+                        <p className="topology-empty">Select an option to see how it affects other dimensions of your concept.</p>
+                      )
+                      return (
+                        <div className="topology-grid">
+                          {impacts.map((impact, idx) => {
+                            const dim = CONCEPT_DIMENSIONS.find(d => d.id === impact.dimension)
+                            return (
+                              <div key={idx} className={`topology-card effect-${impact.effect.toLowerCase()}`}>
+                                <div className="topology-card-header">
+                                  <span className="dim-icon">{dim?.icon || '📌'}</span>
+                                  <span className="dim-name">{dim?.label || impact.dimension}</span>
+                                  <span className="effect-badge">{impact.effect}</span>
+                                </div>
+                                <p className="topology-note">{impact.note}</p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
 

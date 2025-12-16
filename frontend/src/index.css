@@ -3245,6 +3245,113 @@ textarea {
   border-radius: 0 8px 8px 0;
 }
 
+.topology-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #21262d;
+}
+
+.topology-header .topology-icon {
+  font-size: 1.25rem;
+}
+
+.topology-header h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #58a6ff;
+  margin: 0;
+}
+
+.topology-empty {
+  color: #8b949e;
+  font-size: 0.85rem;
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.topology-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.topology-card {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.topology-card:hover {
+  border-color: #58a6ff;
+  transform: translateY(-2px);
+}
+
+.topology-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.topology-card-header .dim-icon {
+  font-size: 1.1rem;
+}
+
+.topology-card-header .dim-name {
+  font-weight: 500;
+  color: #e6edf3;
+  flex: 1;
+}
+
+.topology-card-header .effect-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.topology-note {
+  font-size: 0.8rem;
+  color: #8b949e;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Effect-specific styling */
+.topology-card.effect-needs .effect-badge { background: #f0883e; color: #fff; }
+.topology-card.effect-focus .effect-badge { background: #58a6ff; color: #fff; }
+.topology-card.effect-center .effect-badge { background: #a371f7; color: #fff; }
+.topology-card.effect-expand .effect-badge { background: #3fb950; color: #fff; }
+.topology-card.effect-easier .effect-badge { background: #3fb950; color: #fff; }
+.topology-card.effect-complex .effect-badge { background: #d29922; color: #fff; }
+.topology-card.effect-bridge .effect-badge { background: #58a6ff; color: #fff; }
+.topology-card.effect-integrative .effect-badge { background: #a371f7; color: #fff; }
+.topology-card.effect-radical .effect-badge { background: #f85149; color: #fff; }
+.topology-card.effect-justify .effect-badge { background: #d29922; color: #fff; }
+.topology-card.effect-likely .effect-badge { background: #f0883e; color: #fff; }
+.topology-card.effect-normative .effect-badge { background: #a371f7; color: #fff; }
+.topology-card.effect-values .effect-badge { background: #d29922; color: #fff; }
+.topology-card.effect-evaluative .effect-badge { background: #58a6ff; color: #fff; }
+.topology-card.effect-focused .effect-badge { background: #58a6ff; color: #fff; }
+.topology-card.effect-specific .effect-badge { background: #3fb950; color: #fff; }
+.topology-card.effect-sharper .effect-badge { background: #a371f7; color: #fff; }
+.topology-card.effect-diverse .effect-badge { background: #f0883e; color: #fff; }
+.topology-card.effect-abstract .effect-badge { background: #d29922; color: #fff; }
+.topology-card.effect-methodological .effect-badge { background: #58a6ff; color: #fff; }
+.topology-card.effect-reflexive .effect-badge { background: #a371f7; color: #fff; }
+.topology-card.effect-exemplary .effect-badge { background: #3fb950; color: #fff; }
+.topology-card.effect-shapes .effect-badge { background: #58a6ff; color: #fff; }
+.topology-card.effect-affects .effect-badge { background: #d29922; color: #fff; }
+
+/* Legacy impact node styles (keep for backwards compatibility) */
 .impact-topology-header {
   font-size: 0.85rem;
   color: #58a6ff;
