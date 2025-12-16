@@ -190,6 +190,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [understandingCorrection, setUnderstandingCorrection] = useState('')
   const [isRegenerating, setIsRegenerating] = useState(false)
 
+  // Granular feedback state for key insights
+  const [insightFeedback, setInsightFeedback] = useState({})  // { index: { status: 'approved'|'rejected', comment: '' } }
+  const [expandedInsightComment, setExpandedInsightComment] = useState({})  // { index: true/false }
+
+  // Granular feedback state for tensions
+  const [tensionFeedback, setTensionFeedback] = useState({})  // { index: { status: 'approved'|'approved_with_comment'|'rejected', comment: '' } }
+  const [expandedTensionComment, setExpandedTensionComment] = useState({})  // { index: true/false }
+  const [isGeneratingTensions, setIsGeneratingTensions] = useState(false)
+
   // Generated examples state (Phase 4 - synthetic case studies)
   const [generatedCases, setGeneratedCases] = useState([])
   const [caseRatings, setCaseRatings] = useState({})  // { case_id: 'good' | 'partial' | 'not_fit' }
@@ -664,6 +673,155 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
           setProgress({ stage: 2, total: 9, label: 'Validate my understanding' })
           setStage(STAGES.UNDERSTANDING_VALIDATION)
+          setThinking('')
+        }
+      }
+    )
+  }
+
+  /**
+   * Set feedback for a specific key insight
+   */
+  const setInsightStatus = (index, status) => {
+    setInsightFeedback(prev => ({
+      ...prev,
+      [index]: { ...prev[index], status }
+    }))
+  }
+
+  /**
+   * Set comment for a specific key insight
+   */
+  const setInsightComment = (index, comment) => {
+    setInsightFeedback(prev => ({
+      ...prev,
+      [index]: { ...prev[index], comment }
+    }))
+  }
+
+  /**
+   * Toggle insight comment expansion
+   */
+  const toggleInsightComment = (index) => {
+    setExpandedInsightComment(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }))
+  }
+
+  /**
+   * Set feedback for a specific tension
+   */
+  const setTensionStatus = (index, status) => {
+    setTensionFeedback(prev => ({
+      ...prev,
+      [index]: { ...prev[index], status }
+    }))
+  }
+
+  /**
+   * Set comment for a specific tension
+   */
+  const setTensionComment = (index, comment) => {
+    setTensionFeedback(prev => ({
+      ...prev,
+      [index]: { ...prev[index], comment }
+    }))
+  }
+
+  /**
+   * Toggle tension comment expansion
+   */
+  const toggleTensionComment = (index) => {
+    setExpandedTensionComment(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }))
+  }
+
+  /**
+   * Regenerate a specific insight with feedback
+   */
+  const regenerateInsight = async (index) => {
+    const insight = notesUnderstanding.keyInsights[index]
+    const feedback = insightFeedback[index]
+
+    if (!feedback?.comment?.trim()) {
+      setError('Please add a comment explaining how to improve this insight')
+      return
+    }
+
+    setIsRegenerating(true)
+    setThinking('')
+
+    await streamWizardRequest(
+      '/concepts/wizard/regenerate-insight',
+      {
+        concept_name: conceptName,
+        notes: notes,
+        insight_index: index,
+        current_insight: insight,
+        feedback: feedback.comment,
+        all_insights: notesUnderstanding.keyInsights
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          // Update the specific insight
+          const newInsights = [...notesUnderstanding.keyInsights]
+          newInsights[index] = data.regenerated_insight
+          setNotesUnderstanding(prev => ({
+            ...prev,
+            keyInsights: newInsights
+          }))
+          // Clear feedback for this insight
+          setInsightFeedback(prev => {
+            const updated = { ...prev }
+            delete updated[index]
+            return updated
+          })
+          setExpandedInsightComment(prev => ({ ...prev, [index]: false }))
+          setIsRegenerating(false)
+          setThinking('')
+        }
+      }
+    )
+  }
+
+  /**
+   * Generate additional tensions based on current understanding
+   */
+  const generateMoreTensions = async () => {
+    setIsGeneratingTensions(true)
+    setThinking('')
+
+    // Get approved tensions to avoid duplicates
+    const approvedTensions = notesUnderstanding.potentialTensions
+      .filter((_, i) => tensionFeedback[i]?.status === 'approved' || tensionFeedback[i]?.status === 'approved_with_comment')
+
+    await streamWizardRequest(
+      '/concepts/wizard/generate-tensions',
+      {
+        concept_name: conceptName,
+        notes: notes,
+        existing_tensions: notesUnderstanding.potentialTensions,
+        approved_tensions: approvedTensions,
+        notes_analysis: notesUnderstanding
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          // Append new tensions to existing ones
+          const newTensions = data.generated_tensions || []
+          setNotesUnderstanding(prev => ({
+            ...prev,
+            potentialTensions: [...prev.potentialTensions, ...newTensions]
+          }))
+          setIsGeneratingTensions(false)
           setThinking('')
         }
       }
@@ -1269,32 +1427,157 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {/* Key Insights Extracted */}
+                {/* Key Insights Extracted - with granular feedback */}
                 {notesUnderstanding.keyInsights?.length > 0 && (
                   <div className="uv-section uv-insights">
                     <h4>Key Insights Extracted</h4>
-                    <ul className="uv-insights-list">
+                    <p className="uv-section-help">Approve or reject each insight. Add comments to request specific improvements.</p>
+                    <div className="uv-insights-granular">
                       {notesUnderstanding.keyInsights.map((insight, i) => (
-                        <li key={i}>{insight}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Potential Tensions */}
-                {notesUnderstanding.potentialTensions?.length > 0 && (
-                  <div className="uv-section uv-tensions">
-                    <h4>Potential Tensions Detected</h4>
-                    <div className="uv-tensions-list">
-                      {notesUnderstanding.potentialTensions.map((tension, i) => (
-                        <div key={i} className="uv-tension-item">
-                          <span className="tension-icon">⚡</span>
-                          {typeof tension === 'string' ? tension : (tension.description || tension.tension || JSON.stringify(tension))}
+                        <div key={i} className={`insight-item insight-${insightFeedback[i]?.status || 'pending'}`}>
+                          <div className="insight-content">
+                            <span className="insight-number">{i + 1}.</span>
+                            <span className="insight-text">{insight}</span>
+                          </div>
+                          <div className="insight-actions">
+                            <button
+                              className={`insight-btn approve ${insightFeedback[i]?.status === 'approved' ? 'active' : ''}`}
+                              onClick={() => setInsightStatus(i, 'approved')}
+                              title="Approve this insight"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className={`insight-btn reject ${insightFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
+                              onClick={() => setInsightStatus(i, 'rejected')}
+                              title="Reject this insight"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              className="insight-btn comment"
+                              onClick={() => toggleInsightComment(i)}
+                              title="Add comment"
+                            >
+                              {expandedInsightComment[i] ? 'Hide' : 'Comment'}
+                            </button>
+                          </div>
+                          {expandedInsightComment[i] && (
+                            <div className="insight-comment-box">
+                              <input
+                                type="text"
+                                placeholder="What's wrong or how should this be improved?"
+                                value={insightFeedback[i]?.comment || ''}
+                                onChange={(e) => setInsightComment(i, e.target.value)}
+                                className="insight-comment-input"
+                              />
+                              <button
+                                className="btn btn-sm btn-secondary"
+                                onClick={() => regenerateInsight(i)}
+                                disabled={isRegenerating || !insightFeedback[i]?.comment?.trim()}
+                              >
+                                {isRegenerating ? 'Regenerating...' : 'Regenerate This Insight'}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
+
+                {/* Potential Tensions - with granular feedback */}
+                <div className="uv-section uv-tensions">
+                  <div className="uv-tensions-header">
+                    <h4>Potential Tensions Detected</h4>
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={generateMoreTensions}
+                      disabled={isGeneratingTensions}
+                    >
+                      {isGeneratingTensions ? 'Generating...' : 'Generate More Tensions'}
+                    </button>
+                  </div>
+                  <p className="uv-section-help">Approve tensions to preserve as productive dialectics in your concept.</p>
+
+                  {isGeneratingTensions && thinking && (
+                    <div className="thinking-mini">
+                      <span className="thinking-label">Thinking...</span>
+                      <p className="thinking-preview">{thinking.slice(-200)}</p>
+                    </div>
+                  )}
+
+                  {notesUnderstanding.potentialTensions?.length > 0 ? (
+                    <div className="uv-tensions-granular">
+                      {notesUnderstanding.potentialTensions.map((tension, i) => {
+                        const tensionText = typeof tension === 'string'
+                          ? tension
+                          : (tension.description || tension.tension || JSON.stringify(tension))
+                        const tensionPoles = typeof tension === 'object'
+                          ? { pole_a: tension.pole_a, pole_b: tension.pole_b }
+                          : null
+                        return (
+                          <div key={i} className={`tension-item tension-${tensionFeedback[i]?.status || 'pending'}`}>
+                            <div className="tension-content">
+                              <span className="tension-icon">⚡</span>
+                              <div className="tension-details">
+                                <span className="tension-text">{tensionText}</span>
+                                {tensionPoles && tensionPoles.pole_a && tensionPoles.pole_b && (
+                                  <div className="tension-poles-display">
+                                    <span className="pole">{tensionPoles.pole_a}</span>
+                                    <span className="vs">vs</span>
+                                    <span className="pole">{tensionPoles.pole_b}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="tension-actions">
+                              <button
+                                className={`tension-btn approve ${tensionFeedback[i]?.status === 'approved' ? 'active' : ''}`}
+                                onClick={() => setTensionStatus(i, 'approved')}
+                                title="Approve this tension"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className={`tension-btn approve-comment ${tensionFeedback[i]?.status === 'approved_with_comment' ? 'active' : ''}`}
+                                onClick={() => {
+                                  setTensionStatus(i, 'approved_with_comment')
+                                  setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
+                                }}
+                                title="Approve with additional context"
+                              >
+                                Approve w/ Comment
+                              </button>
+                              <button
+                                className={`tension-btn reject ${tensionFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
+                                onClick={() => setTensionStatus(i, 'rejected')}
+                                title="Reject this tension"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                            {(tensionFeedback[i]?.status === 'approved_with_comment' || expandedTensionComment[i]) && (
+                              <div className="tension-comment-box">
+                                <input
+                                  type="text"
+                                  placeholder="Add context or clarification about this tension..."
+                                  value={tensionFeedback[i]?.comment || ''}
+                                  onChange={(e) => setTensionComment(i, e.target.value)}
+                                  className="tension-comment-input"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="uv-tensions-empty">
+                      <p>No tensions detected yet. Click "Generate More Tensions" to identify potential dialectics in your concept.</p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Confidence Indicators */}
                 <div className="uv-section uv-confidence">

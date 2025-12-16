@@ -3144,6 +3144,332 @@ textarea {
   text-align: center;
 }
 
+/* Section help text */
+.uv-section-help {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}
+
+/* =========================================
+   GRANULAR INSIGHT FEEDBACK
+   ========================================= */
+
+.uv-insights-granular {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.insight-item {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.insight-item.insight-approved {
+  border-color: #238636;
+  background: linear-gradient(135deg, #161b22 0%, #0d1f13 100%);
+}
+
+.insight-item.insight-rejected {
+  border-color: #f85149;
+  background: linear-gradient(135deg, #161b22 0%, #1f0d0d 100%);
+  opacity: 0.7;
+}
+
+.insight-content {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.insight-number {
+  color: #58a6ff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.insight-text {
+  color: #c9d1d9;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.insight-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.insight-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #c9d1d9;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.insight-btn:hover {
+  background: #30363d;
+}
+
+.insight-btn.approve {
+  border-color: #238636;
+}
+
+.insight-btn.approve:hover,
+.insight-btn.approve.active {
+  background: #238636;
+  color: #fff;
+}
+
+.insight-btn.reject {
+  border-color: #f85149;
+}
+
+.insight-btn.reject:hover,
+.insight-btn.reject.active {
+  background: #f85149;
+  color: #fff;
+}
+
+.insight-btn.comment {
+  border-color: #58a6ff;
+}
+
+.insight-btn.comment:hover {
+  background: #58a6ff;
+  color: #0d1117;
+}
+
+.insight-comment-box {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.insight-comment-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 0.9rem;
+}
+
+.insight-comment-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+/* =========================================
+   GRANULAR TENSION FEEDBACK
+   ========================================= */
+
+.uv-tensions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.uv-tensions-header h4 {
+  margin: 0;
+}
+
+.uv-tensions-granular {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tension-item {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.tension-item.tension-approved {
+  border-color: #238636;
+  background: linear-gradient(135deg, #161b22 0%, #0d1f13 100%);
+}
+
+.tension-item.tension-approved_with_comment {
+  border-color: #d29922;
+  background: linear-gradient(135deg, #161b22 0%, #1f1a0d 100%);
+}
+
+.tension-item.tension-rejected {
+  border-color: #f85149;
+  background: linear-gradient(135deg, #161b22 0%, #1f0d0d 100%);
+  opacity: 0.7;
+}
+
+.tension-content {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.tension-details {
+  flex: 1;
+}
+
+.tension-text {
+  color: #c9d1d9;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  display: block;
+}
+
+.tension-poles-display {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tension-poles-display .pole {
+  padding: 0.25rem 0.5rem;
+  background: #21262d;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.tension-poles-display .vs {
+  color: #f0883e;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.tension-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tension-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #c9d1d9;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tension-btn:hover {
+  background: #30363d;
+}
+
+.tension-btn.approve {
+  border-color: #238636;
+}
+
+.tension-btn.approve:hover,
+.tension-btn.approve.active {
+  background: #238636;
+  color: #fff;
+}
+
+.tension-btn.approve-comment {
+  border-color: #d29922;
+}
+
+.tension-btn.approve-comment:hover,
+.tension-btn.approve-comment.active {
+  background: #d29922;
+  color: #0d1117;
+}
+
+.tension-btn.reject {
+  border-color: #f85149;
+}
+
+.tension-btn.reject:hover,
+.tension-btn.reject.active {
+  background: #f85149;
+  color: #fff;
+}
+
+.tension-comment-box {
+  margin-top: 0.75rem;
+}
+
+.tension-comment-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 0.9rem;
+}
+
+.tension-comment-input:focus {
+  outline: none;
+  border-color: #d29922;
+}
+
+.uv-tensions-empty {
+  background: #161b22;
+  border: 1px dashed #30363d;
+  border-radius: 6px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.uv-tensions-empty p {
+  color: #8b949e;
+  font-size: 0.9rem;
+}
+
+/* Thinking mini panel */
+.thinking-mini {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.thinking-mini .thinking-label {
+  color: #58a6ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.thinking-mini .thinking-preview {
+  color: #8b949e;
+  font-size: 0.8rem;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 60px;
+  overflow: hidden;
+}
+
 /* Generated Examples Panel */
 .generated-examples-panel {
   margin-top: 1.5rem;

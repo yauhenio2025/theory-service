@@ -809,6 +809,25 @@ class RegenerateSectionRequest(BaseModel):
     source_id: Optional[int] = None
 
 
+class RegenerateInsightRequest(BaseModel):
+    """Request to regenerate a specific key insight."""
+    concept_name: str
+    notes: str
+    insight_index: int
+    current_insight: str
+    feedback: str
+    all_insights: List[str]
+
+
+class GenerateTensionsRequest(BaseModel):
+    """Request to generate additional tensions."""
+    concept_name: str
+    notes: str
+    existing_tensions: List[Any]  # Can be strings or objects
+    approved_tensions: List[Any]
+    notes_analysis: Dict[str, Any]
+
+
 # =============================================================================
 # REGENERATE UNDERSTANDING PROMPT
 # =============================================================================
@@ -1067,6 +1086,80 @@ Section formats:
 For list sections (differentiations, paradigmatic_cases, recognition_markers, falsification_conditions, dialectics), return the full regenerated list."""
 
 
+REGENERATE_INSIGHT_PROMPT = """You are an expert in conceptual analysis helping refine a specific key insight.
+
+## Concept Name: {concept_name}
+
+## User's Notes:
+{notes}
+
+## Current Insight Being Refined (Index {insight_index}):
+{current_insight}
+
+## User's Feedback:
+{feedback}
+
+## Other Insights (for context, don't duplicate):
+{other_insights}
+
+Based on the user's feedback, regenerate THIS SPECIFIC insight. The regenerated insight should:
+1. Address the user's feedback directly
+2. Be distinct from the other insights
+3. Accurately reflect what's in the user's notes
+4. Be concise but informative (1-2 sentences)
+
+Return as JSON:
+{{
+    "regenerated_insight": "The improved insight text..."
+}}
+
+Only return the single regenerated insight, not the whole list."""
+
+
+GENERATE_TENSIONS_PROMPT = """You are an expert in conceptual analysis helping identify productive tensions (dialectics) in a novel concept.
+
+## Concept Name: {concept_name}
+
+## User's Notes:
+{notes}
+
+## Current Understanding Summary:
+{understanding_summary}
+
+## Preliminary Definition:
+{preliminary_definition}
+
+## Existing Tensions Already Identified:
+{existing_tensions}
+
+## Tensions Already Approved by User:
+{approved_tensions}
+
+Generate 2-3 ADDITIONAL productive tensions that could exist in this concept. Look for:
+1. Tensions between different aspects or implications of the concept
+2. Trade-offs inherent in how the concept operates
+3. Dialectics between the concept and related concepts
+4. Tensions between theoretical and practical applications
+5. Methodological tensions in how the concept should be applied
+
+DO NOT duplicate tensions already identified. Generate truly new ones.
+
+Return as JSON:
+{{
+    "generated_tensions": [
+        {{
+            "description": "Brief description of the tension",
+            "pole_a": "One side of the tension",
+            "pole_b": "The opposing side",
+            "productive_potential": "Why this tension could be productive for the concept"
+        }}
+    ],
+    "generation_note": "Brief note about what types of tensions were identified"
+}}
+
+Focus on tensions that would be productive dialectics - not contradictions to resolve, but creative tensions to preserve."""
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
@@ -1228,6 +1321,165 @@ async def regenerate_understanding(request: RegenerateUnderstandingRequest):
 
     return StreamingResponse(
         stream_regenerated_analysis(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/regenerate-insight")
+async def regenerate_insight(request: RegenerateInsightRequest):
+    """
+    Regenerate a specific key insight with user feedback.
+    """
+    async def stream_regenerated_insight():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'regenerating_insight'})}\n\n"
+
+            # Build list of other insights (excluding the one being regenerated)
+            other_insights = [
+                insight for i, insight in enumerate(request.all_insights)
+                if i != request.insight_index
+            ]
+
+            prompt = REGENERATE_INSIGHT_PROMPT.format(
+                concept_name=request.concept_name,
+                notes=request.notes,
+                insight_index=request.insight_index,
+                current_insight=request.current_insight,
+                feedback=request.feedback,
+                other_insights="\n".join([f"- {ins}" for ins in other_insights]) if other_insights else "(No other insights)"
+            )
+
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis helping refine key insights.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse response
+            insight_data = parse_wizard_response(response_text)
+            regenerated_insight = insight_data.get("regenerated_insight", request.current_insight)
+
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'regenerated_insight': regenerated_insight
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in regenerate_insight: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_regenerated_insight(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/generate-tensions")
+async def generate_tensions(request: GenerateTensionsRequest):
+    """
+    Generate additional productive tensions based on current understanding.
+    """
+    async def stream_tensions():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'generating_tensions'})}\n\n"
+
+            # Format existing tensions for the prompt
+            def format_tension(t):
+                if isinstance(t, str):
+                    return t
+                elif isinstance(t, dict):
+                    return t.get('description', t.get('tension', str(t)))
+                return str(t)
+
+            existing_str = "\n".join([f"- {format_tension(t)}" for t in request.existing_tensions]) if request.existing_tensions else "(None yet)"
+            approved_str = "\n".join([f"- {format_tension(t)}" for t in request.approved_tensions]) if request.approved_tensions else "(None approved yet)"
+
+            prompt = GENERATE_TENSIONS_PROMPT.format(
+                concept_name=request.concept_name,
+                notes=request.notes,
+                understanding_summary=request.notes_analysis.get('summary', ''),
+                preliminary_definition=request.notes_analysis.get('preliminaryDefinition', ''),
+                existing_tensions=existing_str,
+                approved_tensions=approved_str
+            )
+
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis helping identify productive tensions and dialectics.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse response
+            tensions_data = parse_wizard_response(response_text)
+            generated_tensions = tensions_data.get("generated_tensions", [])
+            generation_note = tensions_data.get("generation_note", "")
+
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'generated_tensions': generated_tensions,
+                    'generation_note': generation_note
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in generate_tensions: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_tensions(),
         media_type="text/event-stream"
     )
 
