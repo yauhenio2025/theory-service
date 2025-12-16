@@ -783,6 +783,22 @@ class RegenerateUnderstandingRequest(BaseModel):
     source_id: Optional[int] = None
 
 
+class GenerateCaseStudiesRequest(BaseModel):
+    """Request to generate paradigmatic case studies."""
+    concept_name: str
+    concept_definition: str  # Working definition from earlier stages
+    context: str  # Additional context from answers
+    source_id: Optional[int] = None
+
+
+class GenerateRecognitionMarkersRequest(BaseModel):
+    """Request to generate recognition markers."""
+    concept_name: str
+    concept_definition: str
+    paradigmatic_cases: List[Dict[str, Any]]  # Approved/selected cases
+    source_id: Optional[int] = None
+
+
 # =============================================================================
 # REGENERATE UNDERSTANDING PROMPT
 # =============================================================================
@@ -868,6 +884,79 @@ Analyze the notes with the user's corrections in mind and produce a JSON respons
 }}
 
 Be responsive to user feedback - if they rated poorly or provided corrections, make significant adjustments."""
+
+
+GENERATE_CASE_STUDIES_PROMPT = """You are an expert in conceptual analysis helping generate paradigmatic case studies.
+
+Given a concept definition and context, generate 3-5 candidate paradigmatic cases that could serve as examples of this concept.
+
+## Concept Name: {concept_name}
+
+## Concept Definition So Far:
+{concept_definition}
+
+## Context from User's Answers:
+{context}
+
+Generate paradigmatic case studies. For each case:
+1. Title - A brief identifying name
+2. Description - 2-3 sentences explaining the case
+3. Relevance - Why this exemplifies the concept
+4. Domain - What field/context this case comes from
+
+Return as JSON:
+{{
+    "generated_cases": [
+        {{
+            "id": "case_1",
+            "title": "Short title for the case",
+            "description": "2-3 sentence description of what happened/what this case involves",
+            "relevance": "Why this is a good example of the concept",
+            "domain": "field/context (e.g., 'Technology Policy', 'International Relations')"
+        }}
+    ],
+    "generation_note": "Brief note about what types of cases were generated and why"
+}}
+
+Generate diverse cases across different domains if possible. Include both well-known public examples and more subtle/implicit cases where the concept operates without being named."""
+
+
+GENERATE_RECOGNITION_MARKERS_PROMPT = """You are an expert in conceptual analysis helping generate recognition markers.
+
+Given a concept definition and paradigmatic cases, generate linguistic patterns and markers that indicate when this concept is operating in a text.
+
+## Concept Name: {concept_name}
+
+## Concept Definition:
+{concept_definition}
+
+## Paradigmatic Cases:
+{paradigmatic_cases}
+
+Generate recognition markers - linguistic patterns that indicate this concept is in play. For each marker:
+1. Pattern - The linguistic pattern or phrase type
+2. Example - A concrete example of this pattern
+3. Reliability - How reliably this indicates the concept (high/medium/low)
+
+Return as JSON:
+{{
+    "generated_markers": [
+        {{
+            "id": "marker_1",
+            "pattern": "Description of the linguistic pattern",
+            "example": "A concrete example phrase or sentence",
+            "reliability": "high|medium|low",
+            "notes": "Additional context about when this marker applies"
+        }}
+    ],
+    "generation_note": "Brief note about the types of markers generated"
+}}
+
+Include different types of markers:
+- Explicit terminology patterns
+- Argument structure patterns
+- Situational description patterns
+- Proxy terms and euphemisms"""
 
 
 # =============================================================================
@@ -1031,6 +1120,147 @@ async def regenerate_understanding(request: RegenerateUnderstandingRequest):
 
     return StreamingResponse(
         stream_regenerated_analysis(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/generate-case-studies")
+async def generate_case_studies(request: GenerateCaseStudiesRequest):
+    """
+    Generate candidate paradigmatic case studies for the user to validate.
+    """
+    async def stream_case_studies():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'generating_cases'})}\n\n"
+
+            prompt = GENERATE_CASE_STUDIES_PROMPT.format(
+                concept_name=request.concept_name,
+                concept_definition=request.concept_definition,
+                context=request.context
+            )
+
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert at generating relevant paradigmatic cases for novel concepts.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse the generated cases
+            cases_data = parse_wizard_response(response_text)
+            generated_cases = cases_data.get("generated_cases", [])
+            generation_note = cases_data.get("generation_note", "")
+
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'generated_cases': generated_cases,
+                    'generation_note': generation_note
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in generate_case_studies: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_case_studies(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/generate-recognition-markers")
+async def generate_recognition_markers(request: GenerateRecognitionMarkersRequest):
+    """
+    Generate candidate recognition markers for the user to validate.
+    """
+    async def stream_markers():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'generating_markers'})}\n\n"
+
+            # Format paradigmatic cases for the prompt
+            cases_text = json.dumps(request.paradigmatic_cases, indent=2)
+
+            prompt = GENERATE_RECOGNITION_MARKERS_PROMPT.format(
+                concept_name=request.concept_name,
+                concept_definition=request.concept_definition,
+                paradigmatic_cases=cases_text
+            )
+
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert at identifying linguistic patterns and recognition markers for concepts.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse the generated markers
+            markers_data = parse_wizard_response(response_text)
+            generated_markers = markers_data.get("generated_markers", [])
+            generation_note = markers_data.get("generation_note", "")
+
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'generated_markers': generated_markers,
+                    'generation_note': generation_note
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in generate_recognition_markers: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_markers(),
         media_type="text/event-stream"
     )
 

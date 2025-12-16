@@ -190,6 +190,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [understandingCorrection, setUnderstandingCorrection] = useState('')
   const [isRegenerating, setIsRegenerating] = useState(false)
 
+  // Generated examples state (Phase 4 - synthetic case studies)
+  const [generatedCases, setGeneratedCases] = useState([])
+  const [caseRatings, setCaseRatings] = useState({})  // { case_id: 'good' | 'partial' | 'not_fit' }
+  const [caseComments, setCaseComments] = useState({})  // { case_id: 'comment...' }
+  const [generatedMarkers, setGeneratedMarkers] = useState([])
+  const [markerRatings, setMarkerRatings] = useState({})
+  const [markerComments, setMarkerComments] = useState({})
+  const [isGeneratingExamples, setIsGeneratingExamples] = useState(false)
+
   // Thinking/processing state
   const [thinking, setThinking] = useState('')
   const [thinkingVisible, setThinkingVisible] = useState(true)
@@ -453,6 +462,111 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
     setStage(STAGES.STAGE1)
     setCurrentQuestionIndex(0)
+  }
+
+  /**
+   * Generate synthetic case studies
+   */
+  const generateCaseStudies = async () => {
+    setIsGeneratingExamples(true)
+    setError(null)
+    setThinking('')
+
+    // Build concept definition from interim analysis
+    const definition = interimAnalysis?.understanding_summary ||
+      stageData.stage1?.notesAnalysis?.preliminary_definition ||
+      ''
+
+    // Build context from answers
+    const context = [
+      ...stageData.stage1.answers.map(a => `${a.question_id}: ${a.text_answer || a.selected_options?.join(', ')}`),
+      ...stageData.stage2.answers.map(a => `${a.question_id}: ${a.text_answer || a.selected_options?.join(', ')}`)
+    ].join('\n')
+
+    await streamWizardRequest(
+      '/concepts/wizard/generate-case-studies',
+      {
+        concept_name: conceptName,
+        concept_definition: definition,
+        context: context
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          setGeneratedCases(data.generated_cases || [])
+          setIsGeneratingExamples(false)
+          setThinking('')
+        }
+      }
+    )
+  }
+
+  /**
+   * Generate recognition markers
+   */
+  const generateRecognitionMarkers = async () => {
+    setIsGeneratingExamples(true)
+    setError(null)
+    setThinking('')
+
+    // Build concept definition from interim analysis
+    const definition = interimAnalysis?.understanding_summary ||
+      stageData.stage1?.notesAnalysis?.preliminary_definition ||
+      ''
+
+    // Get approved cases
+    const approvedCases = generatedCases.filter(c =>
+      caseRatings[c.id] === 'good' || caseRatings[c.id] === 'partial'
+    )
+
+    await streamWizardRequest(
+      '/concepts/wizard/generate-recognition-markers',
+      {
+        concept_name: conceptName,
+        concept_definition: definition,
+        paradigmatic_cases: approvedCases
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          setGeneratedMarkers(data.generated_markers || [])
+          setIsGeneratingExamples(false)
+          setThinking('')
+        }
+      }
+    )
+  }
+
+  /**
+   * Rate a generated case
+   */
+  const rateCaseStudy = (caseId, rating) => {
+    setCaseRatings(prev => ({ ...prev, [caseId]: rating }))
+  }
+
+  /**
+   * Update comment on a case
+   */
+  const updateCaseComment = (caseId, comment) => {
+    setCaseComments(prev => ({ ...prev, [caseId]: comment }))
+  }
+
+  /**
+   * Rate a recognition marker
+   */
+  const rateMarker = (markerId, rating) => {
+    setMarkerRatings(prev => ({ ...prev, [markerId]: rating }))
+  }
+
+  /**
+   * Update comment on a marker
+   */
+  const updateMarkerComment = (markerId, comment) => {
+    setMarkerComments(prev => ({ ...prev, [markerId]: comment }))
   }
 
   /**
@@ -1355,6 +1469,162 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     <span className="reasoning-label">Based on your notes:</span> {currentQuestion.prefilled.reasoning}
                     {currentQuestion.prefilled.source_excerpt && (
                       <blockquote className="source-excerpt">"{currentQuestion.prefilled.source_excerpt}"</blockquote>
+                    )}
+                  </div>
+                )}
+
+                {/* Generated Examples Panel for Stage 3 - paradigmatic cases */}
+                {stage === STAGES.STAGE3 && currentQuestion.id === 'paradigmatic_case' && (
+                  <div className="generated-examples-panel">
+                    <div className="gen-examples-header">
+                      <h4>Generated Case Studies</h4>
+                      <p>I've generated candidate paradigmatic cases. Rate each to help identify the best examples.</p>
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={generateCaseStudies}
+                        disabled={isGeneratingExamples}
+                      >
+                        {isGeneratingExamples ? 'Generating...' : generatedCases.length > 0 ? 'Regenerate' : 'Generate Cases'}
+                      </button>
+                    </div>
+
+                    {isGeneratingExamples && thinking && (
+                      <div className="thinking-mini">
+                        <span className="thinking-label">Thinking...</span>
+                        <p className="thinking-preview">{thinking.slice(-200)}</p>
+                      </div>
+                    )}
+
+                    {generatedCases.length > 0 && (
+                      <div className="gen-examples-list">
+                        {generatedCases.map((caseItem, idx) => (
+                          <div key={caseItem.id || idx} className={`example-card rating-${caseRatings[caseItem.id] || 'none'}`}>
+                            <div className="example-header">
+                              <span className="example-domain">{caseItem.domain}</span>
+                              <h5 className="example-title">{caseItem.title}</h5>
+                            </div>
+                            <p className="example-description">{caseItem.description}</p>
+                            <p className="example-relevance"><strong>Relevance:</strong> {caseItem.relevance}</p>
+
+                            <div className="example-rating">
+                              <span className="rating-label">Rate this example:</span>
+                              <div className="rating-buttons">
+                                <button
+                                  className={`rating-btn good ${caseRatings[caseItem.id] === 'good' ? 'active' : ''}`}
+                                  onClick={() => rateCaseStudy(caseItem.id, 'good')}
+                                >
+                                  Good Example
+                                </button>
+                                <button
+                                  className={`rating-btn partial ${caseRatings[caseItem.id] === 'partial' ? 'active' : ''}`}
+                                  onClick={() => rateCaseStudy(caseItem.id, 'partial')}
+                                >
+                                  Partially Fits
+                                </button>
+                                <button
+                                  className={`rating-btn not_fit ${caseRatings[caseItem.id] === 'not_fit' ? 'active' : ''}`}
+                                  onClick={() => rateCaseStudy(caseItem.id, 'not_fit')}
+                                >
+                                  Doesn't Fit
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="example-comment">
+                              <input
+                                type="text"
+                                placeholder="Add comment about this case..."
+                                value={caseComments[caseItem.id] || ''}
+                                onChange={(e) => updateCaseComment(caseItem.id, e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {generatedCases.length === 0 && !isGeneratingExamples && (
+                      <div className="gen-examples-empty">
+                        <p>Click "Generate Cases" to get LLM-suggested paradigmatic cases based on your concept definition.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Generated Examples Panel for Stage 3 - recognition markers */}
+                {stage === STAGES.STAGE3 && currentQuestion.id === 'recognition_markers' && (
+                  <div className="generated-examples-panel">
+                    <div className="gen-examples-header">
+                      <h4>Generated Recognition Markers</h4>
+                      <p>I've identified patterns that might indicate your concept in text. Validate which are useful.</p>
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={generateRecognitionMarkers}
+                        disabled={isGeneratingExamples}
+                      >
+                        {isGeneratingExamples ? 'Generating...' : generatedMarkers.length > 0 ? 'Regenerate' : 'Generate Markers'}
+                      </button>
+                    </div>
+
+                    {isGeneratingExamples && thinking && (
+                      <div className="thinking-mini">
+                        <span className="thinking-label">Thinking...</span>
+                        <p className="thinking-preview">{thinking.slice(-200)}</p>
+                      </div>
+                    )}
+
+                    {generatedMarkers.length > 0 && (
+                      <div className="gen-markers-list">
+                        {generatedMarkers.map((marker, idx) => (
+                          <div key={marker.id || idx} className={`marker-card rating-${markerRatings[marker.id] || 'none'}`}>
+                            <div className="marker-header">
+                              <span className={`reliability-badge ${marker.reliability}`}>{marker.reliability}</span>
+                              <h5 className="marker-pattern">{marker.pattern}</h5>
+                            </div>
+                            <p className="marker-example"><strong>Example:</strong> "{marker.example}"</p>
+                            {marker.notes && <p className="marker-notes">{marker.notes}</p>}
+
+                            <div className="marker-rating">
+                              <span className="rating-label">Is this marker useful?</span>
+                              <div className="rating-buttons">
+                                <button
+                                  className={`rating-btn good ${markerRatings[marker.id] === 'good' ? 'active' : ''}`}
+                                  onClick={() => rateMarker(marker.id, 'good')}
+                                >
+                                  Good Marker
+                                </button>
+                                <button
+                                  className={`rating-btn partial ${markerRatings[marker.id] === 'partial' ? 'active' : ''}`}
+                                  onClick={() => rateMarker(marker.id, 'partial')}
+                                >
+                                  Partial
+                                </button>
+                                <button
+                                  className={`rating-btn not_fit ${markerRatings[marker.id] === 'not_fit' ? 'active' : ''}`}
+                                  onClick={() => rateMarker(marker.id, 'not_fit')}
+                                >
+                                  Not Relevant
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="marker-comment">
+                              <input
+                                type="text"
+                                placeholder="Add comment about this marker..."
+                                value={markerComments[marker.id] || ''}
+                                onChange={(e) => updateMarkerComment(marker.id, e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {generatedMarkers.length === 0 && !isGeneratingExamples && (
+                      <div className="gen-examples-empty">
+                        <p>Click "Generate Markers" to get LLM-suggested recognition patterns based on your concept and approved cases.</p>
+                      </div>
                     )}
                   </div>
                 )}

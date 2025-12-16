@@ -3115,8 +3115,68 @@ textarea {
 /* Generated Examples Panel */
 .generated-examples-panel {
   margin-top: 1.5rem;
+  background: linear-gradient(135deg, #161b22 0%, #1c2128 100%);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1rem;
 }
 
+.gen-examples-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #30363d;
+}
+
+.gen-examples-header h4 {
+  font-size: 1rem;
+  color: #58a6ff;
+  margin: 0 0 0.5rem 0;
+}
+
+.gen-examples-header p {
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin: 0 0 0.75rem 0;
+}
+
+.gen-examples-list, .gen-markers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.gen-examples-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #8b949e;
+  font-style: italic;
+}
+
+.thinking-mini {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.thinking-mini .thinking-label {
+  color: #a371f7;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.thinking-mini .thinking-preview {
+  color: #8b949e;
+  font-size: 0.8rem;
+  font-family: monospace;
+  margin: 0.5rem 0 0 0;
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Legacy header styles */
 .generated-examples-header {
   display: flex;
   justify-content: space-between;
@@ -3233,6 +3293,220 @@ textarea {
 
 .example-comment input::placeholder {
   color: #484f58;
+}
+
+/* Enhanced Example Card Styles */
+.example-card .example-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.example-card .example-domain {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.example-card .example-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.example-card .example-relevance {
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #21262d;
+  border-radius: 4px;
+}
+
+.example-card .example-relevance strong {
+  color: #58a6ff;
+}
+
+/* Example rating styles */
+.example-rating, .marker-rating {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #30363d;
+}
+
+.example-rating .rating-label, .marker-rating .rating-label {
+  font-size: 0.8rem;
+  color: #8b949e;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.rating-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rating-btn {
+  padding: 0.35rem 0.75rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #8b949e;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rating-btn:hover {
+  border-color: #484f58;
+  color: #c9d1d9;
+}
+
+.rating-btn.good.active {
+  background: #238636;
+  color: #fff;
+  border-color: #238636;
+}
+
+.rating-btn.partial.active {
+  background: #9e6a03;
+  color: #fff;
+  border-color: #9e6a03;
+}
+
+.rating-btn.not_fit.active {
+  background: #da3633;
+  color: #fff;
+  border-color: #da3633;
+}
+
+/* Rating-based card styling */
+.example-card.rating-good {
+  border-color: #238636;
+  background: rgba(35, 134, 54, 0.1);
+}
+
+.example-card.rating-partial {
+  border-color: #9e6a03;
+  background: rgba(158, 106, 3, 0.1);
+}
+
+.example-card.rating-not_fit {
+  border-color: #da3633;
+  opacity: 0.6;
+}
+
+/* Marker card styles */
+.marker-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.15s ease;
+}
+
+.marker-card:hover {
+  border-color: #484f58;
+}
+
+.marker-card .marker-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.marker-card .reliability-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.reliability-badge.high {
+  background: #238636;
+  color: #fff;
+}
+
+.reliability-badge.medium {
+  background: #9e6a03;
+  color: #fff;
+}
+
+.reliability-badge.low {
+  background: #484f58;
+  color: #c9d1d9;
+}
+
+.marker-card .marker-pattern {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.marker-card .marker-example {
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin: 0.5rem 0;
+  font-style: italic;
+}
+
+.marker-card .marker-example strong {
+  color: #c9d1d9;
+  font-style: normal;
+}
+
+.marker-card .marker-notes {
+  font-size: 0.8rem;
+  color: #8b949e;
+  margin: 0;
+  padding: 0.5rem;
+  background: #161b22;
+  border-radius: 4px;
+}
+
+.marker-card .marker-comment {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #30363d;
+}
+
+.marker-card .marker-comment input {
+  width: 100%;
+  padding: 0.5rem;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 0.85rem;
+}
+
+.marker-card.rating-good {
+  border-color: #238636;
+  background: rgba(35, 134, 54, 0.1);
+}
+
+.marker-card.rating-partial {
+  border-color: #9e6a03;
+  background: rgba(158, 106, 3, 0.1);
+}
+
+.marker-card.rating-not_fit {
+  border-color: #da3633;
+  opacity: 0.6;
 }
 
 /* Impact Topology Panel */
