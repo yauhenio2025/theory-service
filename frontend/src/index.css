@@ -3456,8 +3456,42 @@ textarea {
   color: #fff;
 }
 
+.tension-btn.regenerate {
+  border-color: #a371f7;
+}
+
+.tension-btn.regenerate:hover,
+.tension-btn.regenerate.active {
+  background: #a371f7;
+  color: #fff;
+}
+
 .tension-comment-box {
   margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.regenerate-tension-btn {
+  padding: 0.5rem 0.75rem;
+  background: #a371f7;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.regenerate-tension-btn:hover:not(:disabled) {
+  background: #8957e5;
+}
+
+.regenerate-tension-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .tension-comment-input {
@@ -4229,74 +4263,101 @@ textarea {
   padding-right: 0.5rem;
 }
 
+/* ====== 9-DIMENSION FINAL UI - Enhanced Design ====== */
+
 .dimension-section {
-  background: #0d1117;
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
   border: 1px solid #30363d;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .dimension-section:hover {
   border-color: #58a6ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(88, 166, 255, 0.15);
 }
 
 .dimension-section.editing {
   border-color: #58a6ff;
-  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2), 0 4px 16px rgba(88, 166, 255, 0.15);
 }
 
 .dimension-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: #161b22;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(90deg, #161b22 0%, #1c2128 100%);
   cursor: pointer;
   user-select: none;
+  border-bottom: 1px solid #21262d;
 }
 
 .dimension-header:hover {
-  background: #1c2128;
+  background: linear-gradient(90deg, #1c2128 0%, #21262d 100%);
 }
 
 .dimension-icon {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(88, 166, 255, 0.1);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.dimension-section:hover .dimension-icon {
+  background: rgba(88, 166, 255, 0.2);
+  transform: scale(1.05);
 }
 
 .dimension-header h4 {
   flex: 1;
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #c9d1d9;
+  color: #e6edf3;
+  letter-spacing: 0.02em;
 }
 
-.edit-toggle {
-  padding: 0.25rem 0.5rem;
-  background: transparent;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  color: #8b949e;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.edit-toggle:hover {
-  background: #21262d;
-  border-color: #58a6ff;
+.dimension-header h4::first-letter {
   color: #58a6ff;
 }
 
+.edit-toggle {
+  padding: 0.4rem 0.75rem;
+  background: rgba(88, 166, 255, 0.1);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  border-radius: 6px;
+  color: #58a6ff;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-toggle:hover {
+  background: rgba(88, 166, 255, 0.2);
+  border-color: #58a6ff;
+  transform: scale(1.02);
+}
+
 .dimension-content {
-  padding: 1rem;
+  padding: 1.25rem;
   color: #c9d1d9;
+  background: rgba(13, 17, 23, 0.5);
 }
 
 .dimension-content p {
-  margin: 0 0 0.5rem;
-  line-height: 1.5;
+  margin: 0 0 0.75rem;
+  line-height: 1.6;
+  font-size: 0.95rem;
 }
 
 .dimension-content p:last-child {
@@ -4306,56 +4367,215 @@ textarea {
 .dimension-content em {
   color: #6e7681;
   font-style: italic;
-}
-
-.definition-text {
-  font-size: 1rem;
-  line-height: 1.6;
   padding: 0.5rem;
-  background: rgba(88, 166, 255, 0.05);
-  border-left: 3px solid #58a6ff;
-  border-radius: 0 4px 4px 0;
+  display: block;
+  text-align: center;
 }
 
+/* Definition Section - Special Treatment */
+.definition-text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(88, 166, 255, 0.02) 100%);
+  border-left: 4px solid #58a6ff;
+  border-radius: 0 8px 8px 0;
+  color: #e6edf3;
+  font-weight: 400;
+}
+
+/* Genesis & Problem Space Sub-items */
+.dimension-content .genesis-item,
+.dimension-content .problem-item {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+}
+
+.dimension-content .genesis-item:last-child,
+.dimension-content .problem-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.dimension-content .item-label {
+  color: #8b949e;
+  font-size: 0.85rem;
+  min-width: 100px;
+  font-weight: 500;
+}
+
+.dimension-content .item-value {
+  color: #c9d1d9;
+  flex: 1;
+}
+
+/* Enhanced List Styles */
 .dimension-list {
   margin: 0;
-  padding-left: 1.25rem;
-  list-style-type: disc;
+  padding: 0;
+  list-style-type: none;
 }
 
 .dimension-list li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(22, 27, 34, 0.5);
+  border-radius: 8px;
+  border-left: 3px solid #30363d;
   line-height: 1.5;
+  transition: all 0.2s;
 }
 
-.dimension-list.falsification li::marker {
-  color: #f85149;
+.dimension-list li:hover {
+  background: rgba(22, 27, 34, 0.8);
+  border-left-color: #58a6ff;
 }
 
+.dimension-list li:last-child {
+  margin-bottom: 0;
+}
+
+.dimension-list li strong {
+  color: #e6edf3;
+  font-weight: 600;
+}
+
+/* Differentiations Special Style */
+.dimension-list.differentiations li {
+  border-left-color: #d29922;
+}
+
+.dimension-list.differentiations li:hover {
+  border-left-color: #f0b429;
+}
+
+/* Paradigmatic Cases Special Style */
+.dimension-list.cases li {
+  border-left-color: #238636;
+}
+
+.dimension-list.cases li:hover {
+  border-left-color: #3fb950;
+}
+
+/* Recognition Markers Special Style */
+.dimension-list.markers li {
+  border-left-color: #a371f7;
+}
+
+.dimension-list.markers li:hover {
+  border-left-color: #bc8cff;
+}
+
+/* Falsification Conditions */
+.dimension-list.falsification li {
+  border-left-color: #f85149;
+  background: rgba(248, 81, 73, 0.05);
+}
+
+.dimension-list.falsification li:hover {
+  border-left-color: #ff7b72;
+  background: rgba(248, 81, 73, 0.1);
+}
+
+/* Dialectics Enhanced Display */
 .dialectics-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .dialectic-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(238, 130, 238, 0.1);
-  border: 1px solid rgba(238, 130, 238, 0.3);
-  border-radius: 6px;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, rgba(163, 113, 247, 0.1) 0%, rgba(163, 113, 247, 0.05) 100%);
+  border: 1px solid rgba(163, 113, 247, 0.3);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.dialectic-item:hover {
+  background: linear-gradient(135deg, rgba(163, 113, 247, 0.15) 0%, rgba(163, 113, 247, 0.08) 100%);
+  border-color: rgba(163, 113, 247, 0.5);
+  transform: translateX(2px);
 }
 
 .dialectic-item .dialectic-badge {
-  font-size: 1rem;
+  font-size: 1.25rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(163, 113, 247, 0.2);
+  border-radius: 8px;
+}
+
+.dialectic-item .tension-desc {
+  flex: 1;
+  color: #e6edf3;
+  font-size: 0.95rem;
+}
+
+.dialectic-item .poles-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.dialectic-item .pole {
+  padding: 0.25rem 0.5rem;
+  background: rgba(163, 113, 247, 0.15);
+  border-radius: 4px;
+  color: #bc8cff;
+  font-weight: 500;
 }
 
 .dialectic-item .vs {
   color: #6e7681;
   font-size: 0.75rem;
   font-style: italic;
+}
+
+/* Core Claims Enhanced */
+.core-claims-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.core-claim {
+  padding: 1rem;
+  background: rgba(22, 27, 34, 0.5);
+  border-radius: 8px;
+  border-left: 3px solid #58a6ff;
+}
+
+.core-claim.ontological {
+  border-left-color: #58a6ff;
+}
+
+.core-claim.causal {
+  border-left-color: #3fb950;
+}
+
+.core-claim .claim-type {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.core-claim .claim-text {
+  color: #c9d1d9;
+  line-height: 1.6;
 }
 
 /* Edit mode styles */

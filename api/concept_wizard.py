@@ -770,6 +770,10 @@ class FinalizeRequest(BaseModel):
     all_answers: Dict[str, List[AnswerWithMeta]]  # stage1, stage2, stage3
     interim_analysis: InterimAnalysis
     dialectics: List[Tension]
+    # User-validated data from wizard stages
+    validated_cases: Optional[List[Dict[str, Any]]] = None  # Cases user approved
+    validated_markers: Optional[List[Dict[str, Any]]] = None  # Markers user approved
+    approved_tensions: Optional[List[Dict[str, Any]]] = None  # Tensions from understanding validation
     source_id: Optional[int] = None
 
 
@@ -826,6 +830,16 @@ class GenerateTensionsRequest(BaseModel):
     existing_tensions: List[Any]  # Can be strings or objects
     approved_tensions: List[Any]
     notes_analysis: Dict[str, Any]
+
+
+class RegenerateTensionRequest(BaseModel):
+    """Request to regenerate a specific tension."""
+    concept_name: str
+    notes: str
+    tension_index: int
+    current_tension: str
+    feedback: str
+    all_tensions: List[str]
 
 
 class RefineWithFeedbackRequest(BaseModel):
@@ -1169,6 +1183,44 @@ Return as JSON:
 }}
 
 Focus on tensions that would be productive dialectics - not contradictions to resolve, but creative tensions to preserve."""
+
+
+REGENERATE_TENSION_PROMPT = """You are an expert in conceptual analysis helping refine a productive tension (dialectic) based on user feedback.
+
+## Concept Name: {concept_name}
+
+## User's Notes:
+{notes}
+
+## Current Tension to Regenerate:
+{current_tension}
+
+## User's Feedback for Regeneration:
+{feedback}
+
+## Other Tensions in This Concept (for context, avoid duplication):
+{other_tensions}
+
+Your task is to regenerate this tension based on the user's feedback. The user wants a NEW formulation that incorporates their feedback - not just the original with a comment appended.
+
+Consider:
+1. What aspect of the tension does the user want emphasized or changed?
+2. Are the poles (opposing sides) correctly identified?
+3. Is the tension at the right level of abstraction?
+4. Does it capture a genuinely productive dialectic?
+
+Return as JSON:
+{{
+    "regenerated_tension": {{
+        "description": "Regenerated description of the tension based on feedback",
+        "pole_a": "One side of the tension",
+        "pole_b": "The opposing side",
+        "productive_potential": "Why this tension is productive for the concept"
+    }},
+    "regeneration_note": "Brief note about what was changed based on feedback"
+}}
+
+Generate a tension that reflects the user's feedback while maintaining theoretical rigor."""
 
 
 REFINE_WITH_FEEDBACK_PROMPT = """You are an expert in conceptual analysis helping refine understanding based on user validation feedback.
@@ -1557,6 +1609,82 @@ async def generate_tensions(request: GenerateTensionsRequest):
 
     return StreamingResponse(
         stream_tensions(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/regenerate-tension")
+async def regenerate_tension(request: RegenerateTensionRequest):
+    """
+    Regenerate a specific tension using user feedback as context.
+    Unlike 'approve with comment' which preserves the original, this creates a new formulation.
+    """
+    async def stream_regenerated_tension():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'regenerating_tension'})}\n\n"
+
+            # Format other tensions for context
+            other_tensions = [t for i, t in enumerate(request.all_tensions) if i != request.tension_index]
+            other_tensions_str = "\n".join([f"- {t}" for t in other_tensions]) if other_tensions else "(No other tensions)"
+
+            prompt = REGENERATE_TENSION_PROMPT.format(
+                concept_name=request.concept_name,
+                notes=request.notes,
+                current_tension=request.current_tension,
+                feedback=request.feedback,
+                other_tensions=other_tensions_str
+            )
+
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis helping refine productive tensions and dialectics.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse response
+            tension_data = parse_wizard_response(response_text)
+            regenerated_tension = tension_data.get("regenerated_tension", {})
+            regeneration_note = tension_data.get("regeneration_note", "")
+
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'regenerated_tension': regenerated_tension,
+                    'regeneration_note': regeneration_note
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in regenerate_tension: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_regenerated_tension(),
         media_type="text/event-stream"
     )
 
@@ -2475,6 +2603,29 @@ async def finalize_concept(request: FinalizeRequest):
 
     full_context = format_answers_for_prompt(all_answers_flat)
 
+    # Format validated data for the prompt
+    validated_cases_str = ""
+    if request.validated_cases:
+        validated_cases_str = "\n".join([
+            f"- {c.get('title', 'Case')}: {c.get('description', '')} (Rating: {c.get('rating', 'approved')})"
+            for c in request.validated_cases
+        ])
+
+    validated_markers_str = ""
+    if request.validated_markers:
+        validated_markers_str = "\n".join([
+            f"- {m.get('pattern', m.get('marker', str(m)))}"
+            for m in request.validated_markers
+        ])
+
+    approved_tensions_str = ""
+    if request.approved_tensions:
+        approved_tensions_str = "\n".join([
+            f"- {t.get('description', t.get('tension', str(t)))}" +
+            (f" (User note: {t.get('comment', '')})" if t.get('comment') else "")
+            for t in request.approved_tensions
+        ])
+
     async def stream_final_synthesis():
         try:
             client = get_claude_client()
@@ -2492,19 +2643,68 @@ async def finalize_concept(request: FinalizeRequest):
 ## Interim Analysis:
 {json.dumps(request.interim_analysis.model_dump(), indent=2)}
 
-## Dialectics/Tensions Identified:
+## User-Validated Paradigmatic Cases:
+{validated_cases_str or "(User will provide paradigmatic cases)"}
+
+## User-Validated Recognition Markers:
+{validated_markers_str or "(Generate recognition markers based on definition)"}
+
+## Approved Tensions/Dialectics from Understanding Validation:
+{approved_tensions_str or "(None specifically approved)"}
+
+## Additional Dialectics/Tensions Marked During Questions:
 {json.dumps([d.model_dump() for d in request.dialectics], indent=2)}
 
-Create a complete concept definition following the Genesis Dimension schema. Include:
-- Full definition
-- Genesis type and lineage
-- Problem space and failed alternatives
-- All differentiations
-- Paradigmatic case
-- Recognition markers
-- Dialectics to preserve (productive tensions)
+Create a complete concept definition following the Genesis Dimension schema.
 
-Output comprehensive JSON matching the PROCESS_ANSWERS_SYSTEM schema."""
+IMPORTANT:
+- For paradigmatic_cases: USE the user-validated cases above if provided. These are cases the user has explicitly approved as good examples of this concept.
+- For recognition_markers: USE the user-validated markers above if provided.
+- For dialectics: COMBINE both the approved tensions from understanding validation AND the tensions marked during questions. These are productive tensions the user wants to preserve.
+- For falsification_conditions: Generate clear conditions under which this concept would be proven false or inapplicable.
+
+Include ALL of the following in your JSON output:
+
+{{
+  "concept": {{
+    "name": "Concept name",
+    "definition": "Full 2-3 paragraph definition",
+    "genesis": {{
+      "type": "genesis type",
+      "lineage": "theoretical traditions",
+      "break_from": "what it breaks from"
+    }},
+    "problem_space": {{
+      "gap": "the gap this fills",
+      "failed_alternatives": "concepts that failed"
+    }},
+    "differentiations": [
+      {{ "confused_with": "Other Concept", "difference": "Key distinction" }}
+    ],
+    "paradigmatic_cases": [
+      {{ "title": "Case name", "description": "Description", "relevance": "Why paradigmatic" }}
+    ],
+    "recognition_markers": [
+      {{ "description": "Pattern to look for", "context": "Where to look" }}
+    ],
+    "core_claims": {{
+      "ontological": "What this concept says exists or is real",
+      "causal": "What causal relationships it asserts"
+    }},
+    "falsification_conditions": [
+      "Condition under which this concept would be proven false"
+    ],
+    "dialectics": [
+      {{ "description": "Tension description", "pole_a": "One pole", "pole_b": "Other pole" }}
+    ]
+  }}
+}}
+
+CRITICAL:
+- paradigmatic_cases MUST be an array with title/description for each case. USE the user-validated cases provided above.
+- recognition_markers MUST be an array with description field for each marker. USE the user-validated markers provided above.
+- dialectics MUST be an array combining approved tensions AND marked tensions.
+- falsification_conditions MUST be an array of strings."""
 
             with client.messages.stream(
                 model=MODEL,

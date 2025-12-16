@@ -893,6 +893,63 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   }
 
   /**
+   * Regenerate a specific tension using the comment as context
+   */
+  const regenerateTension = async (index) => {
+    const tension = notesUnderstanding.potentialTensions[index]
+    const feedback = tensionFeedback[index]
+
+    if (!feedback?.comment?.trim()) {
+      setError('Please add a comment explaining how to improve this tension')
+      return
+    }
+
+    setIsGeneratingTensions(true)
+    setThinking('')
+
+    const tensionText = typeof tension === 'string'
+      ? tension
+      : (tension.description || tension.tension || JSON.stringify(tension))
+
+    await streamWizardRequest(
+      '/concepts/wizard/regenerate-tension',
+      {
+        concept_name: conceptName,
+        notes: notes,
+        tension_index: index,
+        current_tension: tensionText,
+        feedback: feedback.comment,
+        all_tensions: notesUnderstanding.potentialTensions.map(t =>
+          typeof t === 'string' ? t : (t.description || t.tension || JSON.stringify(t))
+        )
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          // Update the specific tension
+          const newTensions = [...notesUnderstanding.potentialTensions]
+          newTensions[index] = data.regenerated_tension
+          setNotesUnderstanding(prev => ({
+            ...prev,
+            potentialTensions: newTensions
+          }))
+          // Clear feedback for this tension
+          setTensionFeedback(prev => {
+            const updated = { ...prev }
+            delete updated[index]
+            return updated
+          })
+          setExpandedTensionComment(prev => ({ ...prev, [index]: false }))
+          setIsGeneratingTensions(false)
+          setThinking('')
+        }
+      }
+    )
+  }
+
+  /**
    * Build AnswerWithMeta object from current answer state
    */
   const buildAnswerMeta = (questionId) => {
@@ -1119,6 +1176,39 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setStage(STAGES.PROCESSING)
     setProgress({ stage: 9, total: 9, label: 'Creating final concept definition...' })
 
+    // Build validated cases from user ratings
+    const validatedCases = generatedCases
+      .filter(c => caseRatings[c.id] === 'good' || caseRatings[c.id] === 'partial')
+      .map(c => ({
+        ...c,
+        rating: caseRatings[c.id],
+        comment: caseComments[c.id] || ''
+      }))
+
+    // Build validated markers from user ratings
+    const validatedMarkers = generatedMarkers
+      .filter(m => markerRatings[m.id] === 'good' || markerRatings[m.id] === 'partial')
+      .map(m => ({
+        ...m,
+        rating: markerRatings[m.id],
+        comment: markerComments[m.id] || ''
+      }))
+
+    // Build approved tensions from understanding validation
+    const approvedTensions = (notesUnderstanding?.potentialTensions || [])
+      .filter((_, i) => {
+        const feedback = tensionFeedback[i]
+        return feedback?.status === 'approved' || feedback?.status === 'approved_with_comment'
+      })
+      .map((tension, i) => {
+        const feedback = tensionFeedback[i] || {}
+        const tensionObj = typeof tension === 'string' ? { description: tension } : tension
+        return {
+          ...tensionObj,
+          comment: feedback.comment || ''
+        }
+      })
+
     await streamWizardRequest(
       '/concepts/wizard/finalize',
       {
@@ -1131,13 +1221,16 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         },
         interim_analysis: interimAnalysis,
         dialectics: dialectics,
+        validated_cases: validatedCases.length > 0 ? validatedCases : null,
+        validated_markers: validatedMarkers.length > 0 ? validatedMarkers : null,
+        approved_tensions: approvedTensions.length > 0 ? approvedTensions : null,
         source_id: sourceId
       },
       {
         onComplete: (data) => {
           setConceptData(data.concept)
-          // Populate editable draft from concept data
-          populateEditableDraft(data.concept)
+          // Populate editable draft from concept data, including validated data
+          populateEditableDraft(data.concept, validatedCases, validatedMarkers, approvedTensions)
           setProgress({ stage: 9, total: 9, label: 'Complete!' })
           setStage(STAGES.COMPLETE)
         }
@@ -1147,23 +1240,116 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
   /**
    * Populate editable draft from concept data
+   * Uses validated data as fallbacks if LLM response is empty or malformed
    */
-  const populateEditableDraft = (concept) => {
-    setEditableDraft({
+  const populateEditableDraft = (concept, validatedCases = [], validatedMarkers = [], approvedTensions = []) => {
+    console.log('[populateEditableDraft] Concept data:', concept)
+    console.log('[populateEditableDraft] Validated cases:', validatedCases)
+    console.log('[populateEditableDraft] Validated markers:', validatedMarkers)
+    console.log('[populateEditableDraft] Approved tensions:', approvedTensions)
+
+    // PARADIGMATIC CASES - handle various formats
+    let cases = []
+    // Try paradigmatic_cases (array) first
+    if (Array.isArray(concept.paradigmatic_cases) && concept.paradigmatic_cases.length > 0) {
+      cases = concept.paradigmatic_cases.map(c => ({
+        title: c.title || c.name || '',
+        description: c.description || '',
+        relevance: c.relevance || c.why || ''
+      }))
+    }
+    // Try singular paradigmatic_case (some schemas use this)
+    else if (concept.paradigmatic_case && typeof concept.paradigmatic_case === 'object') {
+      cases = [{
+        title: concept.paradigmatic_case.name || concept.paradigmatic_case.title || '',
+        description: concept.paradigmatic_case.description || '',
+        relevance: concept.paradigmatic_case.why || ''
+      }]
+    }
+    // Fall back to user-validated cases
+    if (cases.length === 0 && validatedCases.length > 0) {
+      console.log('[populateEditableDraft] Using validated cases as fallback')
+      cases = validatedCases.map(c => ({
+        title: c.title || c.name || '',
+        description: c.description || '',
+        relevance: c.relevance || ''
+      }))
+    }
+
+    // RECOGNITION MARKERS - normalize to objects with description
+    let markers = []
+    if (Array.isArray(concept.recognition_markers) && concept.recognition_markers.length > 0) {
+      markers = concept.recognition_markers.map(m => {
+        if (typeof m === 'string') return { description: m }
+        return { description: m.description || m.pattern || String(m) }
+      })
+    }
+    // Fall back to user-validated markers
+    if (markers.length === 0 && validatedMarkers.length > 0) {
+      console.log('[populateEditableDraft] Using validated markers as fallback')
+      markers = validatedMarkers.map(m => {
+        if (typeof m === 'string') return { description: m }
+        return { description: m.pattern || m.marker || m.description || String(m) }
+      })
+    }
+
+    // DIALECTICS - combine LLM response, marked dialectics, and approved tensions
+    let conceptDialectics = []
+    if (Array.isArray(concept.dialectics) && concept.dialectics.length > 0) {
+      conceptDialectics = concept.dialectics.map(d => ({
+        pole_a: d.pole_a || '',
+        pole_b: d.pole_b || '',
+        description: d.description || '',
+        note: d.note || ''
+      }))
+    }
+    // If LLM didn't return dialectics, build from our sources
+    if (conceptDialectics.length === 0) {
+      // Add marked dialectics from question flow
+      const fromMarked = dialectics.map(d => ({
+        pole_a: d.pole_a || '',
+        pole_b: d.pole_b || '',
+        description: d.description || '',
+        note: d.user_note || ''
+      }))
+
+      // Add approved tensions from understanding validation
+      const fromApproved = approvedTensions.map(t => ({
+        pole_a: t.pole_a || '',
+        pole_b: t.pole_b || '',
+        description: t.description || t.tension || (typeof t === 'string' ? t : ''),
+        note: t.comment || ''
+      }))
+
+      conceptDialectics = [...fromMarked, ...fromApproved]
+      if (conceptDialectics.length > 0) {
+        console.log('[populateEditableDraft] Built dialectics from fallback sources:', conceptDialectics)
+      }
+    }
+
+    // FALSIFICATION CONDITIONS
+    let falsificationConditions = []
+    if (Array.isArray(concept.falsification_conditions) && concept.falsification_conditions.length > 0) {
+      falsificationConditions = concept.falsification_conditions
+    }
+    if (falsificationConditions.length === 0) {
+      falsificationConditions = ['(No falsification conditions specified - click Edit to add)']
+    }
+
+    const draft = {
       genesis: concept.genesis || { type: '', lineage: '', break_from: '' },
       problem_space: concept.problem_space || { gap: '', failed_alternatives: '' },
       definition: concept.definition || '',
-      differentiations: concept.differentiations || [],
-      paradigmatic_cases: concept.paradigmatic_cases || [],
-      recognition_markers: concept.recognition_markers || [],
+      differentiations: Array.isArray(concept.differentiations) ? concept.differentiations : [],
+      paradigmatic_cases: cases,
+      recognition_markers: markers,
       core_claims: concept.core_claims || { ontological: '', causal: '' },
-      falsification_conditions: concept.falsification_conditions || [],
-      dialectics: dialectics.map(d => ({
-        pole_a: d.pole_a,
-        pole_b: d.pole_b,
-        note: d.user_note || ''
-      }))
-    })
+      falsification_conditions: falsificationConditions,
+      dialectics: conceptDialectics
+    }
+
+    console.log('[populateEditableDraft] Final draft:', draft)
+    setEditableDraft(draft)
   }
 
   /**
@@ -1599,7 +1785,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                               <button
                                 className={`tension-btn approve ${tensionFeedback[i]?.status === 'approved' ? 'active' : ''}`}
                                 onClick={() => setTensionStatus(i, 'approved')}
-                                title="Approve this tension"
+                                title="Approve this tension as-is"
                               >
                                 Approve
                               </button>
@@ -1609,9 +1795,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                   setTensionStatus(i, 'approved_with_comment')
                                   setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
                                 }}
-                                title="Approve with additional context"
+                                title="Approve and add context (keeps original)"
                               >
                                 Approve w/ Comment
+                              </button>
+                              <button
+                                className={`tension-btn regenerate ${tensionFeedback[i]?.status === 'regenerate' ? 'active' : ''}`}
+                                onClick={() => {
+                                  setTensionStatus(i, 'regenerate')
+                                  setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
+                                }}
+                                title="Regenerate this tension using your feedback"
+                              >
+                                Regenerate w/ Comment
                               </button>
                               <button
                                 className={`tension-btn reject ${tensionFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
@@ -1621,15 +1817,28 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                 Reject
                               </button>
                             </div>
-                            {(tensionFeedback[i]?.status === 'approved_with_comment' || expandedTensionComment[i]) && (
+                            {(tensionFeedback[i]?.status === 'approved_with_comment' ||
+                              tensionFeedback[i]?.status === 'regenerate' ||
+                              expandedTensionComment[i]) && (
                               <div className="tension-comment-box">
                                 <input
                                   type="text"
-                                  placeholder="Add context or clarification about this tension..."
+                                  placeholder={tensionFeedback[i]?.status === 'regenerate'
+                                    ? "Describe how to improve this tension..."
+                                    : "Add context or clarification about this tension..."}
                                   value={tensionFeedback[i]?.comment || ''}
                                   onChange={(e) => setTensionComment(i, e.target.value)}
                                   className="tension-comment-input"
                                 />
+                                {tensionFeedback[i]?.status === 'regenerate' && (
+                                  <button
+                                    className="btn btn-sm btn-primary regenerate-tension-btn"
+                                    onClick={() => regenerateTension(i)}
+                                    disabled={!tensionFeedback[i]?.comment?.trim() || isGeneratingTensions}
+                                  >
+                                    {isGeneratingTensions ? 'Regenerating...' : 'Regenerate'}
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -2431,9 +2640,20 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     </div>
                   ) : (
                     <div className="dimension-content">
-                      <p><strong>Type:</strong> {editableDraft.genesis?.type || <em>Not specified</em>}</p>
-                      <p><strong>Lineage:</strong> {editableDraft.genesis?.lineage || <em>Not specified</em>}</p>
-                      {editableDraft.genesis?.break_from && <p><strong>Break from:</strong> {editableDraft.genesis.break_from}</p>}
+                      <div className="genesis-item">
+                        <span className="item-label">Type</span>
+                        <span className="item-value">{editableDraft.genesis?.type || <em>Not specified</em>}</span>
+                      </div>
+                      <div className="genesis-item">
+                        <span className="item-label">Lineage</span>
+                        <span className="item-value">{editableDraft.genesis?.lineage || <em>Not specified</em>}</span>
+                      </div>
+                      {editableDraft.genesis?.break_from && (
+                        <div className="genesis-item">
+                          <span className="item-label">Break from</span>
+                          <span className="item-value">{editableDraft.genesis.break_from}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2482,9 +2702,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     </div>
                   ) : (
                     <div className="dimension-content">
-                      <p><strong>Gap:</strong> {editableDraft.problem_space?.gap || <em>Not specified</em>}</p>
+                      <div className="problem-item">
+                        <span className="item-label">Gap</span>
+                        <span className="item-value">{editableDraft.problem_space?.gap || <em>Not specified</em>}</span>
+                      </div>
                       {editableDraft.problem_space?.failed_alternatives && (
-                        <p><strong>Failed alternatives:</strong> {editableDraft.problem_space.failed_alternatives}</p>
+                        <div className="problem-item">
+                          <span className="item-label">Failed alternatives</span>
+                          <span className="item-value">{editableDraft.problem_space.failed_alternatives}</span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -2581,9 +2807,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   ) : (
                     <div className="dimension-content">
                       {editableDraft.differentiations?.length > 0 ? (
-                        <ul className="dimension-list">
+                        <ul className="dimension-list differentiations">
                           {editableDraft.differentiations.map((d, i) => (
-                            <li key={i}><strong>vs {d.confused_with}:</strong> {d.difference}</li>
+                            <li key={i}>
+                              <strong>vs {d.confused_with}</strong>
+                              <p style={{ margin: '0.5rem 0 0', color: '#8b949e' }}>{d.difference}</p>
+                            </li>
                           ))}
                         </ul>
                       ) : <em>No differentiations specified</em>}
@@ -2642,9 +2871,13 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   ) : (
                     <div className="dimension-content">
                       {editableDraft.paradigmatic_cases?.length > 0 ? (
-                        <ul className="dimension-list">
+                        <ul className="dimension-list cases">
                           {editableDraft.paradigmatic_cases.map((c, i) => (
-                            <li key={i}><strong>{c.title || c.name}:</strong> {c.description}</li>
+                            <li key={i}>
+                              <strong>{c.title || c.name}</strong>
+                              {c.description && <p style={{ margin: '0.5rem 0 0', color: '#8b949e' }}>{c.description}</p>}
+                              {c.relevance && <p style={{ margin: '0.25rem 0 0', color: '#6e7681', fontSize: '0.85rem' }}><em>Relevance: {c.relevance}</em></p>}
+                            </li>
                           ))}
                         </ul>
                       ) : <em>No paradigmatic cases specified</em>}
@@ -2693,7 +2926,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   ) : (
                     <div className="dimension-content">
                       {editableDraft.recognition_markers?.length > 0 ? (
-                        <ul className="dimension-list">
+                        <ul className="dimension-list markers">
                           {editableDraft.recognition_markers.map((m, i) => (
                             <li key={i}>{m.description || m.pattern}</li>
                           ))}
@@ -2747,8 +2980,16 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     </div>
                   ) : (
                     <div className="dimension-content">
-                      <p><strong>Ontological:</strong> {editableDraft.core_claims?.ontological || <em>Not specified</em>}</p>
-                      <p><strong>Causal:</strong> {editableDraft.core_claims?.causal || <em>Not specified</em>}</p>
+                      <div className="core-claims-grid">
+                        <div className="core-claim ontological">
+                          <div className="claim-type">Ontological Claim</div>
+                          <div className="claim-text">{editableDraft.core_claims?.ontological || <em>Not specified</em>}</div>
+                        </div>
+                        <div className="core-claim causal">
+                          <div className="claim-type">Causal Claim</div>
+                          <div className="claim-text">{editableDraft.core_claims?.causal || <em>Not specified</em>}</div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2860,9 +3101,17 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                           {editableDraft.dialectics.map((d, i) => (
                             <div key={i} className="dialectic-item">
                               <span className="dialectic-badge">⚡</span>
-                              <span>{d.pole_a}</span>
-                              <span className="vs">vs</span>
-                              <span>{d.pole_b}</span>
+                              <div className="tension-desc">
+                                {d.description || 'Productive tension'}
+                                {d.note && <span style={{ color: '#6e7681', marginLeft: '0.5rem', fontSize: '0.85rem' }}>({d.note})</span>}
+                              </div>
+                              {(d.pole_a || d.pole_b) && (
+                                <div className="poles-display">
+                                  <span className="pole">{d.pole_a || '?'}</span>
+                                  <span className="vs">vs</span>
+                                  <span className="pole">{d.pole_b || '?'}</span>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
