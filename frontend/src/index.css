@@ -2573,6 +2573,51 @@ header h1 {
   margin: 0;
 }
 
+/* Validation note badge - shown when feedback was incorporated */
+.validation-note-badge {
+  background: linear-gradient(135deg, #238636 0%, #196c2e 100%);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Approved tensions section */
+.approved-tensions {
+  border-top: 1px solid #3d4663;
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.approved-tensions strong {
+  color: #f0883e;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.approved-tensions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.approved-tensions li {
+  color: #c9d1d9;
+  font-size: 0.9rem;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  position: relative;
+}
+
+.approved-tensions li::before {
+  content: "⚡";
+  position: absolute;
+  left: 0;
+}
+
 /* Prefilled Badge */
 .prefilled-badge {
   font-size: 0.75rem;

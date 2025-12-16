@@ -828,6 +828,17 @@ class GenerateTensionsRequest(BaseModel):
     notes_analysis: Dict[str, Any]
 
 
+class RefineWithFeedbackRequest(BaseModel):
+    """Request to refine pre-filled answers based on Understanding Validation feedback."""
+    concept_name: str
+    notes: str
+    original_understanding: Dict[str, Any]  # The notes_analysis from stage1
+    insight_feedback: Dict[str, Any]  # { index: { status: 'approved'|'rejected', comment: '' } }
+    tension_feedback: Dict[str, Any]  # { index: { status: 'approved'|..., comment: '' } }
+    original_questions: List[Dict[str, Any]]  # Original stage 1 questions with pre-fills
+    source_id: Optional[int] = None
+
+
 # =============================================================================
 # REGENERATE UNDERSTANDING PROMPT
 # =============================================================================
@@ -1160,6 +1171,72 @@ Return as JSON:
 Focus on tensions that would be productive dialectics - not contradictions to resolve, but creative tensions to preserve."""
 
 
+REFINE_WITH_FEEDBACK_PROMPT = """You are an expert in conceptual analysis helping refine understanding based on user validation feedback.
+
+## Concept Name: {concept_name}
+
+## User's Original Notes:
+{notes}
+
+## Original Understanding Summary:
+{original_summary}
+
+## Original Key Insights:
+{original_insights}
+
+## User's Feedback on Insights:
+{insight_feedback_summary}
+
+## Approved Tensions (to preserve as dialectics):
+{approved_tensions}
+
+## Original Pre-filled Answers:
+{original_prefills}
+
+Your task is to generate REFINED pre-filled answers for Stage 1 questions that:
+1. Incorporate the user's approved insights (give them more weight)
+2. EXCLUDE or de-emphasize rejected insights
+3. Consider the comments/refinements the user provided
+4. Include the approved tensions as productive dialectics to preserve
+
+## Stage 1 Questions to Pre-fill:
+1. genesis_type: How would you characterize the origin of this concept?
+   Options: theoretical_innovation, empirical_discovery, synthesis, reconceptualization, normative_reframing
+
+2. core_definition: In one paragraph, provide your working definition of this concept.
+
+3. problem_addressed: What problem or gap does this concept address?
+
+4. adjacent_concepts: Which existing concepts come closest to what you're describing?
+
+5. distinguishing_feature: What most clearly distinguishes this concept from adjacent ones?
+
+6. domain_scope: In which domains does this concept apply?
+
+Return your analysis as JSON:
+{{
+    "refined_summary": "Updated summary incorporating user feedback...",
+    "refined_definition": "Updated working definition...",
+    "refined_insights": ["list", "of", "approved/refined", "insights"],
+    "prefilled_answers": [
+        {{
+            "question_id": "genesis_type",
+            "value": "theoretical_innovation",
+            "confidence": "high|medium|low",
+            "reasoning": "Why this answer, considering user feedback...",
+            "source_excerpt": "relevant quote from notes if any"
+        }},
+        {{
+            "question_id": "core_definition",
+            "value": "The refined definition incorporating feedback...",
+            "confidence": "high",
+            "reasoning": "How feedback shaped this..."
+        }}
+    ],
+    "validation_note": "Brief note about what feedback was incorporated"
+}}"""
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
@@ -1480,6 +1557,156 @@ async def generate_tensions(request: GenerateTensionsRequest):
 
     return StreamingResponse(
         stream_tensions(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/refine-with-feedback")
+async def refine_with_feedback(request: RefineWithFeedbackRequest):
+    """
+    Refine pre-filled answers based on Understanding Validation feedback.
+    This is called when user clicks "Accept & Continue" after validating understanding.
+    """
+    async def stream_refined():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'refining_with_feedback'})}\n\n"
+
+            # Build insight feedback summary
+            original_insights = request.original_understanding.get('key_insights', [])
+            insight_lines = []
+            approved_insights = []
+
+            for i, insight in enumerate(original_insights):
+                feedback = request.insight_feedback.get(str(i), {})
+                status = feedback.get('status', 'pending')
+                comment = feedback.get('comment', '')
+
+                if status == 'approved':
+                    insight_lines.append(f"✓ APPROVED: {insight}")
+                    approved_insights.append(insight)
+                elif status == 'rejected':
+                    insight_lines.append(f"✗ REJECTED: {insight}" + (f" (Reason: {comment})" if comment else ""))
+                else:
+                    # Pending - include with neutral marker
+                    insight_lines.append(f"~ PENDING: {insight}")
+                    approved_insights.append(insight)  # Include pending as approved by default
+
+                if comment and status != 'rejected':
+                    insight_lines.append(f"  User comment: {comment}")
+
+            insight_feedback_summary = "\n".join(insight_lines) if insight_lines else "(No feedback provided)"
+
+            # Build approved tensions summary
+            original_tensions = request.original_understanding.get('potentialTensions', [])
+            approved_tensions_list = []
+
+            for i, tension in enumerate(original_tensions):
+                feedback = request.tension_feedback.get(str(i), {})
+                status = feedback.get('status', 'pending')
+                comment = feedback.get('comment', '')
+
+                if status in ['approved', 'approved_with_comment', 'pending']:
+                    tension_text = tension if isinstance(tension, str) else tension.get('description', tension.get('tension', str(tension)))
+                    if comment:
+                        approved_tensions_list.append(f"- {tension_text} (User note: {comment})")
+                    else:
+                        approved_tensions_list.append(f"- {tension_text}")
+
+            approved_tensions_str = "\n".join(approved_tensions_list) if approved_tensions_list else "(No tensions approved)"
+
+            # Format original prefills
+            original_prefills = []
+            for q in request.original_questions:
+                if q.get('prefilled'):
+                    original_prefills.append(f"- {q['id']}: {q['prefilled'].get('value', 'N/A')} (confidence: {q['prefilled'].get('confidence', 'unknown')})")
+
+            original_prefills_str = "\n".join(original_prefills) if original_prefills else "(No pre-fills)"
+
+            prompt = REFINE_WITH_FEEDBACK_PROMPT.format(
+                concept_name=request.concept_name,
+                notes=request.notes,
+                original_summary=request.original_understanding.get('summary', ''),
+                original_insights="\n".join([f"- {ins}" for ins in original_insights]),
+                insight_feedback_summary=insight_feedback_summary,
+                approved_tensions=approved_tensions_str,
+                original_prefills=original_prefills_str
+            )
+
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis helping refine understanding based on user validation.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse response
+            refined_data = parse_wizard_response(response_text)
+
+            # Build refined questions with new pre-fills
+            refined_questions = []
+            prefilled_map = {p['question_id']: p for p in refined_data.get('prefilled_answers', [])}
+
+            for q in request.original_questions:
+                q_copy = dict(q)
+                if q['id'] in prefilled_map:
+                    prefill = prefilled_map[q['id']]
+                    q_copy['prefilled'] = {
+                        'value': prefill.get('value'),
+                        'confidence': prefill.get('confidence', 'medium'),
+                        'reasoning': prefill.get('reasoning', ''),
+                        'source_excerpt': prefill.get('source_excerpt'),
+                        'refined_from_feedback': True
+                    }
+                refined_questions.append(q_copy)
+
+            # Build refined understanding
+            refined_understanding = {
+                'summary': refined_data.get('refined_summary', request.original_understanding.get('summary')),
+                'preliminary_definition': refined_data.get('refined_definition', request.original_understanding.get('preliminaryDefinition')),
+                'key_insights': refined_data.get('refined_insights', approved_insights),
+                'validation_note': refined_data.get('validation_note', '')
+            }
+
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'refined_questions': refined_questions,
+                    'refined_understanding': refined_understanding,
+                    'approved_tensions': approved_tensions_list,
+                    'validation_note': refined_data.get('validation_note', 'Feedback incorporated')
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in refine_with_feedback: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_refined(),
         media_type="text/event-stream"
     )
 

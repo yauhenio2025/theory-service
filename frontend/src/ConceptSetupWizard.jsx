@@ -482,11 +482,75 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
   /**
    * Accept understanding and proceed to Stage 1
+   * If user provided granular feedback, refine pre-fills first
    */
-  const acceptUnderstandingAndContinue = () => {
-    setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
-    setStage(STAGES.STAGE1)
-    setCurrentQuestionIndex(0)
+  const acceptUnderstandingAndContinue = async () => {
+    // Check if user provided any granular feedback
+    const hasInsightFeedback = Object.keys(insightFeedback).length > 0
+    const hasTensionFeedback = Object.keys(tensionFeedback).length > 0
+
+    if (hasInsightFeedback || hasTensionFeedback) {
+      // User provided granular feedback - refine pre-fills before continuing
+      setStage(STAGES.ANALYZING_NOTES)
+      setProgress({ stage: 2, total: 9, label: 'Refining understanding with your feedback...' })
+      setThinking('')
+
+      await streamWizardRequest(
+        '/concepts/wizard/refine-with-feedback',
+        {
+          concept_name: conceptName,
+          notes: notes,
+          original_understanding: {
+            summary: notesUnderstanding.summary,
+            preliminaryDefinition: notesUnderstanding.preliminaryDefinition,
+            key_insights: notesUnderstanding.keyInsights,
+            potentialTensions: notesUnderstanding.potentialTensions
+          },
+          insight_feedback: insightFeedback,
+          tension_feedback: tensionFeedback,
+          original_questions: questions,
+          source_id: sourceId
+        },
+        {
+          onThinking: (content) => {
+            setThinking(prev => prev + content)
+          },
+          onComplete: (data) => {
+            // Update questions with refined pre-fills
+            setQuestions(data.refined_questions || questions)
+
+            // Update the notes analysis shown in Stage 1
+            setStageData(prev => ({
+              ...prev,
+              stage1: {
+                ...prev.stage1,
+                questions: data.refined_questions || questions,
+                notesAnalysis: data.refined_understanding || prev.stage1.notesAnalysis,
+                approvedTensions: data.approved_tensions || [],
+                validationNote: data.validation_note
+              }
+            }))
+
+            // Clear feedback state for next time
+            setInsightFeedback({})
+            setTensionFeedback({})
+            setExpandedInsightComment({})
+            setExpandedTensionComment({})
+
+            // Now proceed to Stage 1
+            setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
+            setStage(STAGES.STAGE1)
+            setCurrentQuestionIndex(0)
+            setThinking('')
+          }
+        }
+      )
+    } else {
+      // No granular feedback - proceed directly
+      setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
+      setStage(STAGES.STAGE1)
+      setCurrentQuestionIndex(0)
+    }
   }
 
   /**
@@ -1809,8 +1873,20 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <div className="notes-analysis-panel">
                   <div className="notes-analysis-header">
                     <h4>📝 From Your Notes</h4>
-                    <span className="notes-analysis-subtitle">I extracted the following understanding:</span>
+                    <span className="notes-analysis-subtitle">
+                      {stageData.stage1.validationNote
+                        ? 'Refined understanding based on your validation feedback:'
+                        : 'I extracted the following understanding:'}
+                    </span>
                   </div>
+
+                  {/* Show validation note if feedback was incorporated */}
+                  {stageData.stage1.validationNote && (
+                    <div className="validation-note-badge">
+                      Your feedback incorporated: {stageData.stage1.validationNote}
+                    </div>
+                  )}
+
                   <div className="notes-analysis-content">
                     <p className="notes-summary">{stageData.stage1.notesAnalysis.summary}</p>
                     {stageData.stage1.notesAnalysis.preliminary_definition && (
@@ -1821,7 +1897,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     )}
                     {stageData.stage1.notesAnalysis.key_insights?.length > 0 && (
                       <div className="key-insights">
-                        <strong>Key insights:</strong>
+                        <strong>Key insights {stageData.stage1.validationNote ? '(approved)' : ''}:</strong>
                         <ul>
                           {stageData.stage1.notesAnalysis.key_insights.map((insight, i) => (
                             <li key={i}>{insight}</li>
@@ -1829,9 +1905,21 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                         </ul>
                       </div>
                     )}
+                    {stageData.stage1.approvedTensions?.length > 0 && (
+                      <div className="approved-tensions">
+                        <strong>Preserved tensions (dialectics):</strong>
+                        <ul>
+                          {stageData.stage1.approvedTensions.map((tension, i) => (
+                            <li key={i}>{tension}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <p className="notes-analysis-note">
-                    I've pre-filled answers below where I had enough information. Please verify and adjust as needed.
+                    {stageData.stage1.validationNote
+                      ? 'Pre-filled answers below have been refined based on your validation. Please verify and adjust as needed.'
+                      : "I've pre-filled answers below where I had enough information. Please verify and adjust as needed."}
                   </p>
                 </div>
               )}
