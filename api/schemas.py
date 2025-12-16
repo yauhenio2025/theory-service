@@ -48,6 +48,35 @@ class ChallengeType(str, Enum):
     SYNTHESIZES = "synthesizes"
 
 
+class EmergingStatus(str, Enum):
+    PROPOSED = "proposed"
+    CLUSTERING = "clustering"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    PROMOTED = "promoted"
+
+
+class ClusterStatus(str, Enum):
+    PENDING = "pending"
+    REVIEWING = "reviewing"
+    RESOLVED = "resolved"
+
+
+class ClusterType(str, Enum):
+    CONCEPT_IMPACT = "concept_impact"
+    DIALECTIC_IMPACT = "dialectic_impact"
+    EMERGING_CONCEPT = "emerging_concept"
+    EMERGING_DIALECTIC = "emerging_dialectic"
+
+
+class RecommendedAction(str, Enum):
+    ACCEPT = "accept"
+    REJECT = "reject"
+    MERGE = "merge"
+    REFINE = "refine"
+    HUMAN_REVIEW = "human_review"
+
+
 # =============================================================================
 # THEORY SOURCE SCHEMAS
 # =============================================================================
@@ -201,6 +230,7 @@ class ClaimResponse(ClaimBase):
 class ChallengeCreate(BaseModel):
     """Schema for essay-flow to post challenges to theory."""
     source_project_id: int
+    source_project_name: Optional[str] = None
     source_cluster_id: Optional[int] = None
     source_cluster_name: Optional[str] = None
 
@@ -229,6 +259,7 @@ class ChallengeCreate(BaseModel):
 class ChallengeResponse(BaseModel):
     id: int
     source_project_id: int
+    source_project_name: Optional[str]
     source_cluster_id: Optional[int]
     source_cluster_name: Optional[str]
 
@@ -291,3 +322,259 @@ class BulkChallengeResponse(BaseModel):
     """Response for batch challenge creation."""
     created_count: int
     challenge_ids: List[int]
+
+
+# =============================================================================
+# EMERGING CONCEPT SCHEMAS
+# =============================================================================
+
+class EmergingConceptCreate(BaseModel):
+    """Schema for submitting emerging concepts from essay-flow."""
+    source_project_id: int
+    source_project_name: Optional[str] = None
+    source_cluster_ids: Optional[List[int]] = None
+    source_cluster_names: Optional[List[str]] = None
+
+    proposed_name: str = Field(..., min_length=1, max_length=300)
+    proposed_definition: Optional[str] = None
+    emergence_rationale: str = Field(..., min_length=1)
+    evidence_strength: Optional[str] = None  # strong, moderate, suggestive
+
+    related_concept_ids: Optional[List[int]] = None
+    differentiation_notes: Optional[str] = None
+
+    confidence: float = Field(default=0.8, ge=0.0, le=1.0)
+
+
+class EmergingConceptUpdate(BaseModel):
+    """Schema for updating emerging concepts."""
+    proposed_name: Optional[str] = None
+    proposed_definition: Optional[str] = None
+    emergence_rationale: Optional[str] = None
+    status: Optional[EmergingStatus] = None
+    reviewer_notes: Optional[str] = None
+    promoted_to_concept_id: Optional[int] = None
+
+
+class EmergingConceptResponse(BaseModel):
+    """Response schema for emerging concepts."""
+    id: int
+    source_project_id: int
+    source_project_name: Optional[str]
+    source_cluster_ids: Optional[List[int]]
+    source_cluster_names: Optional[List[str]]
+
+    proposed_name: str
+    proposed_definition: Optional[str]
+    emergence_rationale: str
+    evidence_strength: Optional[str]
+
+    related_concept_ids: Optional[List[int]]
+    differentiation_notes: Optional[str]
+
+    confidence: float
+    status: EmergingStatus
+    promoted_to_concept_id: Optional[int]
+    cluster_group_id: Optional[int]
+
+    reviewer_notes: Optional[str]
+    created_at: datetime
+    reviewed_at: Optional[datetime]
+
+    # Related concept names for display
+    related_concept_names: Optional[List[str]] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
+# EMERGING DIALECTIC SCHEMAS
+# =============================================================================
+
+class EmergingDialecticCreate(BaseModel):
+    """Schema for submitting emerging dialectics from essay-flow."""
+    source_project_id: int
+    source_project_name: Optional[str] = None
+    source_cluster_ids: Optional[List[int]] = None
+    source_cluster_names: Optional[List[str]] = None
+
+    proposed_tension_a: str = Field(..., min_length=1)
+    proposed_tension_b: str = Field(..., min_length=1)
+    proposed_question: Optional[str] = None
+    emergence_rationale: str = Field(..., min_length=1)
+    evidence_strength: Optional[str] = None
+
+    related_dialectic_ids: Optional[List[int]] = None
+    differentiation_notes: Optional[str] = None
+
+    confidence: float = Field(default=0.8, ge=0.0, le=1.0)
+
+
+class EmergingDialecticUpdate(BaseModel):
+    """Schema for updating emerging dialectics."""
+    proposed_tension_a: Optional[str] = None
+    proposed_tension_b: Optional[str] = None
+    proposed_question: Optional[str] = None
+    emergence_rationale: Optional[str] = None
+    status: Optional[EmergingStatus] = None
+    reviewer_notes: Optional[str] = None
+    promoted_to_dialectic_id: Optional[int] = None
+
+
+class EmergingDialecticResponse(BaseModel):
+    """Response schema for emerging dialectics."""
+    id: int
+    source_project_id: int
+    source_project_name: Optional[str]
+    source_cluster_ids: Optional[List[int]]
+    source_cluster_names: Optional[List[str]]
+
+    proposed_tension_a: str
+    proposed_tension_b: str
+    proposed_question: Optional[str]
+    emergence_rationale: str
+    evidence_strength: Optional[str]
+
+    related_dialectic_ids: Optional[List[int]]
+    differentiation_notes: Optional[str]
+
+    confidence: float
+    status: EmergingStatus
+    promoted_to_dialectic_id: Optional[int]
+    cluster_group_id: Optional[int]
+
+    reviewer_notes: Optional[str]
+    created_at: datetime
+    reviewed_at: Optional[datetime]
+
+    # Related dialectic names for display
+    related_dialectic_names: Optional[List[str]] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
+# CHALLENGE CLUSTER SCHEMAS
+# =============================================================================
+
+class ChallengeClusterMemberResponse(BaseModel):
+    """Response schema for cluster members."""
+    id: int
+    cluster_id: int
+    challenge_id: Optional[int]
+    emerging_concept_id: Optional[int]
+    emerging_dialectic_id: Optional[int]
+    similarity_score: Optional[float]
+    created_at: datetime
+
+    # Expanded details based on member type
+    challenge: Optional["ChallengeResponse"] = None
+    emerging_concept: Optional[EmergingConceptResponse] = None
+    emerging_dialectic: Optional[EmergingDialecticResponse] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ChallengeClusterResponse(BaseModel):
+    """Response schema for challenge clusters."""
+    id: int
+    cluster_type: ClusterType
+    cluster_summary: Optional[str]
+    cluster_recommendation: Optional[str]
+    recommended_action: Optional[RecommendedAction]
+
+    target_concept_id: Optional[int]
+    target_dialectic_id: Optional[int]
+
+    status: ClusterStatus
+    resolution_notes: Optional[str]
+    member_count: int
+    source_project_count: int
+
+    created_at: datetime
+    resolved_at: Optional[datetime]
+
+    # Expanded target details
+    target_concept_term: Optional[str] = None
+    target_dialectic_name: Optional[str] = None
+
+    # Members (optionally loaded)
+    members: Optional[List[ChallengeClusterMemberResponse]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ChallengeClusterResolve(BaseModel):
+    """Schema for resolving a challenge cluster."""
+    status: ClusterStatus
+    resolution_notes: Optional[str] = None
+    # Action to apply to all members
+    member_action: Optional[str] = None  # accept, reject, individual
+
+
+# =============================================================================
+# CLUSTERING REQUEST/RESPONSE SCHEMAS
+# =============================================================================
+
+class ClusteringRequest(BaseModel):
+    """Request to run LLM clustering on pending challenges."""
+    cluster_types: Optional[List[ClusterType]] = None  # All types if None
+    target_concept_ids: Optional[List[int]] = None  # Filter by target
+    target_dialectic_ids: Optional[List[int]] = None
+
+
+class ClusteringResponse(BaseModel):
+    """Response from clustering operation."""
+    clusters_created: int
+    challenges_clustered: int
+    emerging_concepts_clustered: int
+    emerging_dialectics_clustered: int
+    processing_time_seconds: float
+
+
+# =============================================================================
+# BULK EMERGING SCHEMAS
+# =============================================================================
+
+class BulkEmergingConceptCreate(BaseModel):
+    """Batch create emerging concepts from essay-flow."""
+    emerging_concepts: List[EmergingConceptCreate]
+
+
+class BulkEmergingConceptResponse(BaseModel):
+    """Response for batch emerging concept creation."""
+    created_count: int
+    emerging_concept_ids: List[int]
+
+
+class BulkEmergingDialecticCreate(BaseModel):
+    """Batch create emerging dialectics from essay-flow."""
+    emerging_dialectics: List[EmergingDialecticCreate]
+
+
+class BulkEmergingDialecticResponse(BaseModel):
+    """Response for batch emerging dialectic creation."""
+    created_count: int
+    emerging_dialectic_ids: List[int]
+
+
+# =============================================================================
+# DASHBOARD/STATS SCHEMAS
+# =============================================================================
+
+class ChallengeDashboardStats(BaseModel):
+    """Statistics for the challenge dashboard."""
+    concept_impacts: int
+    dialectic_impacts: int
+    emerging_concepts: int
+    emerging_dialectics: int
+
+    pending_challenges: int
+    pending_clusters: int
+    resolved_this_week: int
+
+    source_projects: List[dict]  # [{id, name, count}]

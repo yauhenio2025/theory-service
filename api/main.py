@@ -16,15 +16,31 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 
 from .database import get_db, init_db, close_db
-from .models import TheorySource, Concept, Dialectic, Claim, Challenge, Refinement
-from .models import ConceptStatus, DialecticStatus, ChallengeStatus
+from .models import (
+    TheorySource, Concept, Dialectic, Claim, Challenge, Refinement,
+    EmergingConcept, EmergingDialectic, ChallengeCluster, ChallengeClusterMember
+)
+from .models import (
+    ConceptStatus, DialecticStatus, ChallengeStatus,
+    EmergingStatus, ClusterStatus, ClusterType, RecommendedAction
+)
 from .schemas import (
     TheorySourceCreate, TheorySourceResponse,
     ConceptCreate, ConceptUpdate, ConceptResponse,
     DialecticCreate, DialecticUpdate, DialecticResponse,
     ClaimCreate, ClaimUpdate, ClaimResponse,
     ChallengeCreate, ChallengeResponse, ChallengeReview,
-    TheorySyncResponse, BulkChallengeCreate, BulkChallengeResponse
+    TheorySyncResponse, BulkChallengeCreate, BulkChallengeResponse,
+    # Emerging theory schemas
+    EmergingConceptCreate, EmergingConceptUpdate, EmergingConceptResponse,
+    EmergingDialecticCreate, EmergingDialecticUpdate, EmergingDialecticResponse,
+    BulkEmergingConceptCreate, BulkEmergingConceptResponse,
+    BulkEmergingDialecticCreate, BulkEmergingDialecticResponse,
+    # Clustering schemas
+    ChallengeClusterResponse, ChallengeClusterMemberResponse, ChallengeClusterResolve,
+    ClusteringRequest, ClusteringResponse, ChallengeDashboardStats,
+    EmergingStatus as EmergingStatusSchema, ClusterStatus as ClusterStatusSchema,
+    ClusterType as ClusterTypeSchema
 )
 
 
@@ -659,3 +675,547 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         "claims": claim_count,
         "pending_challenges": pending_challenges
     }
+
+
+# =============================================================================
+# EMERGING CONCEPTS
+# =============================================================================
+
+@app.get("/emerging-concepts", response_model=List[EmergingConceptResponse])
+async def list_emerging_concepts(
+    status: Optional[EmergingStatusSchema] = None,
+    source_project_id: Optional[int] = None,
+    cluster_group_id: Optional[int] = None,
+    limit: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db)
+):
+    """List emerging concepts, optionally filtered."""
+    query = select(EmergingConcept)
+
+    if status:
+        query = query.where(EmergingConcept.status == status)
+    if source_project_id:
+        query = query.where(EmergingConcept.source_project_id == source_project_id)
+    if cluster_group_id:
+        query = query.where(EmergingConcept.cluster_group_id == cluster_group_id)
+
+    query = query.order_by(EmergingConcept.created_at.desc()).limit(limit)
+    result = await db.execute(query)
+    emerging = result.scalars().all()
+
+    # Enrich with related concept names
+    responses = []
+    for ec in emerging:
+        resp = EmergingConceptResponse.model_validate(ec)
+
+        # Get related concept names
+        if ec.related_concept_ids:
+            related_result = await db.execute(
+                select(Concept.term).where(Concept.id.in_(ec.related_concept_ids))
+            )
+            resp.related_concept_names = [r[0] for r in related_result.fetchall()]
+
+        responses.append(resp)
+
+    return responses
+
+
+@app.get("/emerging-concepts/{ec_id}", response_model=EmergingConceptResponse)
+async def get_emerging_concept(ec_id: int, db: AsyncSession = Depends(get_db)):
+    """Get a specific emerging concept."""
+    result = await db.execute(select(EmergingConcept).where(EmergingConcept.id == ec_id))
+    ec = result.scalar_one_or_none()
+    if not ec:
+        raise HTTPException(status_code=404, detail="Emerging concept not found")
+
+    resp = EmergingConceptResponse.model_validate(ec)
+
+    if ec.related_concept_ids:
+        related_result = await db.execute(
+            select(Concept.term).where(Concept.id.in_(ec.related_concept_ids))
+        )
+        resp.related_concept_names = [r[0] for r in related_result.fetchall()]
+
+    return resp
+
+
+@app.post("/emerging-concepts", response_model=EmergingConceptResponse, status_code=201)
+async def create_emerging_concept(
+    data: EmergingConceptCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new emerging concept (posted by essay-flow)."""
+    ec = EmergingConcept(**data.model_dump())
+    db.add(ec)
+    await db.commit()
+    await db.refresh(ec)
+    return EmergingConceptResponse.model_validate(ec)
+
+
+@app.post("/emerging-concepts/bulk", response_model=BulkEmergingConceptResponse, status_code=201)
+async def create_emerging_concepts_bulk(
+    data: BulkEmergingConceptCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Bulk create emerging concepts."""
+    created_ids = []
+
+    for ec_data in data.emerging_concepts:
+        ec = EmergingConcept(**ec_data.model_dump())
+        db.add(ec)
+        await db.flush()
+        created_ids.append(ec.id)
+
+    await db.commit()
+
+    return BulkEmergingConceptResponse(
+        created_count=len(created_ids),
+        emerging_concept_ids=created_ids
+    )
+
+
+@app.patch("/emerging-concepts/{ec_id}", response_model=EmergingConceptResponse)
+async def update_emerging_concept(
+    ec_id: int,
+    data: EmergingConceptUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update an emerging concept (review, promote, etc.)."""
+    result = await db.execute(select(EmergingConcept).where(EmergingConcept.id == ec_id))
+    ec = result.scalar_one_or_none()
+    if not ec:
+        raise HTTPException(status_code=404, detail="Emerging concept not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    # Handle promotion to concept
+    if data.status == EmergingStatusSchema.PROMOTED:
+        if not data.promoted_to_concept_id:
+            # Create a new concept from this emerging concept
+            new_concept = Concept(
+                term=ec.proposed_name,
+                definition=ec.proposed_definition or ec.emergence_rationale,
+                category="emerging",  # Mark as from emerging
+                status=ConceptStatus.ACTIVE,
+                confidence=ec.confidence,
+                source_notes=f"Promoted from emerging concept #{ec.id}"
+            )
+            db.add(new_concept)
+            await db.flush()
+            update_data["promoted_to_concept_id"] = new_concept.id
+
+        ec.reviewed_at = datetime.utcnow()
+
+    for field, value in update_data.items():
+        setattr(ec, field, value)
+
+    await db.commit()
+    await db.refresh(ec)
+    return EmergingConceptResponse.model_validate(ec)
+
+
+# =============================================================================
+# EMERGING DIALECTICS
+# =============================================================================
+
+@app.get("/emerging-dialectics", response_model=List[EmergingDialecticResponse])
+async def list_emerging_dialectics(
+    status: Optional[EmergingStatusSchema] = None,
+    source_project_id: Optional[int] = None,
+    cluster_group_id: Optional[int] = None,
+    limit: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db)
+):
+    """List emerging dialectics, optionally filtered."""
+    query = select(EmergingDialectic)
+
+    if status:
+        query = query.where(EmergingDialectic.status == status)
+    if source_project_id:
+        query = query.where(EmergingDialectic.source_project_id == source_project_id)
+    if cluster_group_id:
+        query = query.where(EmergingDialectic.cluster_group_id == cluster_group_id)
+
+    query = query.order_by(EmergingDialectic.created_at.desc()).limit(limit)
+    result = await db.execute(query)
+    emerging = result.scalars().all()
+
+    # Enrich with related dialectic names
+    responses = []
+    for ed in emerging:
+        resp = EmergingDialecticResponse.model_validate(ed)
+
+        if ed.related_dialectic_ids:
+            related_result = await db.execute(
+                select(Dialectic.name).where(Dialectic.id.in_(ed.related_dialectic_ids))
+            )
+            resp.related_dialectic_names = [r[0] for r in related_result.fetchall()]
+
+        responses.append(resp)
+
+    return responses
+
+
+@app.get("/emerging-dialectics/{ed_id}", response_model=EmergingDialecticResponse)
+async def get_emerging_dialectic(ed_id: int, db: AsyncSession = Depends(get_db)):
+    """Get a specific emerging dialectic."""
+    result = await db.execute(select(EmergingDialectic).where(EmergingDialectic.id == ed_id))
+    ed = result.scalar_one_or_none()
+    if not ed:
+        raise HTTPException(status_code=404, detail="Emerging dialectic not found")
+
+    resp = EmergingDialecticResponse.model_validate(ed)
+
+    if ed.related_dialectic_ids:
+        related_result = await db.execute(
+            select(Dialectic.name).where(Dialectic.id.in_(ed.related_dialectic_ids))
+        )
+        resp.related_dialectic_names = [r[0] for r in related_result.fetchall()]
+
+    return resp
+
+
+@app.post("/emerging-dialectics", response_model=EmergingDialecticResponse, status_code=201)
+async def create_emerging_dialectic(
+    data: EmergingDialecticCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new emerging dialectic (posted by essay-flow)."""
+    ed = EmergingDialectic(**data.model_dump())
+    db.add(ed)
+    await db.commit()
+    await db.refresh(ed)
+    return EmergingDialecticResponse.model_validate(ed)
+
+
+@app.post("/emerging-dialectics/bulk", response_model=BulkEmergingDialecticResponse, status_code=201)
+async def create_emerging_dialectics_bulk(
+    data: BulkEmergingDialecticCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Bulk create emerging dialectics."""
+    created_ids = []
+
+    for ed_data in data.emerging_dialectics:
+        ed = EmergingDialectic(**ed_data.model_dump())
+        db.add(ed)
+        await db.flush()
+        created_ids.append(ed.id)
+
+    await db.commit()
+
+    return BulkEmergingDialecticResponse(
+        created_count=len(created_ids),
+        emerging_dialectic_ids=created_ids
+    )
+
+
+@app.patch("/emerging-dialectics/{ed_id}", response_model=EmergingDialecticResponse)
+async def update_emerging_dialectic(
+    ed_id: int,
+    data: EmergingDialecticUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update an emerging dialectic (review, promote, etc.)."""
+    result = await db.execute(select(EmergingDialectic).where(EmergingDialectic.id == ed_id))
+    ed = result.scalar_one_or_none()
+    if not ed:
+        raise HTTPException(status_code=404, detail="Emerging dialectic not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    # Handle promotion to dialectic
+    if data.status == EmergingStatusSchema.PROMOTED:
+        if not data.promoted_to_dialectic_id:
+            # Create a new dialectic from this emerging dialectic
+            new_dialectic = Dialectic(
+                name=f"Emerging: {ed.proposed_question or ed.proposed_tension_a[:50]}",
+                tension_a=ed.proposed_tension_a,
+                tension_b=ed.proposed_tension_b,
+                description=ed.proposed_question,
+                category="emerging",
+                status=DialecticStatus.ACTIVE,
+                source_notes=f"Promoted from emerging dialectic #{ed.id}"
+            )
+            db.add(new_dialectic)
+            await db.flush()
+            update_data["promoted_to_dialectic_id"] = new_dialectic.id
+
+        ed.reviewed_at = datetime.utcnow()
+
+    for field, value in update_data.items():
+        setattr(ed, field, value)
+
+    await db.commit()
+    await db.refresh(ed)
+    return EmergingDialecticResponse.model_validate(ed)
+
+
+# =============================================================================
+# CHALLENGE CLUSTERS
+# =============================================================================
+
+@app.get("/challenge-clusters", response_model=List[ChallengeClusterResponse])
+async def list_challenge_clusters(
+    status: Optional[ClusterStatusSchema] = None,
+    cluster_type: Optional[ClusterTypeSchema] = None,
+    target_concept_id: Optional[int] = None,
+    target_dialectic_id: Optional[int] = None,
+    limit: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db)
+):
+    """List challenge clusters, optionally filtered."""
+    query = select(ChallengeCluster)
+
+    if status:
+        query = query.where(ChallengeCluster.status == status)
+    if cluster_type:
+        query = query.where(ChallengeCluster.cluster_type == cluster_type)
+    if target_concept_id:
+        query = query.where(ChallengeCluster.target_concept_id == target_concept_id)
+    if target_dialectic_id:
+        query = query.where(ChallengeCluster.target_dialectic_id == target_dialectic_id)
+
+    query = query.order_by(ChallengeCluster.created_at.desc()).limit(limit)
+    result = await db.execute(query)
+    clusters = result.scalars().all()
+
+    responses = []
+    for cluster in clusters:
+        resp = ChallengeClusterResponse.model_validate(cluster)
+
+        # Get target entity names
+        if cluster.target_concept_id:
+            concept = await db.get(Concept, cluster.target_concept_id)
+            if concept:
+                resp.target_concept_term = concept.term
+
+        if cluster.target_dialectic_id:
+            dialectic = await db.get(Dialectic, cluster.target_dialectic_id)
+            if dialectic:
+                resp.target_dialectic_name = dialectic.name
+
+        responses.append(resp)
+
+    return responses
+
+
+@app.get("/challenge-clusters/{cluster_id}", response_model=ChallengeClusterResponse)
+async def get_challenge_cluster(
+    cluster_id: int,
+    include_members: bool = True,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a specific challenge cluster with optional members."""
+    result = await db.execute(
+        select(ChallengeCluster).where(ChallengeCluster.id == cluster_id)
+    )
+    cluster = result.scalar_one_or_none()
+    if not cluster:
+        raise HTTPException(status_code=404, detail="Challenge cluster not found")
+
+    resp = ChallengeClusterResponse.model_validate(cluster)
+
+    # Get target entity names
+    if cluster.target_concept_id:
+        concept = await db.get(Concept, cluster.target_concept_id)
+        if concept:
+            resp.target_concept_term = concept.term
+
+    if cluster.target_dialectic_id:
+        dialectic = await db.get(Dialectic, cluster.target_dialectic_id)
+        if dialectic:
+            resp.target_dialectic_name = dialectic.name
+
+    # Load members if requested
+    if include_members:
+        members_result = await db.execute(
+            select(ChallengeClusterMember).where(
+                ChallengeClusterMember.cluster_id == cluster_id
+            )
+        )
+        members = members_result.scalars().all()
+
+        member_responses = []
+        for member in members:
+            member_resp = ChallengeClusterMemberResponse.model_validate(member)
+
+            # Load the referenced entity
+            if member.challenge_id:
+                challenge = await db.get(Challenge, member.challenge_id)
+                if challenge:
+                    member_resp.challenge = ChallengeResponse.model_validate(challenge)
+
+            if member.emerging_concept_id:
+                ec = await db.get(EmergingConcept, member.emerging_concept_id)
+                if ec:
+                    member_resp.emerging_concept = EmergingConceptResponse.model_validate(ec)
+
+            if member.emerging_dialectic_id:
+                ed = await db.get(EmergingDialectic, member.emerging_dialectic_id)
+                if ed:
+                    member_resp.emerging_dialectic = EmergingDialecticResponse.model_validate(ed)
+
+            member_responses.append(member_resp)
+
+        resp.members = member_responses
+
+    return resp
+
+
+@app.patch("/challenge-clusters/{cluster_id}", response_model=ChallengeClusterResponse)
+async def resolve_challenge_cluster(
+    cluster_id: int,
+    data: ChallengeClusterResolve,
+    db: AsyncSession = Depends(get_db)
+):
+    """Resolve a challenge cluster (batch accept/reject)."""
+    result = await db.execute(
+        select(ChallengeCluster).where(ChallengeCluster.id == cluster_id)
+    )
+    cluster = result.scalar_one_or_none()
+    if not cluster:
+        raise HTTPException(status_code=404, detail="Challenge cluster not found")
+
+    cluster.status = data.status
+    if data.resolution_notes:
+        cluster.resolution_notes = data.resolution_notes
+
+    if data.status == ClusterStatusSchema.RESOLVED:
+        cluster.resolved_at = datetime.utcnow()
+
+        # Apply action to all members if specified
+        if data.member_action in ["accept", "reject"]:
+            members_result = await db.execute(
+                select(ChallengeClusterMember).where(
+                    ChallengeClusterMember.cluster_id == cluster_id
+                )
+            )
+            members = members_result.scalars().all()
+
+            new_status = (
+                ChallengeStatus.ACCEPTED if data.member_action == "accept"
+                else ChallengeStatus.REJECTED
+            )
+            new_emerging_status = (
+                EmergingStatus.ACCEPTED if data.member_action == "accept"
+                else EmergingStatus.REJECTED
+            )
+
+            for member in members:
+                if member.challenge_id:
+                    challenge = await db.get(Challenge, member.challenge_id)
+                    if challenge:
+                        challenge.status = new_status
+                        challenge.reviewed_at = datetime.utcnow()
+
+                if member.emerging_concept_id:
+                    ec = await db.get(EmergingConcept, member.emerging_concept_id)
+                    if ec:
+                        ec.status = new_emerging_status
+                        ec.reviewed_at = datetime.utcnow()
+
+                if member.emerging_dialectic_id:
+                    ed = await db.get(EmergingDialectic, member.emerging_dialectic_id)
+                    if ed:
+                        ed.status = new_emerging_status
+                        ed.reviewed_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(cluster)
+    return ChallengeClusterResponse.model_validate(cluster)
+
+
+# =============================================================================
+# CHALLENGE DASHBOARD
+# =============================================================================
+
+# =============================================================================
+# CLUSTERING OPERATIONS
+# =============================================================================
+
+@app.post("/challenges/cluster", response_model=ClusteringResponse)
+async def trigger_clustering(
+    request: ClusteringRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Trigger LLM clustering on pending challenges.
+
+    This groups similar challenges from multiple projects for batch review.
+    Uses Claude Opus 4.5 for intelligent similarity analysis.
+    """
+    from .clustering import run_full_clustering
+
+    start_time = datetime.utcnow()
+
+    result = await run_full_clustering(db)
+
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    return ClusteringResponse(
+        clusters_created=result.get("total_clusters_created", 0),
+        challenges_clustered=result.get("total_items_clustered", 0),
+        emerging_concepts_clustered=result.get("emerging_concept_clusters", {}).get("clustered", 0) if result.get("emerging_concept_clusters") else 0,
+        emerging_dialectics_clustered=0,  # TODO: implement
+        processing_time_seconds=result.get("processing_time_seconds", 0)
+    )
+
+
+@app.get("/challenges/dashboard", response_model=ChallengeDashboardStats)
+async def get_challenge_dashboard(db: AsyncSession = Depends(get_db)):
+    """Get challenge dashboard statistics."""
+    # Count challenges by type (concept vs dialectic)
+    concept_impacts = await db.scalar(
+        select(func.count(Challenge.id)).where(Challenge.concept_id.isnot(None))
+    )
+    dialectic_impacts = await db.scalar(
+        select(func.count(Challenge.id)).where(Challenge.dialectic_id.isnot(None))
+    )
+
+    # Count emerging
+    emerging_concepts = await db.scalar(select(func.count(EmergingConcept.id)))
+    emerging_dialectics = await db.scalar(select(func.count(EmergingDialectic.id)))
+
+    # Pending counts
+    pending_challenges = await db.scalar(
+        select(func.count(Challenge.id)).where(Challenge.status == ChallengeStatus.PENDING)
+    )
+    pending_clusters = await db.scalar(
+        select(func.count(ChallengeCluster.id)).where(ChallengeCluster.status == ClusterStatus.PENDING)
+    )
+
+    # Resolved this week (simplified - just count resolved)
+    resolved_this_week = await db.scalar(
+        select(func.count(ChallengeCluster.id)).where(
+            ChallengeCluster.status == ClusterStatus.RESOLVED
+        )
+    )
+
+    # Source projects
+    project_result = await db.execute(
+        select(
+            Challenge.source_project_id,
+            Challenge.source_project_name,
+            func.count(Challenge.id).label('count')
+        ).group_by(
+            Challenge.source_project_id,
+            Challenge.source_project_name
+        )
+    )
+    source_projects = [
+        {"id": row[0], "name": row[1] or f"Project {row[0]}", "count": row[2]}
+        for row in project_result.fetchall()
+    ]
+
+    return ChallengeDashboardStats(
+        concept_impacts=concept_impacts or 0,
+        dialectic_impacts=dialectic_impacts or 0,
+        emerging_concepts=emerging_concepts or 0,
+        emerging_dialectics=emerging_dialectics or 0,
+        pending_challenges=pending_challenges or 0,
+        pending_clusters=pending_clusters or 0,
+        resolved_this_week=resolved_this_week or 0,
+        source_projects=source_projects
+    )

@@ -7,8 +7,9 @@ from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, Boolean,
-    ForeignKey, Enum, Float, JSON, Table
+    ForeignKey, Enum, Float, JSON, Table, CheckConstraint
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship, DeclarativeBase
 from sqlalchemy.sql import func
 import enum
@@ -55,6 +56,39 @@ class ChallengeType(str, enum.Enum):
     DEEPENS = "deepens"
     REFRAMES = "reframes"
     SYNTHESIZES = "synthesizes"
+
+
+class EmergingStatus(str, enum.Enum):
+    """Status for emerging concepts and dialectics."""
+    PROPOSED = "proposed"
+    CLUSTERING = "clustering"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    PROMOTED = "promoted"
+
+
+class ClusterStatus(str, enum.Enum):
+    """Status for challenge clusters."""
+    PENDING = "pending"
+    REVIEWING = "reviewing"
+    RESOLVED = "resolved"
+
+
+class ClusterType(str, enum.Enum):
+    """Type of challenge cluster."""
+    CONCEPT_IMPACT = "concept_impact"
+    DIALECTIC_IMPACT = "dialectic_impact"
+    EMERGING_CONCEPT = "emerging_concept"
+    EMERGING_DIALECTIC = "emerging_dialectic"
+
+
+class RecommendedAction(str, enum.Enum):
+    """LLM-recommended action for a cluster."""
+    ACCEPT = "accept"
+    REJECT = "reject"
+    MERGE = "merge"
+    REFINE = "refine"
+    HUMAN_REVIEW = "human_review"
 
 
 # =============================================================================
@@ -181,8 +215,12 @@ class Challenge(Base):
 
     # Source identification (from essay-flow)
     source_project_id = Column(Integer, nullable=False)  # essay-flow project ID
+    source_project_name = Column(String(200))  # Project name for display
     source_cluster_id = Column(Integer)  # evidence cluster that generated this
     source_cluster_name = Column(String(255))
+
+    # Clustering
+    cluster_group_id = Column(Integer, ForeignKey("challenge_clusters.id"))
 
     # What's being challenged
     concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=True)
@@ -243,3 +281,176 @@ class Refinement(Base):
 
     # Relationships
     concept = relationship("Concept", back_populates="refinements")
+
+
+# =============================================================================
+# EMERGING THEORY - Proposed new concepts/dialectics from evidence
+# =============================================================================
+
+class EmergingConcept(Base):
+    """
+    Proposed new concept from evidence analysis.
+    Can be promoted to a full Concept after review.
+    """
+    __tablename__ = "emerging_concepts"
+
+    id = Column(Integer, primary_key=True)
+
+    # Source identification
+    source_project_id = Column(Integer, nullable=False)
+    source_project_name = Column(String(200))
+    source_cluster_ids = Column(ARRAY(Integer))  # Can emerge from multiple clusters
+    source_cluster_names = Column(ARRAY(Text))
+
+    # Proposed concept details
+    proposed_name = Column(String(300), nullable=False)
+    proposed_definition = Column(Text)
+    emergence_rationale = Column(Text, nullable=False)
+    evidence_strength = Column(String(20))  # strong, moderate, suggestive
+
+    # Relationship to existing theory
+    related_concept_ids = Column(ARRAY(Integer))  # Existing concepts this relates to
+    differentiation_notes = Column(Text)  # How it differs from existing
+
+    # Assessment
+    confidence = Column(Float, default=0.8)
+    status = Column(Enum(EmergingStatus), default=EmergingStatus.PROPOSED)
+    promoted_to_concept_id = Column(Integer, ForeignKey("concepts.id"))
+
+    # Clustering
+    cluster_group_id = Column(Integer, ForeignKey("challenge_clusters.id"))
+
+    # Review
+    reviewer_notes = Column(Text)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    reviewed_at = Column(DateTime(timezone=True))
+
+    # Relationships
+    promoted_concept = relationship("Concept", foreign_keys=[promoted_to_concept_id])
+    cluster = relationship("ChallengeCluster", back_populates="emerging_concepts")
+
+
+class EmergingDialectic(Base):
+    """
+    Proposed new dialectic tension from evidence analysis.
+    Can be promoted to a full Dialectic after review.
+    """
+    __tablename__ = "emerging_dialectics"
+
+    id = Column(Integer, primary_key=True)
+
+    # Source identification
+    source_project_id = Column(Integer, nullable=False)
+    source_project_name = Column(String(200))
+    source_cluster_ids = Column(ARRAY(Integer))
+    source_cluster_names = Column(ARRAY(Text))
+
+    # Proposed dialectic details
+    proposed_tension_a = Column(Text, nullable=False)
+    proposed_tension_b = Column(Text, nullable=False)
+    proposed_question = Column(Text)  # The question this dialectic addresses
+    emergence_rationale = Column(Text, nullable=False)
+    evidence_strength = Column(String(20))
+
+    # Relationship to existing theory
+    related_dialectic_ids = Column(ARRAY(Integer))
+    differentiation_notes = Column(Text)
+
+    # Assessment
+    confidence = Column(Float, default=0.8)
+    status = Column(Enum(EmergingStatus), default=EmergingStatus.PROPOSED)
+    promoted_to_dialectic_id = Column(Integer, ForeignKey("dialectics.id"))
+
+    # Clustering
+    cluster_group_id = Column(Integer, ForeignKey("challenge_clusters.id"))
+
+    # Review
+    reviewer_notes = Column(Text)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    reviewed_at = Column(DateTime(timezone=True))
+
+    # Relationships
+    promoted_dialectic = relationship("Dialectic", foreign_keys=[promoted_to_dialectic_id])
+    cluster = relationship("ChallengeCluster", back_populates="emerging_dialectics")
+
+
+# =============================================================================
+# CHALLENGE CLUSTERING - Group similar challenges for batch processing
+# =============================================================================
+
+class ChallengeCluster(Base):
+    """
+    Group of similar challenges from multiple projects.
+    Enables batch review and LLM-powered recommendations.
+    """
+    __tablename__ = "challenge_clusters"
+
+    id = Column(Integer, primary_key=True)
+    cluster_type = Column(Enum(ClusterType), nullable=False)
+
+    # LLM-generated cluster metadata
+    cluster_summary = Column(Text)  # What unifies this cluster
+    cluster_recommendation = Column(Text)  # Explanation of recommended action
+    recommended_action = Column(Enum(RecommendedAction))
+
+    # Target entity (for impact clusters)
+    target_concept_id = Column(Integer, ForeignKey("concepts.id"))
+    target_dialectic_id = Column(Integer, ForeignKey("dialectics.id"))
+
+    # Cluster state
+    status = Column(Enum(ClusterStatus), default=ClusterStatus.PENDING)
+    resolution_notes = Column(Text)
+    member_count = Column(Integer, default=0)
+    source_project_count = Column(Integer, default=0)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    resolved_at = Column(DateTime(timezone=True))
+
+    # Relationships
+    target_concept = relationship("Concept", foreign_keys=[target_concept_id])
+    target_dialectic = relationship("Dialectic", foreign_keys=[target_dialectic_id])
+    members = relationship("ChallengeClusterMember", back_populates="cluster", cascade="all, delete-orphan")
+    emerging_concepts = relationship("EmergingConcept", back_populates="cluster")
+    emerging_dialectics = relationship("EmergingDialectic", back_populates="cluster")
+
+
+class ChallengeClusterMember(Base):
+    """
+    Links a challenge or emerging item to a cluster.
+    """
+    __tablename__ = "challenge_cluster_members"
+
+    id = Column(Integer, primary_key=True)
+    cluster_id = Column(Integer, ForeignKey("challenge_clusters.id", ondelete="CASCADE"), nullable=False)
+
+    # One of these will be set depending on cluster_type
+    challenge_id = Column(Integer, ForeignKey("challenges.id", ondelete="CASCADE"))
+    emerging_concept_id = Column(Integer, ForeignKey("emerging_concepts.id", ondelete="CASCADE"))
+    emerging_dialectic_id = Column(Integer, ForeignKey("emerging_dialectics.id", ondelete="CASCADE"))
+
+    # Similarity score (0-1, how similar to cluster centroid)
+    similarity_score = Column(Float)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Ensure only one reference type per member
+    __table_args__ = (
+        CheckConstraint(
+            '(CASE WHEN challenge_id IS NOT NULL THEN 1 ELSE 0 END + '
+            'CASE WHEN emerging_concept_id IS NOT NULL THEN 1 ELSE 0 END + '
+            'CASE WHEN emerging_dialectic_id IS NOT NULL THEN 1 ELSE 0 END) = 1',
+            name='single_reference'
+        ),
+    )
+
+    # Relationships
+    cluster = relationship("ChallengeCluster", back_populates="members")
+    challenge = relationship("Challenge", foreign_keys=[challenge_id])
+    emerging_concept = relationship("EmergingConcept", foreign_keys=[emerging_concept_id])
+    emerging_dialectic = relationship("EmergingDialectic", foreign_keys=[emerging_dialectic_id])

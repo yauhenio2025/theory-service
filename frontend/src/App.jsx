@@ -358,6 +358,511 @@ function ClaimForm({ claim, onSave, onCancel }) {
   )
 }
 
+// Challenge Dashboard Component
+function ChallengeDashboard({ challenges, reviewChallenge, addToast, onRefresh }) {
+  const [dashboardStats, setDashboardStats] = useState(null)
+  const [emergingConcepts, setEmergingConcepts] = useState([])
+  const [emergingDialectics, setEmergingDialectics] = useState([])
+  const [clusters, setClusters] = useState([])
+  const [subTab, setSubTab] = useState('overview')
+  const [loading, setLoading] = useState(true)
+  const [clustering, setClustering] = useState(false)
+
+  // Load dashboard data
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setLoading(true)
+      try {
+        const [statsData, ecData, edData, clusterData] = await Promise.all([
+          api('/challenges/dashboard'),
+          api('/emerging-concepts'),
+          api('/emerging-dialectics'),
+          api('/challenge-clusters')
+        ])
+        setDashboardStats(statsData)
+        setEmergingConcepts(ecData)
+        setEmergingDialectics(edData)
+        setClusters(clusterData)
+      } catch (err) {
+        console.error('Failed to load dashboard:', err)
+      }
+      setLoading(false)
+    }
+    loadDashboardData()
+  }, [])
+
+  const runClustering = async () => {
+    setClustering(true)
+    try {
+      const result = await api('/challenges/cluster', { method: 'POST', body: JSON.stringify({}) })
+      addToast(`Clustering complete: ${result.clusters_created} clusters created`)
+      // Refresh data
+      const [clusterData, statsData] = await Promise.all([
+        api('/challenge-clusters'),
+        api('/challenges/dashboard')
+      ])
+      setClusters(clusterData)
+      setDashboardStats(statsData)
+      onRefresh()
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+    setClustering(false)
+  }
+
+  const resolveCluster = async (clusterId, action, notes = '') => {
+    try {
+      await api(`/challenge-clusters/${clusterId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'resolved',
+          resolution_notes: notes,
+          member_action: action
+        })
+      })
+      addToast(`Cluster resolved: ${action}`)
+      // Refresh
+      const clusterData = await api('/challenge-clusters')
+      setClusters(clusterData)
+      onRefresh()
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+  }
+
+  const updateEmergingConcept = async (id, status) => {
+    try {
+      await api(`/emerging-concepts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      })
+      addToast(`Emerging concept ${status}`)
+      const ecData = await api('/emerging-concepts')
+      setEmergingConcepts(ecData)
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+  }
+
+  const updateEmergingDialectic = async (id, status) => {
+    try {
+      await api(`/emerging-dialectics/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      })
+      addToast(`Emerging dialectic ${status}`)
+      const edData = await api('/emerging-dialectics')
+      setEmergingDialectics(edData)
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+  }
+
+  const conceptChallenges = challenges.filter(c => c.concept_id)
+  const dialecticChallenges = challenges.filter(c => c.dialectic_id)
+  const pendingClusters = clusters.filter(c => c.status === 'pending')
+
+  if (loading) {
+    return <div className="content full-width"><div className="loading">Loading challenge dashboard...</div></div>
+  }
+
+  return (
+    <div className="content full-width">
+      {/* Stats Overview */}
+      {dashboardStats && (
+        <div className="dashboard-stats">
+          <div className="stat-card" onClick={() => setSubTab('concept-impacts')}>
+            <div className="stat-number">{dashboardStats.concept_impacts}</div>
+            <div className="stat-label">Concept Impacts</div>
+          </div>
+          <div className="stat-card" onClick={() => setSubTab('dialectic-impacts')}>
+            <div className="stat-number">{dashboardStats.dialectic_impacts}</div>
+            <div className="stat-label">Dialectic Impacts</div>
+          </div>
+          <div className="stat-card" onClick={() => setSubTab('emerging-concepts')}>
+            <div className="stat-number">{dashboardStats.emerging_concepts}</div>
+            <div className="stat-label">Emerging Concepts</div>
+          </div>
+          <div className="stat-card" onClick={() => setSubTab('emerging-dialectics')}>
+            <div className="stat-number">{dashboardStats.emerging_dialectics}</div>
+            <div className="stat-label">Emerging Dialectics</div>
+          </div>
+          <div className="stat-card highlight" onClick={() => setSubTab('clusters')}>
+            <div className="stat-number">{pendingClusters.length}</div>
+            <div className="stat-label">Pending Clusters</div>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-tabs */}
+      <div className="sub-tabs">
+        <button className={`sub-tab ${subTab === 'overview' ? 'active' : ''}`} onClick={() => setSubTab('overview')}>
+          Overview
+        </button>
+        <button className={`sub-tab ${subTab === 'concept-impacts' ? 'active' : ''}`} onClick={() => setSubTab('concept-impacts')}>
+          Concept Impacts ({conceptChallenges.length})
+        </button>
+        <button className={`sub-tab ${subTab === 'dialectic-impacts' ? 'active' : ''}`} onClick={() => setSubTab('dialectic-impacts')}>
+          Dialectic Impacts ({dialecticChallenges.length})
+        </button>
+        <button className={`sub-tab ${subTab === 'emerging-concepts' ? 'active' : ''}`} onClick={() => setSubTab('emerging-concepts')}>
+          Emerging Concepts ({emergingConcepts.length})
+        </button>
+        <button className={`sub-tab ${subTab === 'emerging-dialectics' ? 'active' : ''}`} onClick={() => setSubTab('emerging-dialectics')}>
+          Emerging Dialectics ({emergingDialectics.length})
+        </button>
+        <button className={`sub-tab ${subTab === 'clusters' ? 'active' : ''}`} onClick={() => setSubTab('clusters')}>
+          Clusters ({clusters.length})
+        </button>
+      </div>
+
+      {/* Overview */}
+      {subTab === 'overview' && (
+        <div className="card">
+          <div className="card-header">
+            <h2>Challenge Reconciliation Dashboard</h2>
+            <button
+              className="btn btn-primary"
+              onClick={runClustering}
+              disabled={clustering}
+            >
+              {clustering ? 'Clustering...' : 'Run LLM Clustering'}
+            </button>
+          </div>
+          <div className="card-body">
+            <p>This dashboard helps reconcile theory challenges from multiple essay-flow projects.</p>
+
+            {dashboardStats?.source_projects?.length > 0 && (
+              <div className="detail-section">
+                <h4>Source Projects</h4>
+                <div className="project-list">
+                  {dashboardStats.source_projects.map(p => (
+                    <div key={p.id} className="project-badge">
+                      {p.name} ({p.count} challenges)
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="detail-section">
+              <h4>Workflow</h4>
+              <ol className="workflow-steps">
+                <li>Evidence from essay-flow generates challenges to theory</li>
+                <li>Multiple projects may challenge the same concepts differently</li>
+                <li>Click "Run LLM Clustering" to group similar challenges</li>
+                <li>Review clusters and batch accept/reject</li>
+                <li>Emerging concepts can be promoted to the theory base</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Concept Impacts */}
+      {subTab === 'concept-impacts' && (
+        <div className="card">
+          <div className="card-header">
+            <h2>Concept Impacts</h2>
+          </div>
+          <div className="card-body">
+            {conceptChallenges.length === 0 ? (
+              <div className="empty-state">
+                <h3>No concept impacts</h3>
+                <p>Challenges to concepts will appear here</p>
+              </div>
+            ) : (
+              conceptChallenges.map(ch => (
+                <div key={ch.id} className={`card challenge-card ${ch.status}`}>
+                  <div className="card-body">
+                    <div className="challenge-meta">
+                      <div>
+                        <span className={`status ${ch.status}`}>{ch.status}</span>
+                        <span className="impact-type"> {ch.challenge_type?.replace('_', ' ')}</span>
+                        <span> → <strong>{ch.concept_term}</strong></span>
+                      </div>
+                      <span className="project-source">{ch.source_project_name || `Project #${ch.source_project_id}`}</span>
+                    </div>
+                    {ch.source_cluster_name && (
+                      <div className="cluster-source">From cluster: {ch.source_cluster_name}</div>
+                    )}
+                    <div className="challenge-summary">{ch.impact_summary}</div>
+                    {ch.proposed_refinement && (
+                      <div className="proposed-change">
+                        <strong>Proposed Refinement:</strong> {ch.proposed_refinement}
+                      </div>
+                    )}
+                    {ch.status === 'pending' && (
+                      <div className="challenge-actions">
+                        <button className="btn btn-success btn-sm" onClick={() => reviewChallenge(ch.id, 'integrated')}>
+                          Integrate
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => reviewChallenge(ch.id, 'accepted')}>
+                          Accept
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => reviewChallenge(ch.id, 'rejected')}>
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Dialectic Impacts */}
+      {subTab === 'dialectic-impacts' && (
+        <div className="card">
+          <div className="card-header">
+            <h2>Dialectic Impacts</h2>
+          </div>
+          <div className="card-body">
+            {dialecticChallenges.length === 0 ? (
+              <div className="empty-state">
+                <h3>No dialectic impacts</h3>
+                <p>Challenges to dialectics will appear here</p>
+              </div>
+            ) : (
+              dialecticChallenges.map(ch => (
+                <div key={ch.id} className={`card challenge-card ${ch.status}`}>
+                  <div className="card-body">
+                    <div className="challenge-meta">
+                      <div>
+                        <span className={`status ${ch.status}`}>{ch.status}</span>
+                        <span className="impact-type"> {ch.challenge_type?.replace('_', ' ')}</span>
+                        <span> → <strong>{ch.dialectic_name}</strong></span>
+                      </div>
+                      <span className="project-source">{ch.source_project_name || `Project #${ch.source_project_id}`}</span>
+                    </div>
+                    {ch.weight_toward_a !== null && (
+                      <div className="weight-indicator">
+                        Weight toward A: {Math.round(ch.weight_toward_a * 100)}%
+                        <div className="weight-bar">
+                          <div className="weight-fill" style={{ width: `${ch.weight_toward_a * 100}%` }} />
+                        </div>
+                      </div>
+                    )}
+                    <div className="challenge-summary">{ch.impact_summary}</div>
+                    {ch.proposed_synthesis && (
+                      <div className="proposed-change">
+                        <strong>Proposed Synthesis:</strong> {ch.proposed_synthesis}
+                      </div>
+                    )}
+                    {ch.status === 'pending' && (
+                      <div className="challenge-actions">
+                        <button className="btn btn-success btn-sm" onClick={() => reviewChallenge(ch.id, 'accepted')}>
+                          Accept
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => reviewChallenge(ch.id, 'rejected')}>
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Emerging Concepts */}
+      {subTab === 'emerging-concepts' && (
+        <div className="card">
+          <div className="card-header">
+            <h2>Emerging Concepts</h2>
+            <span className="list-item-meta">New concepts proposed from evidence</span>
+          </div>
+          <div className="card-body">
+            {emergingConcepts.length === 0 ? (
+              <div className="empty-state">
+                <h3>No emerging concepts</h3>
+                <p>New concept proposals from evidence will appear here</p>
+              </div>
+            ) : (
+              emergingConcepts.map(ec => (
+                <div key={ec.id} className={`card emerging-card ${ec.status}`}>
+                  <div className="card-body">
+                    <div className="emerging-header">
+                      <h3>{ec.proposed_name}</h3>
+                      <span className={`status ${ec.status}`}>{ec.status}</span>
+                    </div>
+                    <div className="emerging-meta">
+                      <span>{ec.source_project_name || `Project #${ec.source_project_id}`}</span>
+                      {ec.evidence_strength && <span> • Strength: {ec.evidence_strength}</span>}
+                      <span> • Confidence: {Math.round((ec.confidence || 0.8) * 100)}%</span>
+                    </div>
+                    {ec.proposed_definition && (
+                      <div className="emerging-definition">{ec.proposed_definition}</div>
+                    )}
+                    <div className="emerging-rationale">
+                      <strong>Rationale:</strong> {ec.emergence_rationale}
+                    </div>
+                    {ec.source_cluster_names?.length > 0 && (
+                      <div className="source-clusters">
+                        <strong>Source clusters:</strong> {ec.source_cluster_names.join(', ')}
+                      </div>
+                    )}
+                    {ec.status === 'proposed' && (
+                      <div className="challenge-actions">
+                        <button className="btn btn-success btn-sm" onClick={() => updateEmergingConcept(ec.id, 'promoted')}>
+                          Promote to Concept
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => updateEmergingConcept(ec.id, 'accepted')}>
+                          Accept
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => updateEmergingConcept(ec.id, 'rejected')}>
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Emerging Dialectics */}
+      {subTab === 'emerging-dialectics' && (
+        <div className="card">
+          <div className="card-header">
+            <h2>Emerging Dialectics</h2>
+            <span className="list-item-meta">New tensions proposed from evidence</span>
+          </div>
+          <div className="card-body">
+            {emergingDialectics.length === 0 ? (
+              <div className="empty-state">
+                <h3>No emerging dialectics</h3>
+                <p>New dialectic proposals from evidence will appear here</p>
+              </div>
+            ) : (
+              emergingDialectics.map(ed => (
+                <div key={ed.id} className={`card emerging-card ${ed.status}`}>
+                  <div className="card-body">
+                    <div className="emerging-header">
+                      <span className={`status ${ed.status}`}>{ed.status}</span>
+                    </div>
+                    <div className="emerging-meta">
+                      <span>{ed.source_project_name || `Project #${ed.source_project_id}`}</span>
+                      {ed.evidence_strength && <span> • Strength: {ed.evidence_strength}</span>}
+                    </div>
+                    <div className="tension emerging-tension">
+                      <div className="tension-side a">
+                        <div className="tension-label">Tension A</div>
+                        <div className="tension-text">{ed.proposed_tension_a}</div>
+                      </div>
+                      <div className="tension-vs">vs</div>
+                      <div className="tension-side b">
+                        <div className="tension-label">Tension B</div>
+                        <div className="tension-text">{ed.proposed_tension_b}</div>
+                      </div>
+                    </div>
+                    {ed.proposed_question && (
+                      <div className="emerging-question">
+                        <strong>Question:</strong> {ed.proposed_question}
+                      </div>
+                    )}
+                    <div className="emerging-rationale">
+                      <strong>Rationale:</strong> {ed.emergence_rationale}
+                    </div>
+                    {ed.status === 'proposed' && (
+                      <div className="challenge-actions">
+                        <button className="btn btn-success btn-sm" onClick={() => updateEmergingDialectic(ed.id, 'promoted')}>
+                          Promote to Dialectic
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => updateEmergingDialectic(ed.id, 'accepted')}>
+                          Accept
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => updateEmergingDialectic(ed.id, 'rejected')}>
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Clusters */}
+      {subTab === 'clusters' && (
+        <div className="card">
+          <div className="card-header">
+            <h2>Challenge Clusters</h2>
+            <button
+              className="btn btn-primary"
+              onClick={runClustering}
+              disabled={clustering}
+            >
+              {clustering ? 'Running...' : 'Re-run Clustering'}
+            </button>
+          </div>
+          <div className="card-body">
+            {clusters.length === 0 ? (
+              <div className="empty-state">
+                <h3>No clusters yet</h3>
+                <p>Run LLM clustering to group similar challenges</p>
+              </div>
+            ) : (
+              clusters.map(cluster => (
+                <div key={cluster.id} className={`card cluster-card ${cluster.status}`}>
+                  <div className="card-body">
+                    <div className="cluster-header">
+                      <div>
+                        <span className={`status ${cluster.status}`}>{cluster.status}</span>
+                        <span className="cluster-type"> {cluster.cluster_type?.replace('_', ' ')}</span>
+                        {cluster.target_concept_term && <span> → {cluster.target_concept_term}</span>}
+                        {cluster.target_dialectic_name && <span> → {cluster.target_dialectic_name}</span>}
+                      </div>
+                      <div className="cluster-meta">
+                        {cluster.member_count} members • {cluster.source_project_count} projects
+                      </div>
+                    </div>
+                    {cluster.cluster_summary && (
+                      <div className="cluster-summary">{cluster.cluster_summary}</div>
+                    )}
+                    {cluster.recommended_action && (
+                      <div className={`cluster-recommendation ${cluster.recommended_action}`}>
+                        <strong>LLM Recommendation:</strong> {cluster.recommended_action.replace('_', ' ')}
+                        {cluster.cluster_recommendation && ` - ${cluster.cluster_recommendation}`}
+                      </div>
+                    )}
+                    {cluster.status === 'pending' && (
+                      <div className="challenge-actions">
+                        <button className="btn btn-success btn-sm" onClick={() => resolveCluster(cluster.id, 'accept')}>
+                          Accept All
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => resolveCluster(cluster.id, 'reject')}>
+                          Reject All
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => resolveCluster(cluster.id, 'individual')}>
+                          Review Individually
+                        </button>
+                      </div>
+                    )}
+                    {cluster.resolution_notes && (
+                      <div className="resolution-notes">
+                        <strong>Resolution:</strong> {cluster.resolution_notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Main App
 function App() {
   const [activeTab, setActiveTab] = useState('concepts')
@@ -901,68 +1406,14 @@ function App() {
         </div>
       )}
 
-      {/* CHALLENGES TAB */}
+      {/* CHALLENGES DASHBOARD TAB */}
       {activeTab === 'challenges' && (
-        <div className="content full-width">
-          <div className="card">
-            <div className="card-header">
-              <h2>Challenges from Evidence</h2>
-              <span className="list-item-meta">{pendingChallenges.length} pending review</span>
-            </div>
-            <div className="card-body">
-              {challenges.length === 0 ? (
-                <div className="empty-state">
-                  <h3>No challenges yet</h3>
-                  <p>Challenges from essay-flow will appear here when evidence contradicts or extends theory</p>
-                </div>
-              ) : (
-                challenges.map(ch => (
-                  <div key={ch.id} className={`card challenge-card ${ch.status}`}>
-                    <div className="card-body">
-                      <div className="challenge-meta">
-                        <div>
-                          <span className={`status ${ch.status}`}>{ch.status.replace('_', ' ')}</span>
-                          <span> • {ch.challenge_type.replace('_', ' ')}</span>
-                          {ch.concept_term && <span> • Concept: <strong>{ch.concept_term}</strong></span>}
-                          {ch.dialectic_name && <span> • Dialectic: <strong>{ch.dialectic_name}</strong></span>}
-                        </div>
-                        <span>Project #{ch.source_project_id}</span>
-                      </div>
-                      <div className="challenge-evidence">
-                        <strong>Evidence:</strong> {ch.evidence_summary}
-                      </div>
-                      {ch.proposed_refinement && (
-                        <div className="detail-section">
-                          <h4>Proposed Refinement</h4>
-                          <div className="detail-content">{ch.proposed_refinement}</div>
-                        </div>
-                      )}
-                      {ch.status === 'pending' && (
-                        <div className="challenge-actions">
-                          <button className="btn btn-success btn-sm" onClick={() => reviewChallenge(ch.id, 'integrated')}>
-                            Integrate
-                          </button>
-                          <button className="btn btn-secondary btn-sm" onClick={() => reviewChallenge(ch.id, 'accepted')}>
-                            Accept
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => reviewChallenge(ch.id, 'rejected')}>
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                      {ch.reviewer_notes && (
-                        <div className="detail-section" style={{ marginTop: '1rem' }}>
-                          <h4>Reviewer Notes</h4>
-                          <div className="detail-content">{ch.reviewer_notes}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <ChallengeDashboard
+          challenges={challenges}
+          reviewChallenge={reviewChallenge}
+          addToast={addToast}
+          onRefresh={() => { loadChallenges(); loadStats(); }}
+        />
       )}
 
       {/* MODALS */}
