@@ -1438,6 +1438,38 @@ header h1 {
   line-height: 1.5;
 }
 
+/* Context References (for dynamically generated questions) */
+.context-references {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(56, 139, 253, 0.1);
+  border: 1px solid rgba(56, 139, 253, 0.3);
+  border-radius: 6px;
+}
+
+.context-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #58a6ff;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.context-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.context-tag {
+  padding: 0.25rem 0.5rem;
+  background: rgba(56, 139, 253, 0.2);
+  border: 1px solid rgba(56, 139, 253, 0.4);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #79c0ff;
+}
+
 .question-example {
   margin-top: 1rem;
   padding: 0.75rem;
@@ -3811,4 +3843,327 @@ textarea {
 /* Accept all button */
 .accept-all-btn {
   background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+}
+
+/* =====================================================
+   9-DIMENSION DRAFT - Final Editable Concept Page
+   ===================================================== */
+
+.nine-dimension-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: calc(85vh - 200px);
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.dimension-section {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.dimension-section:hover {
+  border-color: #58a6ff;
+}
+
+.dimension-section.editing {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
+}
+
+.dimension-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #161b22;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dimension-header:hover {
+  background: #1c2128;
+}
+
+.dimension-icon {
+  font-size: 1.25rem;
+}
+
+.dimension-header h4 {
+  flex: 1;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #c9d1d9;
+}
+
+.edit-toggle {
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #8b949e;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.edit-toggle:hover {
+  background: #21262d;
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
+.dimension-content {
+  padding: 1rem;
+  color: #c9d1d9;
+}
+
+.dimension-content p {
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+}
+
+.dimension-content p:last-child {
+  margin-bottom: 0;
+}
+
+.dimension-content em {
+  color: #6e7681;
+  font-style: italic;
+}
+
+.definition-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: 0.5rem;
+  background: rgba(88, 166, 255, 0.05);
+  border-left: 3px solid #58a6ff;
+  border-radius: 0 4px 4px 0;
+}
+
+.dimension-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+}
+
+.dimension-list li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.dimension-list.falsification li::marker {
+  color: #f85149;
+}
+
+.dialectics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dialectic-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(238, 130, 238, 0.1);
+  border: 1px solid rgba(238, 130, 238, 0.3);
+  border-radius: 6px;
+}
+
+.dialectic-item .dialectic-badge {
+  font-size: 1rem;
+}
+
+.dialectic-item .vs {
+  color: #6e7681;
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+/* Edit mode styles */
+.dimension-edit {
+  padding: 1rem;
+  background: #0d1117;
+  border-top: 1px solid #30363d;
+}
+
+.edit-field {
+  margin-bottom: 1rem;
+}
+
+.edit-field:last-child {
+  margin-bottom: 0;
+}
+
+.edit-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #8b949e;
+}
+
+.edit-field input,
+.edit-field textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.edit-field input:focus,
+.edit-field textarea:focus {
+  outline: none;
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+.list-edit-item {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
+.list-edit-item:not(.single) {
+  grid-template-columns: 1fr 2fr auto;
+  align-items: start;
+}
+
+.list-edit-item.single {
+  grid-template-columns: 1fr auto;
+  align-items: start;
+}
+
+.list-edit-item input,
+.list-edit-item textarea {
+  padding: 0.5rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.list-edit-item input:focus,
+.list-edit-item textarea:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.dialectic-edit-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
+.dialectic-edit-item input {
+  flex: 1;
+  padding: 0.5rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  font-size: 0.85rem;
+}
+
+.dialectic-edit-item input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.vs-label {
+  color: #6e7681;
+  font-size: 0.8rem;
+  font-style: italic;
+  padding: 0 0.25rem;
+}
+
+.add-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: 1px dashed #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  justify-content: center;
+}
+
+.add-item-btn:hover {
+  background: #161b22;
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
+.regenerate-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #30363d;
+}
+
+.regenerate-section textarea {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 0.8rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.regenerate-section textarea:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.regenerate-section textarea::placeholder {
+  color: #6e7681;
+}
+
+.btn-danger {
+  background: transparent;
+  border: 1px solid #f85149;
+  color: #f85149;
+}
+
+.btn-danger:hover {
+  background: rgba(248, 81, 73, 0.15);
+}
+
+.final-actions {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #30363d;
 }

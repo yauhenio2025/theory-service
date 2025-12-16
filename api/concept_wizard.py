@@ -799,6 +799,16 @@ class GenerateRecognitionMarkersRequest(BaseModel):
     source_id: Optional[int] = None
 
 
+class RegenerateSectionRequest(BaseModel):
+    """Request to regenerate a specific section of the 9-dimension draft."""
+    concept_name: str
+    section: str  # genesis, problem_space, definition, core_claims, etc.
+    current_value: Any  # Current value of the section
+    feedback: str  # User feedback for regeneration
+    full_context: Dict[str, Any]  # all_answers, interim_analysis, dialectics
+    source_id: Optional[int] = None
+
+
 # =============================================================================
 # REGENERATE UNDERSTANDING PROMPT
 # =============================================================================
@@ -921,6 +931,73 @@ Return as JSON:
 Generate diverse cases across different domains if possible. Include both well-known public examples and more subtle/implicit cases where the concept operates without being named."""
 
 
+STAGE3_GENERATION_PROMPT = """You are an expert in conceptual analysis generating context-specific Stage 3 questions.
+
+Stage 3 focuses on: Grounding & Recognition - establishing paradigmatic cases, recognition markers, and falsification conditions.
+
+## Concept Name: {concept_name}
+
+## Summary of Stage 1 & 2 (what we know so far):
+{all_stages_summary}
+
+## Key elements to reference in questions:
+- Adjacent concepts mentioned: {adjacent_concepts}
+- Key differentiations established: {differentiations}
+- Dialectics/tensions identified: {dialectics}
+
+Generate 3-4 context-specific Stage 3 questions that:
+1. Reference specific concepts, cases, or tensions already discussed
+2. Ask for paradigmatic examples that illustrate the specific differentiations identified
+3. Probe for recognition markers based on the concept's unique features
+4. Explore falsification conditions specific to the concept's claims
+
+Return as JSON:
+{{
+    "stage3_questions": [
+        {{
+            "id": "paradigmatic_case",
+            "text": "Given [reference specific concept features], what case best exemplifies [specific aspect]?",
+            "type": "open_ended",
+            "help": "Context-specific help text",
+            "example": "Context-specific example",
+            "min_length": 150,
+            "rows": 6,
+            "context_references": ["list of specific concepts/terms from earlier stages that this question references"]
+        }},
+        {{
+            "id": "recognition_markers",
+            "text": "How would you recognize [concept] operating in texts that discuss [specific adjacent domain]?",
+            "type": "open_ended",
+            "help": "Context-specific help",
+            "min_length": 100,
+            "rows": 5,
+            "context_references": []
+        }},
+        {{
+            "id": "implicit_domain",
+            "text": "Where do you see debates about [specific tension/dialectic] without the term '[concept name]' being used?",
+            "type": "open_ended",
+            "help": "Context-specific help",
+            "min_length": 100,
+            "rows": 4,
+            "context_references": []
+        }},
+        {{
+            "id": "core_claim",
+            "text": "Given that you've distinguished [concept] from [adjacent concept] by [key differentiation], what is the fundamental claim about reality?",
+            "type": "open_ended",
+            "help": "Context-specific help",
+            "min_length": 100,
+            "rows": 4,
+            "context_references": []
+        }}
+    ],
+    "generation_note": "Brief note about how questions were tailored to this specific concept"
+}}
+
+Make questions specific and grounded in what the user has already shared. Avoid generic questions that could apply to any concept."""
+
+
 GENERATE_RECOGNITION_MARKERS_PROMPT = """You are an expert in conceptual analysis helping generate recognition markers.
 
 Given a concept definition and paradigmatic cases, generate linguistic patterns and markers that indicate when this concept is operating in a text.
@@ -957,6 +1034,37 @@ Include different types of markers:
 - Argument structure patterns
 - Situational description patterns
 - Proxy terms and euphemisms"""
+
+
+REGENERATE_SECTION_PROMPT = """You are an expert in conceptual analysis helping refine a specific section of a 9-dimensional concept definition.
+
+## Concept Name: {concept_name}
+
+## Section to Regenerate: {section}
+
+## Current Value:
+{current_value}
+
+## User's Feedback:
+{feedback}
+
+## Full Context (all answers from wizard):
+{full_context}
+
+Based on the user's feedback, regenerate ONLY the {section} section. Maintain the same structure/format but incorporate the feedback.
+
+Return as JSON with the regenerated value:
+{{
+    "regenerated_value": <the new value for this section, matching the original structure>
+}}
+
+Section formats:
+- genesis: {{"type": "...", "lineage": "...", "break_from": "..."}}
+- problem_space: {{"gap": "...", "failed_alternatives": "..."}}
+- definition: "string"
+- core_claims: {{"ontological": "...", "causal": "..."}}
+
+For list sections (differentiations, paradigmatic_cases, recognition_markers, falsification_conditions, dialectics), return the full regenerated list."""
 
 
 # =============================================================================
@@ -1503,6 +1611,65 @@ def extract_adjacent_concepts(answers: List[AnswerWithMeta]) -> str:
     return "None specified"
 
 
+def build_stages_summary(stage1_answers: List[AnswerWithMeta], stage2_answers: List[AnswerWithMeta]) -> str:
+    """Build a comprehensive summary of Stage 1 and Stage 2 answers for context-specific generation."""
+    summary_parts = []
+
+    summary_parts.append("### Stage 1 - Genesis & Foundations:")
+    for ans in stage1_answers:
+        if ans.selected_options or ans.text_answer:
+            answer_text = ans.text_answer or ", ".join(ans.selected_options)
+            summary_parts.append(f"- {ans.question_id}: {answer_text}")
+            if ans.custom_response:
+                summary_parts.append(f"  User addition ({ans.custom_response_category or 'note'}): {ans.custom_response}")
+            if ans.is_dialectic:
+                summary_parts.append(f"  MARKED AS DIALECTIC: {ans.dialectic_pole_a} vs {ans.dialectic_pole_b}")
+
+    summary_parts.append("\n### Stage 2 - Differentiation & Clarification:")
+    for ans in stage2_answers:
+        if ans.selected_options or ans.text_answer:
+            answer_text = ans.text_answer or ", ".join(ans.selected_options)
+            summary_parts.append(f"- {ans.question_id}: {answer_text}")
+            if ans.custom_response:
+                summary_parts.append(f"  User addition ({ans.custom_response_category or 'note'}): {ans.custom_response}")
+            if ans.is_dialectic:
+                summary_parts.append(f"  MARKED AS DIALECTIC: {ans.dialectic_pole_a} vs {ans.dialectic_pole_b}")
+
+    return "\n".join(summary_parts)
+
+
+def format_differentiations(differentiations: List[dict]) -> str:
+    """Format differentiations for Stage 3 generation prompt."""
+    if not differentiations:
+        return "No specific differentiations established yet"
+
+    formatted = []
+    for diff in differentiations:
+        parts = [f"- {diff.get('question', 'Unknown differentiation')}"]
+        if diff.get('choice'):
+            parts.append(f"  Choice: {diff['choice']}")
+        if diff.get('custom_note'):
+            parts.append(f"  Note: {diff['custom_note']}")
+        formatted.append("\n".join(parts))
+
+    return "\n".join(formatted)
+
+
+def format_dialectics_for_stage3(dialectics: List[Tension]) -> str:
+    """Format dialectics for Stage 3 generation prompt."""
+    if not dialectics:
+        return "No dialectics/tensions identified yet"
+
+    formatted = []
+    for d in dialectics:
+        tension_text = f"- {d.pole_a} vs {d.pole_b}"
+        if d.user_note:
+            tension_text += f" ({d.user_note})"
+        formatted.append(tension_text)
+
+    return "\n".join(formatted)
+
+
 @router.post("/analyze-stage1")
 async def analyze_stage1(request: Stage1AnswersRequest):
     """
@@ -1689,8 +1856,58 @@ async def analyze_stage2(request: Stage2AnswersRequest):
             impl_data = parse_wizard_response(impl_text)
             implications_preview = impl_data.get("implications_preview", {})
 
-            # Return Stage 3 questions (predefined but could be customized based on context)
-            stage3_questions = [q.model_dump() for q in STAGE3_QUESTIONS]
+            # Generate context-specific Stage 3 questions
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'generating_stage3'})}\n\n"
+
+            # Build context summary from all answers
+            all_stages_summary = build_stages_summary(request.stage1_answers, request.stage2_answers)
+
+            # Extract adjacent concepts from Stage 1 answers
+            adjacent_concepts = extract_adjacent_concepts(request.stage1_answers)
+
+            # Format differentiations
+            differentiations_summary = format_differentiations(differentiations)
+
+            # Format dialectics
+            dialectics_summary = format_dialectics_for_stage3(all_dialectics)
+
+            stage3_gen_prompt = STAGE3_GENERATION_PROMPT.format(
+                concept_name=request.concept_name,
+                all_stages_summary=all_stages_summary,
+                adjacent_concepts=adjacent_concepts,
+                differentiations=differentiations_summary,
+                dialectics=dialectics_summary
+            )
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis generating context-specific questions.",
+                messages=[{"role": "user", "content": stage3_gen_prompt}]
+            ) as stream:
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+
+                final = stream.get_final_message()
+                stage3_gen_text = ""
+                for block in final.content:
+                    if hasattr(block, 'text'):
+                        stage3_gen_text = block.text
+                        break
+
+            stage3_gen_data = parse_wizard_response(stage3_gen_text)
+            stage3_questions = stage3_gen_data.get("stage3_questions", [])
+
+            # Fall back to predefined questions if generation failed
+            if not stage3_questions:
+                logger.warning("Stage 3 question generation failed, falling back to predefined questions")
+                stage3_questions = [q.model_dump() for q in STAGE3_QUESTIONS]
 
             complete_data = {
                 'type': 'complete',
@@ -1717,6 +1934,54 @@ async def analyze_stage2(request: Stage2AnswersRequest):
         stream_implications_and_stage3(),
         media_type="text/event-stream"
     )
+
+
+@router.post("/regenerate-section")
+async def regenerate_section(request: RegenerateSectionRequest):
+    """
+    Regenerate a specific section of the 9-dimension draft with user feedback.
+    """
+    try:
+        client = get_claude_client()
+
+        # Format context
+        full_context_str = json.dumps(request.full_context, indent=2)
+        current_value_str = json.dumps(request.current_value, indent=2) if isinstance(request.current_value, (dict, list)) else str(request.current_value)
+
+        prompt = REGENERATE_SECTION_PROMPT.format(
+            concept_name=request.concept_name,
+            section=request.section,
+            current_value=current_value_str,
+            feedback=request.feedback,
+            full_context=full_context_str
+        )
+
+        with client.messages.stream(
+            model=MODEL,
+            max_tokens=MAX_OUTPUT,
+            thinking={
+                "type": "enabled",
+                "budget_tokens": THINKING_BUDGET
+            },
+            system="You are an expert in conceptual analysis helping refine concept definitions.",
+            messages=[{"role": "user", "content": prompt}]
+        ) as stream:
+            final = stream.get_final_message()
+            response_text = ""
+            for block in final.content:
+                if hasattr(block, 'text'):
+                    response_text = block.text
+                    break
+
+        # Parse response
+        response_data = parse_wizard_response(response_text)
+        regenerated_value = response_data.get("regenerated_value", request.current_value)
+
+        return {"regenerated_value": regenerated_value}
+
+    except Exception as e:
+        logger.error(f"Error regenerating section: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/finalize")

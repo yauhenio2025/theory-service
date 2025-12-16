@@ -212,6 +212,22 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   // Final concept data
   const [conceptData, setConceptData] = useState(null)
 
+  // Editable draft state for 9-dimension final page
+  const [editableDraft, setEditableDraft] = useState({
+    genesis: { type: '', lineage: '', break_from: '' },
+    problem_space: { gap: '', failed_alternatives: '' },
+    definition: '',
+    differentiations: [],
+    paradigmatic_cases: [],
+    recognition_markers: [],
+    core_claims: { ontological: '', causal: '' },
+    falsification_conditions: [],
+    dialectics: []
+  })
+  const [editingSection, setEditingSection] = useState(null)
+  const [sectionFeedback, setSectionFeedback] = useState({})
+  const [isRegeneratingSections, setIsRegeneratingSections] = useState({})
+
   // Refs
   const thinkingRef = useRef(null)
   const abortControllerRef = useRef(null)
@@ -898,11 +914,90 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       {
         onComplete: (data) => {
           setConceptData(data.concept)
+          // Populate editable draft from concept data
+          populateEditableDraft(data.concept)
           setProgress({ stage: 9, total: 9, label: 'Complete!' })
           setStage(STAGES.COMPLETE)
         }
       }
     )
+  }
+
+  /**
+   * Populate editable draft from concept data
+   */
+  const populateEditableDraft = (concept) => {
+    setEditableDraft({
+      genesis: concept.genesis || { type: '', lineage: '', break_from: '' },
+      problem_space: concept.problem_space || { gap: '', failed_alternatives: '' },
+      definition: concept.definition || '',
+      differentiations: concept.differentiations || [],
+      paradigmatic_cases: concept.paradigmatic_cases || [],
+      recognition_markers: concept.recognition_markers || [],
+      core_claims: concept.core_claims || { ontological: '', causal: '' },
+      falsification_conditions: concept.falsification_conditions || [],
+      dialectics: dialectics.map(d => ({
+        pole_a: d.pole_a,
+        pole_b: d.pole_b,
+        note: d.user_note || ''
+      }))
+    })
+  }
+
+  /**
+   * Update a specific section of the editable draft
+   */
+  const updateDraftSection = (section, value) => {
+    setEditableDraft(prev => ({
+      ...prev,
+      [section]: value
+    }))
+  }
+
+  /**
+   * Toggle editing mode for a section
+   */
+  const toggleEditSection = (section) => {
+    setEditingSection(editingSection === section ? null : section)
+  }
+
+  /**
+   * Regenerate a specific section with feedback
+   */
+  const regenerateSection = async (section) => {
+    const feedback = sectionFeedback[section] || ''
+    if (!feedback.trim()) return
+
+    setIsRegeneratingSections(prev => ({ ...prev, [section]: true }))
+
+    try {
+      const response = await fetch(`${API_URL}/regenerate-section`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_name: conceptName,
+          section: section,
+          current_value: editableDraft[section],
+          feedback: feedback,
+          full_context: {
+            all_answers: stageData,
+            interim_analysis: interimAnalysis,
+            dialectics: dialectics
+          },
+          source_id: sourceId
+        })
+      })
+
+      if (!response.ok) throw new Error('Regeneration failed')
+
+      const data = await response.json()
+      updateDraftSection(section, data.regenerated_value)
+      setSectionFeedback(prev => ({ ...prev, [section]: '' }))
+    } catch (err) {
+      setError(`Failed to regenerate ${section}: ${err.message}`)
+    } finally {
+      setIsRegeneratingSections(prev => ({ ...prev, [section]: false }))
+    }
   }
 
   /**
@@ -941,10 +1036,25 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   }
 
   /**
-   * Save the completed concept
+   * Save the completed concept - merges editableDraft with conceptData
    */
   const saveConceptAndClose = async () => {
     if (!conceptData) return
+
+    // Merge editableDraft with conceptData to include user edits
+    const finalConceptData = {
+      ...conceptData,
+      name: conceptData.name || conceptName,
+      genesis: editableDraft.genesis,
+      problem_space: editableDraft.problem_space,
+      definition: editableDraft.definition,
+      differentiations: editableDraft.differentiations,
+      paradigmatic_cases: editableDraft.paradigmatic_cases,
+      recognition_markers: editableDraft.recognition_markers,
+      core_claims: editableDraft.core_claims,
+      falsification_conditions: editableDraft.falsification_conditions,
+      dialectics: editableDraft.dialectics
+    }
 
     setLoading(true)
     try {
@@ -952,7 +1062,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          concept_data: conceptData,
+          concept_data: finalConceptData,
           source_id: sourceId
         })
       })
@@ -1099,6 +1209,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   {currentPhase === 'interim_analysis' && 'Building understanding from your answers...'}
                   {currentPhase === 'stage2_generation' && 'Generating tailored follow-up questions...'}
                   {currentPhase === 'implications_preview' && 'Analyzing implications of your choices...'}
+                  {currentPhase === 'generating_stage3' && 'Generating context-specific Stage 3 questions...'}
                   {currentPhase === 'final_synthesis' && 'Synthesizing complete concept definition...'}
                   {!currentPhase && 'Processing...'}
                 </p>
@@ -1463,6 +1574,18 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   <p className="question-help">{currentQuestion.help}</p>
                 )}
 
+                {/* Show context references for dynamically generated questions */}
+                {currentQuestion.context_references && currentQuestion.context_references.length > 0 && (
+                  <div className="context-references">
+                    <span className="context-label">References from earlier stages:</span>
+                    <div className="context-tags">
+                      {currentQuestion.context_references.map((ref, idx) => (
+                        <span key={idx} className="context-tag">{ref}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Show prefilled reasoning */}
                 {currentQuestion.prefilled?.reasoning && (
                   <div className="prefilled-reasoning">
@@ -1474,7 +1597,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 )}
 
                 {/* Generated Examples Panel for Stage 3 - paradigmatic cases */}
-                {stage === STAGES.STAGE3 && currentQuestion.id === 'paradigmatic_case' && (
+                {stage === STAGES.STAGE3 && (currentQuestion.id === 'paradigmatic_case' || currentQuestion.id?.includes('case')) && (
                   <div className="generated-examples-panel">
                     <div className="gen-examples-header">
                       <h4>Generated Case Studies</h4>
@@ -1552,7 +1675,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 )}
 
                 {/* Generated Examples Panel for Stage 3 - recognition markers */}
-                {stage === STAGES.STAGE3 && currentQuestion.id === 'recognition_markers' && (
+                {stage === STAGES.STAGE3 && (currentQuestion.id === 'recognition_markers' || currentQuestion.id?.includes('marker') || currentQuestion.id?.includes('recognition')) && (
                   <div className="generated-examples-panel">
                     <div className="gen-examples-header">
                       <h4>Generated Recognition Markers</h4>
@@ -1875,85 +1998,510 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             </div>
           )}
 
-          {/* STAGE: Complete */}
+          {/* STAGE: Complete - Editable 9-Dimension Draft */}
           {stage === STAGES.COMPLETE && conceptData && (
             <div className="wizard-stage">
               <div className="stage-header success">
-                <h3>Concept Created Successfully!</h3>
-                <p>Review the generated concept below and save it to your theory.</p>
+                <h3>Concept Draft Created</h3>
+                <p>Review and edit each dimension. Click any section to modify it directly.</p>
               </div>
 
-              <div className="concept-preview">
-                <div className="preview-section">
-                  <h4>Concept Name</h4>
-                  <p className="preview-value large">{conceptData.name || conceptName}</p>
-                </div>
-
-                <div className="preview-section">
-                  <h4>Definition</h4>
-                  <p className="preview-value">{conceptData.definition}</p>
-                </div>
-
-                {conceptData.genesis && (
-                  <div className="preview-section">
-                    <h4>Genesis</h4>
-                    <div className="preview-grid">
-                      <div>
-                        <span className="preview-label">Type:</span>
-                        <span>{conceptData.genesis.type}</span>
+              <div className="nine-dimension-draft">
+                {/* 1. GENESIS */}
+                <div className={`dimension-section ${editingSection === 'genesis' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('genesis')}>
+                    <span className="dimension-icon">🌱</span>
+                    <h4>1. Genesis</h4>
+                    <button className="edit-toggle">{editingSection === 'genesis' ? '✓ Done' : '✎ Edit'}</button>
+                  </div>
+                  {editingSection === 'genesis' ? (
+                    <div className="dimension-edit">
+                      <div className="edit-field">
+                        <label>Type</label>
+                        <input
+                          type="text"
+                          value={editableDraft.genesis?.type || ''}
+                          onChange={(e) => updateDraftSection('genesis', { ...editableDraft.genesis, type: e.target.value })}
+                          placeholder="e.g., Theoretical Innovation, Empirical Discovery"
+                        />
                       </div>
-                      {conceptData.genesis.lineage && (
-                        <div>
-                          <span className="preview-label">Lineage:</span>
-                          <span>{conceptData.genesis.lineage}</span>
-                        </div>
+                      <div className="edit-field">
+                        <label>Lineage</label>
+                        <input
+                          type="text"
+                          value={editableDraft.genesis?.lineage || ''}
+                          onChange={(e) => updateDraftSection('genesis', { ...editableDraft.genesis, lineage: e.target.value })}
+                          placeholder="Builds on what existing concepts/theories"
+                        />
+                      </div>
+                      <div className="edit-field">
+                        <label>Break From</label>
+                        <input
+                          type="text"
+                          value={editableDraft.genesis?.break_from || ''}
+                          onChange={(e) => updateDraftSection('genesis', { ...editableDraft.genesis, break_from: e.target.value })}
+                          placeholder="What does this concept challenge or replace"
+                        />
+                      </div>
+                      <div className="regenerate-section">
+                        <textarea
+                          placeholder="Feedback for regeneration (e.g., 'emphasize the theoretical innovation aspect')"
+                          value={sectionFeedback.genesis || ''}
+                          onChange={(e) => setSectionFeedback(prev => ({ ...prev, genesis: e.target.value }))}
+                        />
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => regenerateSection('genesis')}
+                          disabled={isRegeneratingSections.genesis || !sectionFeedback.genesis?.trim()}
+                        >
+                          {isRegeneratingSections.genesis ? 'Regenerating...' : 'Regenerate with Feedback'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      <p><strong>Type:</strong> {editableDraft.genesis?.type || <em>Not specified</em>}</p>
+                      <p><strong>Lineage:</strong> {editableDraft.genesis?.lineage || <em>Not specified</em>}</p>
+                      {editableDraft.genesis?.break_from && <p><strong>Break from:</strong> {editableDraft.genesis.break_from}</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. PROBLEM SPACE */}
+                <div className={`dimension-section ${editingSection === 'problem_space' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('problem_space')}>
+                    <span className="dimension-icon">🎯</span>
+                    <h4>2. Problem Space</h4>
+                    <button className="edit-toggle">{editingSection === 'problem_space' ? '✓ Done' : '✎ Edit'}</button>
+                  </div>
+                  {editingSection === 'problem_space' ? (
+                    <div className="dimension-edit">
+                      <div className="edit-field">
+                        <label>Gap Addressed</label>
+                        <textarea
+                          value={editableDraft.problem_space?.gap || ''}
+                          onChange={(e) => updateDraftSection('problem_space', { ...editableDraft.problem_space, gap: e.target.value })}
+                          placeholder="What conceptual gap does this fill"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="edit-field">
+                        <label>Failed Alternatives</label>
+                        <textarea
+                          value={editableDraft.problem_space?.failed_alternatives || ''}
+                          onChange={(e) => updateDraftSection('problem_space', { ...editableDraft.problem_space, failed_alternatives: e.target.value })}
+                          placeholder="What concepts failed to capture this"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="regenerate-section">
+                        <textarea
+                          placeholder="Feedback for regeneration..."
+                          value={sectionFeedback.problem_space || ''}
+                          onChange={(e) => setSectionFeedback(prev => ({ ...prev, problem_space: e.target.value }))}
+                        />
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => regenerateSection('problem_space')}
+                          disabled={isRegeneratingSections.problem_space || !sectionFeedback.problem_space?.trim()}
+                        >
+                          {isRegeneratingSections.problem_space ? 'Regenerating...' : 'Regenerate with Feedback'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      <p><strong>Gap:</strong> {editableDraft.problem_space?.gap || <em>Not specified</em>}</p>
+                      {editableDraft.problem_space?.failed_alternatives && (
+                        <p><strong>Failed alternatives:</strong> {editableDraft.problem_space.failed_alternatives}</p>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {conceptData.differentiations?.length > 0 && (
-                  <div className="preview-section">
-                    <h4>Differentiations</h4>
-                    <ul className="preview-list">
-                      {conceptData.differentiations.map((d, i) => (
-                        <li key={i}>
-                          <strong>vs {d.confused_with}:</strong> {d.difference}
-                        </li>
-                      ))}
-                    </ul>
+                {/* 3. DEFINITION (Brandom-style) */}
+                <div className={`dimension-section ${editingSection === 'definition' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('definition')}>
+                    <span className="dimension-icon">📖</span>
+                    <h4>3. Definition</h4>
+                    <button className="edit-toggle">{editingSection === 'definition' ? '✓ Done' : '✎ Edit'}</button>
                   </div>
-                )}
+                  {editingSection === 'definition' ? (
+                    <div className="dimension-edit">
+                      <div className="edit-field">
+                        <label>Brandom-style Definition</label>
+                        <textarea
+                          value={editableDraft.definition || ''}
+                          onChange={(e) => updateDraftSection('definition', e.target.value)}
+                          placeholder="The inferential definition of the concept..."
+                          rows={5}
+                        />
+                      </div>
+                      <div className="regenerate-section">
+                        <textarea
+                          placeholder="Feedback for regeneration..."
+                          value={sectionFeedback.definition || ''}
+                          onChange={(e) => setSectionFeedback(prev => ({ ...prev, definition: e.target.value }))}
+                        />
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => regenerateSection('definition')}
+                          disabled={isRegeneratingSections.definition || !sectionFeedback.definition?.trim()}
+                        >
+                          {isRegeneratingSections.definition ? 'Regenerating...' : 'Regenerate with Feedback'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      <p className="definition-text">{editableDraft.definition || <em>Definition not generated</em>}</p>
+                    </div>
+                  )}
+                </div>
 
-                {dialectics.length > 0 && (
-                  <div className="preview-section">
-                    <h4>Preserved Dialectics</h4>
-                    <div className="dialectics-preserved">
-                      {dialectics.map((d, i) => (
-                        <div key={i} className="dialectic-preview">
-                          <span className="dialectic-badge">⚡</span>
-                          <span>{d.pole_a}</span>
-                          <span className="vs">vs</span>
-                          <span>{d.pole_b}</span>
+                {/* 4. DIFFERENTIATIONS */}
+                <div className={`dimension-section ${editingSection === 'differentiations' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('differentiations')}>
+                    <span className="dimension-icon">↔️</span>
+                    <h4>4. Differentiations</h4>
+                    <button className="edit-toggle">{editingSection === 'differentiations' ? '✓ Done' : '✎ Edit'}</button>
+                  </div>
+                  {editingSection === 'differentiations' ? (
+                    <div className="dimension-edit">
+                      {(editableDraft.differentiations || []).map((diff, idx) => (
+                        <div key={idx} className="list-edit-item">
+                          <input
+                            type="text"
+                            placeholder="vs Concept"
+                            value={diff.confused_with || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.differentiations]
+                              updated[idx] = { ...updated[idx], confused_with: e.target.value }
+                              updateDraftSection('differentiations', updated)
+                            }}
+                          />
+                          <textarea
+                            placeholder="How it differs"
+                            value={diff.difference || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.differentiations]
+                              updated[idx] = { ...updated[idx], difference: e.target.value }
+                              updateDraftSection('differentiations', updated)
+                            }}
+                            rows={2}
+                          />
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              const updated = editableDraft.differentiations.filter((_, i) => i !== idx)
+                              updateDraftSection('differentiations', updated)
+                            }}
+                          >×</button>
                         </div>
                       ))}
+                      <button
+                        className="btn btn-sm btn-secondary add-item-btn"
+                        onClick={() => updateDraftSection('differentiations', [
+                          ...(editableDraft.differentiations || []),
+                          { confused_with: '', difference: '' }
+                        ])}
+                      >+ Add Differentiation</button>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="dimension-content">
+                      {editableDraft.differentiations?.length > 0 ? (
+                        <ul className="dimension-list">
+                          {editableDraft.differentiations.map((d, i) => (
+                            <li key={i}><strong>vs {d.confused_with}:</strong> {d.difference}</li>
+                          ))}
+                        </ul>
+                      ) : <em>No differentiations specified</em>}
+                    </div>
+                  )}
+                </div>
 
-                {conceptData.recognition_markers?.length > 0 && (
-                  <div className="preview-section">
-                    <h4>Recognition Markers</h4>
-                    <ul className="preview-list">
-                      {conceptData.recognition_markers.map((m, i) => (
-                        <li key={i}>{m.description}</li>
-                      ))}
-                    </ul>
+                {/* 5. PARADIGMATIC CASES */}
+                <div className={`dimension-section ${editingSection === 'paradigmatic_cases' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('paradigmatic_cases')}>
+                    <span className="dimension-icon">📋</span>
+                    <h4>5. Paradigmatic Cases</h4>
+                    <button className="edit-toggle">{editingSection === 'paradigmatic_cases' ? '✓ Done' : '✎ Edit'}</button>
                   </div>
-                )}
+                  {editingSection === 'paradigmatic_cases' ? (
+                    <div className="dimension-edit">
+                      {(editableDraft.paradigmatic_cases || []).map((c, idx) => (
+                        <div key={idx} className="list-edit-item">
+                          <input
+                            type="text"
+                            placeholder="Case title"
+                            value={c.title || c.name || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.paradigmatic_cases]
+                              updated[idx] = { ...updated[idx], title: e.target.value }
+                              updateDraftSection('paradigmatic_cases', updated)
+                            }}
+                          />
+                          <textarea
+                            placeholder="Case description"
+                            value={c.description || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.paradigmatic_cases]
+                              updated[idx] = { ...updated[idx], description: e.target.value }
+                              updateDraftSection('paradigmatic_cases', updated)
+                            }}
+                            rows={2}
+                          />
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              const updated = editableDraft.paradigmatic_cases.filter((_, i) => i !== idx)
+                              updateDraftSection('paradigmatic_cases', updated)
+                            }}
+                          >×</button>
+                        </div>
+                      ))}
+                      <button
+                        className="btn btn-sm btn-secondary add-item-btn"
+                        onClick={() => updateDraftSection('paradigmatic_cases', [
+                          ...(editableDraft.paradigmatic_cases || []),
+                          { title: '', description: '' }
+                        ])}
+                      >+ Add Case</button>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      {editableDraft.paradigmatic_cases?.length > 0 ? (
+                        <ul className="dimension-list">
+                          {editableDraft.paradigmatic_cases.map((c, i) => (
+                            <li key={i}><strong>{c.title || c.name}:</strong> {c.description}</li>
+                          ))}
+                        </ul>
+                      ) : <em>No paradigmatic cases specified</em>}
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. RECOGNITION MARKERS */}
+                <div className={`dimension-section ${editingSection === 'recognition_markers' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('recognition_markers')}>
+                    <span className="dimension-icon">👁️</span>
+                    <h4>6. Recognition Markers</h4>
+                    <button className="edit-toggle">{editingSection === 'recognition_markers' ? '✓ Done' : '✎ Edit'}</button>
+                  </div>
+                  {editingSection === 'recognition_markers' ? (
+                    <div className="dimension-edit">
+                      {(editableDraft.recognition_markers || []).map((m, idx) => (
+                        <div key={idx} className="list-edit-item single">
+                          <textarea
+                            placeholder="Recognition marker pattern"
+                            value={m.description || m.pattern || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.recognition_markers]
+                              updated[idx] = { ...updated[idx], description: e.target.value }
+                              updateDraftSection('recognition_markers', updated)
+                            }}
+                            rows={2}
+                          />
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              const updated = editableDraft.recognition_markers.filter((_, i) => i !== idx)
+                              updateDraftSection('recognition_markers', updated)
+                            }}
+                          >×</button>
+                        </div>
+                      ))}
+                      <button
+                        className="btn btn-sm btn-secondary add-item-btn"
+                        onClick={() => updateDraftSection('recognition_markers', [
+                          ...(editableDraft.recognition_markers || []),
+                          { description: '' }
+                        ])}
+                      >+ Add Marker</button>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      {editableDraft.recognition_markers?.length > 0 ? (
+                        <ul className="dimension-list">
+                          {editableDraft.recognition_markers.map((m, i) => (
+                            <li key={i}>{m.description || m.pattern}</li>
+                          ))}
+                        </ul>
+                      ) : <em>No recognition markers specified</em>}
+                    </div>
+                  )}
+                </div>
+
+                {/* 7. CORE CLAIMS */}
+                <div className={`dimension-section ${editingSection === 'core_claims' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('core_claims')}>
+                    <span className="dimension-icon">💡</span>
+                    <h4>7. Core Claims</h4>
+                    <button className="edit-toggle">{editingSection === 'core_claims' ? '✓ Done' : '✎ Edit'}</button>
+                  </div>
+                  {editingSection === 'core_claims' ? (
+                    <div className="dimension-edit">
+                      <div className="edit-field">
+                        <label>Ontological Claim</label>
+                        <textarea
+                          value={editableDraft.core_claims?.ontological || ''}
+                          onChange={(e) => updateDraftSection('core_claims', { ...editableDraft.core_claims, ontological: e.target.value })}
+                          placeholder="What does this concept say exists or is real"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="edit-field">
+                        <label>Causal Claim</label>
+                        <textarea
+                          value={editableDraft.core_claims?.causal || ''}
+                          onChange={(e) => updateDraftSection('core_claims', { ...editableDraft.core_claims, causal: e.target.value })}
+                          placeholder="What causal relationships does this concept assert"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="regenerate-section">
+                        <textarea
+                          placeholder="Feedback for regeneration..."
+                          value={sectionFeedback.core_claims || ''}
+                          onChange={(e) => setSectionFeedback(prev => ({ ...prev, core_claims: e.target.value }))}
+                        />
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => regenerateSection('core_claims')}
+                          disabled={isRegeneratingSections.core_claims || !sectionFeedback.core_claims?.trim()}
+                        >
+                          {isRegeneratingSections.core_claims ? 'Regenerating...' : 'Regenerate with Feedback'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      <p><strong>Ontological:</strong> {editableDraft.core_claims?.ontological || <em>Not specified</em>}</p>
+                      <p><strong>Causal:</strong> {editableDraft.core_claims?.causal || <em>Not specified</em>}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 8. FALSIFICATION CONDITIONS */}
+                <div className={`dimension-section ${editingSection === 'falsification_conditions' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('falsification_conditions')}>
+                    <span className="dimension-icon">❌</span>
+                    <h4>8. Falsification Conditions</h4>
+                    <button className="edit-toggle">{editingSection === 'falsification_conditions' ? '✓ Done' : '✎ Edit'}</button>
+                  </div>
+                  {editingSection === 'falsification_conditions' ? (
+                    <div className="dimension-edit">
+                      {(editableDraft.falsification_conditions || []).map((condition, idx) => (
+                        <div key={idx} className="list-edit-item single">
+                          <textarea
+                            placeholder="What would falsify this concept"
+                            value={typeof condition === 'string' ? condition : condition.condition || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.falsification_conditions]
+                              updated[idx] = e.target.value
+                              updateDraftSection('falsification_conditions', updated)
+                            }}
+                            rows={2}
+                          />
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              const updated = editableDraft.falsification_conditions.filter((_, i) => i !== idx)
+                              updateDraftSection('falsification_conditions', updated)
+                            }}
+                          >×</button>
+                        </div>
+                      ))}
+                      <button
+                        className="btn btn-sm btn-secondary add-item-btn"
+                        onClick={() => updateDraftSection('falsification_conditions', [
+                          ...(editableDraft.falsification_conditions || []),
+                          ''
+                        ])}
+                      >+ Add Condition</button>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      {editableDraft.falsification_conditions?.length > 0 ? (
+                        <ul className="dimension-list falsification">
+                          {editableDraft.falsification_conditions.map((c, i) => (
+                            <li key={i}>{typeof c === 'string' ? c : c.condition}</li>
+                          ))}
+                        </ul>
+                      ) : <em>No falsification conditions specified</em>}
+                    </div>
+                  )}
+                </div>
+
+                {/* 9. DIALECTICS (Preserved Tensions) */}
+                <div className={`dimension-section ${editingSection === 'dialectics' ? 'editing' : ''}`}>
+                  <div className="dimension-header" onClick={() => toggleEditSection('dialectics')}>
+                    <span className="dimension-icon">⚡</span>
+                    <h4>9. Dialectics (Preserved Tensions)</h4>
+                    <button className="edit-toggle">{editingSection === 'dialectics' ? '✓ Done' : '✎ Edit'}</button>
+                  </div>
+                  {editingSection === 'dialectics' ? (
+                    <div className="dimension-edit">
+                      {(editableDraft.dialectics || []).map((d, idx) => (
+                        <div key={idx} className="dialectic-edit-item">
+                          <input
+                            type="text"
+                            placeholder="Pole A"
+                            value={d.pole_a || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.dialectics]
+                              updated[idx] = { ...updated[idx], pole_a: e.target.value }
+                              updateDraftSection('dialectics', updated)
+                            }}
+                          />
+                          <span className="vs-label">vs</span>
+                          <input
+                            type="text"
+                            placeholder="Pole B"
+                            value={d.pole_b || ''}
+                            onChange={(e) => {
+                              const updated = [...editableDraft.dialectics]
+                              updated[idx] = { ...updated[idx], pole_b: e.target.value }
+                              updateDraftSection('dialectics', updated)
+                            }}
+                          />
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => {
+                              const updated = editableDraft.dialectics.filter((_, i) => i !== idx)
+                              updateDraftSection('dialectics', updated)
+                            }}
+                          >×</button>
+                        </div>
+                      ))}
+                      <button
+                        className="btn btn-sm btn-secondary add-item-btn"
+                        onClick={() => updateDraftSection('dialectics', [
+                          ...(editableDraft.dialectics || []),
+                          { pole_a: '', pole_b: '', note: '' }
+                        ])}
+                      >+ Add Dialectic</button>
+                    </div>
+                  ) : (
+                    <div className="dimension-content">
+                      {editableDraft.dialectics?.length > 0 ? (
+                        <div className="dialectics-list">
+                          {editableDraft.dialectics.map((d, i) => (
+                            <div key={i} className="dialectic-item">
+                              <span className="dialectic-badge">⚡</span>
+                              <span>{d.pole_a}</span>
+                              <span className="vs">vs</span>
+                              <span>{d.pole_b}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <em>No dialectics preserved</em>}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="wizard-actions">
+              <div className="wizard-actions final-actions">
                 <button className="btn btn-secondary" onClick={onCancel}>
                   Discard
                 </button>
