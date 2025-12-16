@@ -1185,7 +1185,18 @@ async def resolve_challenge_cluster(
                         ed.reviewed_at = datetime.utcnow()
 
     await db.commit()
-    await db.refresh(cluster)
+
+    # Re-query with full relationship loading for response
+    result = await db.execute(
+        select(ChallengeCluster)
+        .options(
+            selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.challenge),
+            selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.emerging_concept),
+            selectinload(ChallengeCluster.members).selectinload(ChallengeClusterMember.emerging_dialectic),
+        )
+        .where(ChallengeCluster.id == cluster_id)
+    )
+    cluster = result.scalar_one()
     return ChallengeClusterResponse.model_validate(cluster)
 
 
