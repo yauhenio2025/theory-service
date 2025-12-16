@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, text
 from sqlalchemy.orm import selectinload
 
 from .database import get_db, init_db, close_db
@@ -77,6 +77,47 @@ app.add_middleware(
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "theory-service"}
+
+
+# =============================================================================
+# ADMIN - MIGRATIONS
+# =============================================================================
+
+@app.post("/admin/migrate")
+async def run_migrations(db: AsyncSession = Depends(get_db)):
+    """Run pending database migrations (adds new columns to existing tables)."""
+    migrations_run = []
+
+    # Check and add source_project_name to challenges
+    result = await db.execute(text("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'challenges' AND column_name = 'source_project_name'
+    """))
+    if not result.fetchone():
+        await db.execute(text("ALTER TABLE challenges ADD COLUMN source_project_name VARCHAR(200)"))
+        migrations_run.append("Added source_project_name to challenges")
+
+    # Check and add cluster_group_id to challenges
+    result = await db.execute(text("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'challenges' AND column_name = 'cluster_group_id'
+    """))
+    if not result.fetchone():
+        await db.execute(text("ALTER TABLE challenges ADD COLUMN cluster_group_id INTEGER"))
+        migrations_run.append("Added cluster_group_id to challenges")
+
+    # Create index if not exists
+    await db.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_challenges_cluster_group ON challenges(cluster_group_id)
+    """))
+    migrations_run.append("Ensured idx_challenges_cluster_group index exists")
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "migrations_run": migrations_run if migrations_run else ["No migrations needed"]
+    }
 
 
 # =============================================================================
