@@ -1701,3 +1701,737 @@ header h1 {
     width: 100%;
   }
 }
+
+
+/* =============================================================================
+   ENHANCED CONCEPT WIZARD - Staged Adaptive Questioning
+   ============================================================================= */
+
+/* Stage Indicators */
+.stage-indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+}
+
+.stage-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.stage-indicator.active {
+  opacity: 1;
+}
+
+.stage-indicator.complete {
+  opacity: 0.8;
+}
+
+.stage-indicator .indicator-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  background: #30363d;
+  border: 2px solid #484f58;
+  transition: all 0.3s ease;
+}
+
+.stage-indicator.active .indicator-num {
+  background: #238636;
+  border-color: #2ea043;
+  color: white;
+}
+
+.stage-indicator.complete .indicator-num {
+  background: #1f6feb;
+  border-color: #388bfd;
+}
+
+.stage-indicator .indicator-label {
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
+.stage-indicator.active .indicator-label {
+  color: #e6edf3;
+}
+
+.stage-connector {
+  width: 40px;
+  height: 2px;
+  background: #484f58;
+  margin-bottom: 1.25rem;
+}
+
+/* Question Counter */
+.question-counter {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+/* Question Card */
+.question-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.question-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.question-rationale {
+  font-size: 0.8rem;
+  color: #58a6ff;
+  cursor: help;
+  padding: 0.25rem 0.5rem;
+  background: rgba(88, 166, 255, 0.1);
+  border-radius: 4px;
+}
+
+.question-text {
+  font-size: 1.25rem;
+  color: #e6edf3;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+.question-help {
+  color: #8b949e;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.question-example {
+  background: #0d1117;
+  border-left: 3px solid #484f58;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: #8b949e;
+}
+
+/* Answer Input */
+.answer-input {
+  margin-top: 1rem;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 0.8rem;
+  color: #8b949e;
+  margin-top: 0.25rem;
+}
+
+/* Answer Options - Multiple Choice / Multi-select */
+.answer-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.option-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option-card:hover {
+  border-color: #484f58;
+  background: #161b22;
+}
+
+.option-card.selected {
+  border-color: #238636;
+  background: rgba(35, 134, 54, 0.1);
+}
+
+.option-card.exclusive {
+  border-left: 3px solid #a371f7;
+}
+
+.option-card.exclusive.selected {
+  border-left-color: #a371f7;
+  background: rgba(163, 113, 247, 0.1);
+}
+
+.option-selector {
+  font-size: 1.25rem;
+  color: #8b949e;
+  flex-shrink: 0;
+}
+
+.option-card.selected .option-selector {
+  color: #238636;
+}
+
+.option-content {
+  flex: 1;
+}
+
+.option-label {
+  font-weight: 500;
+  color: #e6edf3;
+  margin-bottom: 0.25rem;
+}
+
+.option-description {
+  font-size: 0.85rem;
+  color: #8b949e;
+}
+
+.option-implications {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(88, 166, 255, 0.1);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #58a6ff;
+  border-left: 3px solid #58a6ff;
+}
+
+/* Custom Response Section */
+.custom-response-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #30363d;
+}
+
+.custom-response-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.custom-response-header > span {
+  color: #8b949e;
+  font-size: 0.9rem;
+}
+
+.custom-categories {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.category-btn {
+  padding: 0.35rem 0.75rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  color: #8b949e;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.category-btn:hover {
+  border-color: #484f58;
+  color: #e6edf3;
+}
+
+.category-btn.active {
+  background: #388bfd;
+  border-color: #388bfd;
+  color: white;
+}
+
+.custom-textarea {
+  margin-top: 0.5rem;
+  background: #0d1117;
+}
+
+/* Dialectic Section */
+.dialectic-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #30363d;
+}
+
+.dialectic-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dialectic-toggle:hover {
+  border-color: #a371f7;
+}
+
+.dialectic-toggle.active {
+  background: rgba(163, 113, 247, 0.1);
+  border-color: #a371f7;
+}
+
+.dialectic-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.dialectic-icon {
+  font-size: 1.25rem;
+}
+
+.dialectic-toggle > span:nth-child(3) {
+  font-weight: 500;
+  color: #a371f7;
+}
+
+.dialectic-toggle .dialectic-hint {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.dialectic-details {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+}
+
+.dialectic-hint-text {
+  color: #8b949e;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.dialectic-poles {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.pole-input {
+  flex: 1;
+}
+
+.vs-label {
+  color: #8b949e;
+  font-size: 0.85rem;
+}
+
+.dialectic-note {
+  font-size: 0.9rem;
+}
+
+/* Interim Analysis Panel */
+.interim-panel {
+  background: linear-gradient(135deg, #161b22 0%, #1c2128 100%);
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.interim-section {
+  margin-bottom: 1.5rem;
+}
+
+.interim-section:last-child {
+  margin-bottom: 0;
+}
+
+.interim-section h4 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b949e;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #30363d;
+}
+
+.interim-summary {
+  font-size: 1.1rem;
+  color: #e6edf3;
+  line-height: 1.6;
+}
+
+/* Badge Lists */
+.badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.commitment-badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  background: rgba(35, 134, 54, 0.2);
+  border: 1px solid #238636;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  color: #3fb950;
+}
+
+/* Tensions List */
+.tensions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tension-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.tension-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: rgba(163, 113, 247, 0.2);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #a371f7;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.tension-card p {
+  color: #e6edf3;
+  margin: 0.5rem 0;
+}
+
+.tension-poles {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.tension-poles .pole {
+  padding: 0.25rem 0.5rem;
+  background: #21262d;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #e6edf3;
+}
+
+.tension-poles .vs {
+  color: #8b949e;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* Gaps List */
+.gaps-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gap-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: #e6edf3;
+}
+
+.gap-item::before {
+  content: "→";
+  color: #f0883e;
+  font-weight: bold;
+}
+
+/* Preliminary Definition */
+.preliminary-def {
+  padding: 1rem;
+  background: #0d1117;
+  border-left: 3px solid #1f6feb;
+  border-radius: 0 6px 6px 0;
+  color: #e6edf3;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* Implications Panel */
+.implications-panel {
+  background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.implications-section {
+  margin-bottom: 1.5rem;
+}
+
+.implications-section:last-child {
+  margin-bottom: 0;
+}
+
+.implications-section h4 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b949e;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #30363d;
+}
+
+.trajectory {
+  font-size: 1.1rem;
+  color: #e6edf3;
+  line-height: 1.6;
+  padding: 1rem;
+  background: #0d1117;
+  border-left: 3px solid #58a6ff;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Differentiations List */
+.differentiations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.differentiation-card {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.diff-header {
+  color: #f0883e;
+  margin-bottom: 0.5rem;
+}
+
+.diff-distinction {
+  color: #e6edf3;
+  margin: 0.5rem 0;
+}
+
+.diff-consequence {
+  color: #8b949e;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0 0;
+}
+
+.diff-consequence em {
+  color: #58a6ff;
+}
+
+/* Remaining Tensions */
+.tensions-remaining {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tensions-remaining li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: #e6edf3;
+}
+
+.tensions-remaining li::before {
+  content: "⚡";
+  color: #a371f7;
+}
+
+/* Grounding Focus */
+.grounding-focus {
+  padding: 1rem;
+  background: #0d1117;
+  border-left: 3px solid #238636;
+  border-radius: 0 6px 6px 0;
+  color: #e6edf3;
+  line-height: 1.6;
+}
+
+/* Concept Preview (Complete stage) */
+.concept-preview {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.preview-section {
+  margin-bottom: 1.5rem;
+}
+
+.preview-section:last-child {
+  margin-bottom: 0;
+}
+
+.preview-section h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b949e;
+  margin: 0 0 0.5rem 0;
+}
+
+.preview-value {
+  color: #e6edf3;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.preview-value.large {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #58a6ff;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.preview-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.preview-label {
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.preview-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.preview-list li {
+  padding: 0.5rem 0;
+  color: #e6edf3;
+  border-bottom: 1px solid #21262d;
+}
+
+.preview-list li:last-child {
+  border-bottom: none;
+}
+
+/* Dialectics Preserved */
+.dialectics-preserved {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dialectic-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(163, 113, 247, 0.1);
+  border-radius: 6px;
+  color: #e6edf3;
+}
+
+.dialectic-preview .dialectic-badge {
+  color: #a371f7;
+  font-size: 1rem;
+}
+
+.dialectic-preview .vs {
+  color: #8b949e;
+  font-size: 0.8rem;
+  margin: 0 0.25rem;
+}
+
+/* Stage Header Success variant */
+.stage-header.success h3 {
+  color: #3fb950;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stage-indicators {
+    gap: 0.25rem;
+  }
+
+  .stage-connector {
+    width: 20px;
+  }
+
+  .stage-indicator .indicator-num {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+
+  .stage-indicator .indicator-label {
+    font-size: 0.65rem;
+  }
+
+  .question-text {
+    font-size: 1.1rem;
+  }
+
+  .option-card {
+    padding: 0.75rem;
+  }
+
+  .dialectic-toggle {
+    flex-wrap: wrap;
+  }
+
+  .dialectic-toggle .dialectic-hint {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+
+  .dialectic-poles {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vs-label {
+    text-align: center;
+  }
+
+  .interim-summary, .trajectory, .preliminary-def, .grounding-focus {
+    font-size: 1rem;
+  }
+}

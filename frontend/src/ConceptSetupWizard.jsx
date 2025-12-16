@@ -1,24 +1,37 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 /**
- * ConceptSetupWizard - Adaptive wizard for novel concept creation
+ * Enhanced Concept Setup Wizard - Staged Adaptive Questioning
  *
  * Uses Claude Opus 4.5 with extended thinking (32k budget) to:
- * 1. Analyze user's initial notes (optional)
- * 2. Generate adaptive follow-up questions
- * 3. Build the concept's Genesis dimension data
- * 4. Show thinking process in real-time
+ * 1. Stage 1: Genesis & Problem Space (predefined questions)
+ * 2. Interim Analysis: Shows what we understand so far
+ * 3. Stage 2: Differentiation (dynamically generated from Stage 1)
+ * 4. Implications Preview: Shows what choices mean
+ * 5. Stage 3: Grounding & Recognition
+ * 6. Final Synthesis: Complete concept definition
+ *
+ * Features:
+ * - Multiple choice with exclusivity groups
+ * - Custom responses with categories (Alternative, Comment, Refinement)
+ * - Mark as Dialectic for productive tensions
+ * - Implications visualization
  */
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://theory-api.onrender.com'
 
-// Wizard stages
+// Enhanced wizard stages
 const STAGES = {
-  NOTES: 'notes',           // Optional initial notes dump
-  ANALYZING: 'analyzing',   // LLM analyzing notes
-  QUESTIONS: 'questions',   // Adaptive Q&A
-  PROCESSING: 'processing', // Final processing
-  COMPLETE: 'complete'      // Done
+  NOTES: 'notes',
+  STAGE1: 'stage1',
+  ANALYZING_STAGE1: 'analyzing_stage1',
+  INTERIM_ANALYSIS: 'interim_analysis',
+  STAGE2: 'stage2',
+  ANALYZING_STAGE2: 'analyzing_stage2',
+  IMPLICATIONS_PREVIEW: 'implications_preview',
+  STAGE3: 'stage3',
+  PROCESSING: 'processing',
+  COMPLETE: 'complete'
 }
 
 // Question types
@@ -29,26 +42,54 @@ const QUESTION_TYPES = {
   SCALE: 'scale'
 }
 
+// Custom response categories
+const CUSTOM_CATEGORIES = {
+  ALTERNATIVE: 'Alternative Answer',
+  COMMENT: 'Comment',
+  REFINEMENT: 'Refinement'
+}
+
 export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   // Wizard state
   const [stage, setStage] = useState(STAGES.NOTES)
   const [notes, setNotes] = useState('')
   const [conceptName, setConceptName] = useState('')
 
-  // Q&A state
+  // Stage-specific data
+  const [stageData, setStageData] = useState({
+    stage1: { questions: [], answers: [] },
+    stage2: { questions: [], answers: [] },
+    stage3: { questions: [], answers: [] }
+  })
+
+  // Current stage Q&A
   const [questions, setQuestions] = useState([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [currentAnswer, setCurrentAnswer] = useState('')
-  const [selectedOptions, setSelectedOptions] = useState([])
 
-  // Thinking state
+  // Enhanced answer state
+  const [currentAnswer, setCurrentAnswer] = useState({
+    selectedOptions: [],
+    textAnswer: '',
+    customResponse: '',
+    customCategory: null,
+    isDialectic: false,
+    dialecticPoleA: '',
+    dialecticPoleB: '',
+    dialecticNote: ''
+  })
+
+  // Analysis results
+  const [interimAnalysis, setInterimAnalysis] = useState(null)
+  const [implicationsPreview, setImplicationsPreview] = useState(null)
+  const [dialectics, setDialectics] = useState([])
+
+  // Thinking/processing state
   const [thinking, setThinking] = useState('')
   const [thinkingVisible, setThinkingVisible] = useState(true)
-  const [responseText, setResponseText] = useState('')
+  const [currentPhase, setCurrentPhase] = useState(null)
 
   // Progress state
-  const [progress, setProgress] = useState({ stage: 0, total: 6, label: 'Getting started' })
+  const [progress, setProgress] = useState({ stage: 0, total: 8, label: 'Getting started' })
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -75,15 +116,28 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     }
   }, [])
 
+  // Reset answer state when moving to new question
+  const resetCurrentAnswer = () => {
+    setCurrentAnswer({
+      selectedOptions: [],
+      textAnswer: '',
+      customResponse: '',
+      customCategory: null,
+      isDialectic: false,
+      dialecticPoleA: '',
+      dialecticPoleB: '',
+      dialecticNote: ''
+    })
+  }
+
   /**
-   * Stream response from wizard API
-   * Handles both thinking blocks and text responses
+   * Stream response from wizard API with enhanced event handling
    */
-  const streamWizardRequest = async (endpoint, body, onThinking, onText, onComplete) => {
+  const streamWizardRequest = async (endpoint, body, handlers = {}) => {
     setLoading(true)
     setError(null)
     setThinking('')
-    setResponseText('')
+    setCurrentPhase(null)
 
     abortControllerRef.current = new AbortController()
 
@@ -109,8 +163,6 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-
-        // Process SSE events
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
@@ -122,14 +174,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             try {
               const event = JSON.parse(data)
 
-              if (event.type === 'thinking') {
+              if (event.type === 'phase') {
+                setCurrentPhase(event.phase)
+                handlers.onPhase?.(event.phase)
+              } else if (event.type === 'thinking') {
                 setThinking(prev => prev + event.content)
-                onThinking?.(event.content)
+                handlers.onThinking?.(event.content)
               } else if (event.type === 'text') {
-                setResponseText(prev => prev + event.content)
-                onText?.(event.content)
+                handlers.onText?.(event.content)
+              } else if (event.type === 'interim_complete') {
+                setInterimAnalysis(event.data)
+                handlers.onInterimComplete?.(event.data)
               } else if (event.type === 'complete') {
-                onComplete?.(event.data)
+                handlers.onComplete?.(event.data)
               } else if (event.type === 'error') {
                 throw new Error(event.message)
               }
@@ -148,65 +205,54 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }
     } finally {
       setLoading(false)
+      setCurrentPhase(null)
     }
   }
 
   /**
-   * Start wizard - either from notes or skip to questions
+   * Start the staged wizard flow
    */
-  const startFromNotes = async () => {
+  const startWizard = async () => {
     if (!conceptName.trim()) {
       setError('Please enter a concept name')
       return
     }
 
-    setStage(STAGES.ANALYZING)
-    setProgress({ stage: 1, total: 6, label: 'Analyzing your notes...' })
+    setStage(STAGES.ANALYZING_STAGE1)
+    setProgress({ stage: 1, total: 8, label: 'Loading Stage 1 questions...' })
 
     await streamWizardRequest(
-      '/concepts/wizard/analyze-notes',
+      '/concepts/wizard/stage1',
+      { concept_name: conceptName, source_id: sourceId },
       {
-        concept_name: conceptName,
-        notes: notes.trim() || null,
-        source_id: sourceId
-      },
-      null, // onThinking
-      null, // onText
-      (data) => {
-        // Notes analyzed, questions generated
-        setQuestions(data.questions || [])
-        setProgress({ stage: 2, total: 6, label: 'Ready to ask questions' })
-        setStage(STAGES.QUESTIONS)
+        onComplete: (data) => {
+          setQuestions(data.questions || [])
+          setStageData(prev => ({
+            ...prev,
+            stage1: { ...prev.stage1, questions: data.questions || [] }
+          }))
+          setProgress({ stage: 2, total: 8, label: 'Stage 1: Genesis & Problem Space' })
+          setStage(STAGES.STAGE1)
+        }
       }
     )
   }
 
   /**
-   * Skip notes and start with default questions
+   * Build AnswerWithMeta object from current answer state
    */
-  const skipNotes = async () => {
-    if (!conceptName.trim()) {
-      setError('Please enter a concept name')
-      return
+  const buildAnswerMeta = (questionId) => {
+    return {
+      question_id: questionId,
+      selected_options: currentAnswer.selectedOptions.length > 0 ? currentAnswer.selectedOptions : null,
+      text_answer: currentAnswer.textAnswer || null,
+      custom_response: currentAnswer.customResponse || null,
+      custom_response_category: currentAnswer.customCategory,
+      is_dialectic: currentAnswer.isDialectic,
+      dialectic_pole_a: currentAnswer.dialecticPoleA || null,
+      dialectic_pole_b: currentAnswer.dialecticPoleB || null,
+      dialectic_note: currentAnswer.dialecticNote || null
     }
-
-    setStage(STAGES.ANALYZING)
-    setProgress({ stage: 1, total: 6, label: 'Preparing questions...' })
-
-    await streamWizardRequest(
-      '/concepts/wizard/start',
-      {
-        concept_name: conceptName,
-        source_id: sourceId
-      },
-      null,
-      null,
-      (data) => {
-        setQuestions(data.questions || [])
-        setProgress({ stage: 2, total: 6, label: 'Ready to ask questions' })
-        setStage(STAGES.QUESTIONS)
-      }
-    )
   }
 
   /**
@@ -216,93 +262,242 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     const currentQ = questions[currentQuestionIndex]
     if (!currentQ) return
 
-    // Validate answer
-    let answer
-    if (currentQ.type === QUESTION_TYPES.CHOICE) {
-      answer = selectedOptions[0]
-    } else if (currentQ.type === QUESTION_TYPES.MULTI) {
-      answer = selectedOptions
-    } else {
-      answer = currentAnswer.trim()
+    // Build the answer
+    const answerMeta = buildAnswerMeta(currentQ.id)
+
+    // Validate - need at least selected options OR text answer OR custom response
+    const hasAnswer = (answerMeta.selected_options?.length > 0) ||
+                      answerMeta.text_answer ||
+                      answerMeta.custom_response
+
+    if (!hasAnswer && currentQ.required !== false) {
+      setError('Please provide an answer')
+      return
     }
 
-    if (!answer || (Array.isArray(answer) && answer.length === 0)) {
-      if (currentQ.required !== false) {
-        setError('Please provide an answer')
-        return
-      }
-    }
-
-    // Store answer
-    const newAnswers = {
-      ...answers,
-      [currentQ.id]: answer
-    }
-    setAnswers(newAnswers)
-
-    // Reset input
-    setCurrentAnswer('')
-    setSelectedOptions([])
     setError(null)
 
-    // Check if we should generate follow-up questions or move to next
+    // Track dialectics
+    if (currentAnswer.isDialectic && currentAnswer.dialecticPoleA && currentAnswer.dialecticPoleB) {
+      setDialectics(prev => [...prev, {
+        description: `Tension in ${currentQ.id}`,
+        pole_a: currentAnswer.dialecticPoleA,
+        pole_b: currentAnswer.dialecticPoleB,
+        marked_as_dialectic: true,
+        user_note: currentAnswer.dialecticNote
+      }])
+    }
+
+    // Determine which stage we're in and update appropriately
+    const currentStageName = stage === STAGES.STAGE1 ? 'stage1' :
+                            stage === STAGES.STAGE2 ? 'stage2' : 'stage3'
+
+    setStageData(prev => ({
+      ...prev,
+      [currentStageName]: {
+        ...prev[currentStageName],
+        answers: [...prev[currentStageName].answers, answerMeta]
+      }
+    }))
+
+    resetCurrentAnswer()
+
+    // Move to next question or next stage
     if (currentQuestionIndex < questions.length - 1) {
-      // Still have questions
       setCurrentQuestionIndex(currentQuestionIndex + 1)
+      const stageNum = stage === STAGES.STAGE1 ? 1 : stage === STAGES.STAGE2 ? 2 : 3
       setProgress({
-        stage: 2 + Math.floor((currentQuestionIndex + 1) / questions.length * 2),
-        total: 6,
-        label: `Question ${currentQuestionIndex + 2} of ${questions.length}`
+        stage: stageNum + 1,
+        total: 8,
+        label: `Stage ${stageNum}: Question ${currentQuestionIndex + 2} of ${questions.length}`
       })
     } else {
-      // All questions answered - check for follow-ups or finalize
-      setStage(STAGES.PROCESSING)
-      setProgress({ stage: 5, total: 6, label: 'Processing your concept...' })
+      // Stage complete - move to analysis
+      const answers = [...stageData[currentStageName].answers, answerMeta]
 
-      await streamWizardRequest(
-        '/concepts/wizard/process',
-        {
-          concept_name: conceptName,
-          notes: notes.trim() || null,
-          answers: newAnswers,
-          source_id: sourceId
-        },
-        null,
-        null,
-        (data) => {
-          if (data.more_questions) {
-            // LLM wants to ask follow-up questions
-            setQuestions(prev => [...prev, ...data.questions])
-            setStage(STAGES.QUESTIONS)
-            setProgress({
-              stage: 4,
-              total: 6,
-              label: `Follow-up question ${currentQuestionIndex + 2}`
-            })
-          } else {
-            // Complete
-            setConceptData(data.concept)
-            setProgress({ stage: 6, total: 6, label: 'Complete!' })
-            setStage(STAGES.COMPLETE)
-          }
-        }
-      )
+      if (stage === STAGES.STAGE1) {
+        await analyzeStage1(answers)
+      } else if (stage === STAGES.STAGE2) {
+        await analyzeStage2(answers)
+      } else if (stage === STAGES.STAGE3) {
+        await finalizeConceptWorkflow(answers)
+      }
     }
   }
 
   /**
-   * Handle option selection for choice questions
+   * Analyze Stage 1 answers and get Stage 2 questions
    */
-  const toggleOption = (option, isMulti) => {
-    if (isMulti) {
-      setSelectedOptions(prev =>
-        prev.includes(option)
-          ? prev.filter(o => o !== option)
-          : [...prev, option]
-      )
-    } else {
-      setSelectedOptions([option])
-    }
+  const analyzeStage1 = async (answers) => {
+    setStage(STAGES.ANALYZING_STAGE1)
+    setProgress({ stage: 3, total: 8, label: 'Analyzing your answers...' })
+
+    await streamWizardRequest(
+      '/concepts/wizard/analyze-stage1',
+      {
+        concept_name: conceptName,
+        notes: notes.trim() || null,
+        answers: answers,
+        source_id: sourceId
+      },
+      {
+        onPhase: (phase) => {
+          if (phase === 'interim_analysis') {
+            setProgress({ stage: 3, total: 8, label: 'Building interim understanding...' })
+          } else if (phase === 'stage2_generation') {
+            setProgress({ stage: 4, total: 8, label: 'Generating Stage 2 questions...' })
+          }
+        },
+        onInterimComplete: (interim) => {
+          setInterimAnalysis(interim)
+        },
+        onComplete: (data) => {
+          // Store Stage 1 final data
+          setStageData(prev => ({
+            ...prev,
+            stage1: { ...prev.stage1, answers: answers }
+          }))
+
+          // Set up for interim display
+          setInterimAnalysis(data.interim_analysis)
+
+          // Prepare Stage 2 questions
+          setStageData(prev => ({
+            ...prev,
+            stage2: { questions: data.questions || [], answers: [] }
+          }))
+
+          // Show interim analysis first
+          setProgress({ stage: 4, total: 8, label: 'Review interim analysis' })
+          setStage(STAGES.INTERIM_ANALYSIS)
+        }
+      }
+    )
+  }
+
+  /**
+   * Continue from interim analysis to Stage 2
+   */
+  const continueToStage2 = () => {
+    setQuestions(stageData.stage2.questions)
+    setCurrentQuestionIndex(0)
+    resetCurrentAnswer()
+    setProgress({ stage: 5, total: 8, label: 'Stage 2: Differentiation & Clarification' })
+    setStage(STAGES.STAGE2)
+  }
+
+  /**
+   * Analyze Stage 2 answers and get implications preview
+   */
+  const analyzeStage2 = async (answers) => {
+    setStage(STAGES.ANALYZING_STAGE2)
+    setProgress({ stage: 5, total: 8, label: 'Analyzing differentiations...' })
+
+    await streamWizardRequest(
+      '/concepts/wizard/analyze-stage2',
+      {
+        concept_name: conceptName,
+        notes: notes.trim() || null,
+        stage1_answers: stageData.stage1.answers,
+        stage2_answers: answers,
+        interim_analysis: interimAnalysis,
+        source_id: sourceId
+      },
+      {
+        onComplete: (data) => {
+          // Store Stage 2 final data
+          setStageData(prev => ({
+            ...prev,
+            stage2: { ...prev.stage2, answers: answers },
+            stage3: { questions: data.questions || [], answers: [] }
+          }))
+
+          // Set implications preview
+          setImplicationsPreview(data.implications_preview)
+
+          // Show implications preview
+          setProgress({ stage: 6, total: 8, label: 'Review implications' })
+          setStage(STAGES.IMPLICATIONS_PREVIEW)
+        }
+      }
+    )
+  }
+
+  /**
+   * Continue from implications preview to Stage 3
+   */
+  const continueToStage3 = () => {
+    setQuestions(stageData.stage3.questions)
+    setCurrentQuestionIndex(0)
+    resetCurrentAnswer()
+    setProgress({ stage: 7, total: 8, label: 'Stage 3: Grounding & Recognition' })
+    setStage(STAGES.STAGE3)
+  }
+
+  /**
+   * Final synthesis
+   */
+  const finalizeConceptWorkflow = async (stage3Answers) => {
+    setStage(STAGES.PROCESSING)
+    setProgress({ stage: 8, total: 8, label: 'Creating final concept definition...' })
+
+    await streamWizardRequest(
+      '/concepts/wizard/finalize',
+      {
+        concept_name: conceptName,
+        notes: notes.trim() || null,
+        all_answers: {
+          stage1: stageData.stage1.answers,
+          stage2: stageData.stage2.answers,
+          stage3: stage3Answers
+        },
+        interim_analysis: interimAnalysis,
+        dialectics: dialectics,
+        source_id: sourceId
+      },
+      {
+        onComplete: (data) => {
+          setConceptData(data.concept)
+          setProgress({ stage: 8, total: 8, label: 'Complete!' })
+          setStage(STAGES.COMPLETE)
+        }
+      }
+    )
+  }
+
+  /**
+   * Handle option toggle with exclusivity groups
+   */
+  const toggleOption = (option, question) => {
+    const isMulti = question.type === QUESTION_TYPES.MULTI
+    const exclusivityGroup = option.exclusivity_group
+
+    setCurrentAnswer(prev => {
+      let newSelected = [...prev.selectedOptions]
+
+      if (newSelected.includes(option.value)) {
+        // Deselect
+        newSelected = newSelected.filter(v => v !== option.value)
+      } else {
+        // Select
+        if (!isMulti) {
+          // Single select - clear others
+          newSelected = [option.value]
+        } else {
+          // Multi select - handle exclusivity
+          if (exclusivityGroup !== null && exclusivityGroup !== undefined) {
+            // Remove other options in same exclusivity group
+            const groupOptions = question.options
+              .filter(o => o.exclusivity_group === exclusivityGroup)
+              .map(o => o.value)
+            newSelected = newSelected.filter(v => !groupOptions.includes(v))
+          }
+          newSelected.push(option.value)
+        }
+      }
+
+      return { ...prev, selectedOptions: newSelected }
+    })
   }
 
   /**
@@ -338,9 +533,17 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   // Current question
   const currentQuestion = questions[currentQuestionIndex]
 
+  // Get stage number for display
+  const getStageNumber = () => {
+    if (stage === STAGES.STAGE1 || stage === STAGES.ANALYZING_STAGE1) return 1
+    if (stage === STAGES.INTERIM_ANALYSIS || stage === STAGES.STAGE2 || stage === STAGES.ANALYZING_STAGE2) return 2
+    if (stage === STAGES.IMPLICATIONS_PREVIEW || stage === STAGES.STAGE3) return 3
+    return 0
+  }
+
   return (
     <div className="wizard-overlay">
-      <div className="wizard-container">
+      <div className="wizard-container wizard-enhanced">
         {/* Header */}
         <div className="wizard-header">
           <div className="wizard-title">
@@ -363,6 +566,24 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           <div className="progress-label">{progress.label}</div>
         </div>
 
+        {/* Stage indicators */}
+        <div className="stage-indicators">
+          <div className={`stage-indicator ${getStageNumber() >= 1 ? 'active' : ''} ${getStageNumber() > 1 ? 'complete' : ''}`}>
+            <span className="indicator-num">1</span>
+            <span className="indicator-label">Genesis</span>
+          </div>
+          <div className="stage-connector" />
+          <div className={`stage-indicator ${getStageNumber() >= 2 ? 'active' : ''} ${getStageNumber() > 2 ? 'complete' : ''}`}>
+            <span className="indicator-num">2</span>
+            <span className="indicator-label">Differentiation</span>
+          </div>
+          <div className="stage-connector" />
+          <div className={`stage-indicator ${getStageNumber() >= 3 ? 'active' : ''}`}>
+            <span className="indicator-num">3</span>
+            <span className="indicator-label">Grounding</span>
+          </div>
+        </div>
+
         {/* Main content */}
         <div className="wizard-content">
           {/* Error display */}
@@ -380,7 +601,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <h3>Introduce Your Concept</h3>
                 <p>
                   You're introducing a concept that doesn't exist in public discourse yet.
-                  The wizard will help you articulate it through structured questions.
+                  The wizard will help you articulate it through staged questioning.
                 </p>
               </div>
 
@@ -403,13 +624,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  placeholder="Paste any notes, ideas, or draft definitions you have about this concept. The AI will analyze these and generate tailored follow-up questions..."
+                  placeholder="Paste any notes, ideas, or draft definitions you have about this concept..."
                   className="wizard-textarea"
-                  rows={10}
+                  rows={8}
                 />
                 <span className="help-text">
-                  If you have existing notes, paste them here. The AI will analyze them
-                  and ask more targeted questions. You can also skip this step.
+                  If you have existing notes, they'll help the AI ask better questions.
                 </span>
               </div>
 
@@ -418,31 +638,29 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   Cancel
                 </button>
                 <button
-                  className="btn btn-secondary"
-                  onClick={skipNotes}
-                  disabled={!conceptName.trim()}
-                >
-                  Skip Notes
-                </button>
-                <button
                   className="btn btn-primary"
-                  onClick={startFromNotes}
+                  onClick={startWizard}
                   disabled={!conceptName.trim()}
                 >
-                  {notes.trim() ? 'Analyze Notes & Continue' : 'Start Wizard'}
+                  Start Wizard
                 </button>
               </div>
             </div>
           )}
 
-          {/* STAGE: Analyzing */}
-          {stage === STAGES.ANALYZING && (
+          {/* STAGE: Analyzing (any analysis stage) */}
+          {(stage === STAGES.ANALYZING_STAGE1 || stage === STAGES.ANALYZING_STAGE2 || stage === STAGES.PROCESSING) && (
             <div className="wizard-stage">
               <div className="stage-header">
-                <h3>Analyzing...</h3>
+                <h3>
+                  {stage === STAGES.PROCESSING ? 'Creating Final Concept...' : 'Analyzing...'}
+                </h3>
                 <p>
-                  Claude is analyzing your input and preparing questions tailored to
-                  help articulate "{conceptName}".
+                  {currentPhase === 'interim_analysis' && 'Building understanding from your answers...'}
+                  {currentPhase === 'stage2_generation' && 'Generating tailored follow-up questions...'}
+                  {currentPhase === 'implications_preview' && 'Analyzing implications of your choices...'}
+                  {currentPhase === 'final_synthesis' && 'Synthesizing complete concept definition...'}
+                  {!currentPhase && 'Processing...'}
                 </p>
               </div>
 
@@ -450,7 +668,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <div className="thinking-header">
                   <span className="thinking-indicator">
                     <span className="pulse"></span>
-                    Thinking...
+                    {currentPhase || 'Thinking'}...
                   </span>
                   <button
                     className="btn btn-sm btn-secondary"
@@ -465,42 +683,155 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
               </div>
-
-              {responseText && (
-                <div className="response-preview">
-                  {responseText}
-                </div>
-              )}
             </div>
           )}
 
-          {/* STAGE: Questions - Debug fallback */}
-          {stage === STAGES.QUESTIONS && !currentQuestion && (
+          {/* STAGE: Interim Analysis Display */}
+          {stage === STAGES.INTERIM_ANALYSIS && interimAnalysis && (
             <div className="wizard-stage">
-              <div className="wizard-error">
-                No questions loaded. Questions array length: {questions.length}.
-                Current index: {currentQuestionIndex}.
-                {questions.length > 0 && (
-                  <pre style={{fontSize: '10px', maxHeight: '200px', overflow: 'auto'}}>
-                    {JSON.stringify(questions[0], null, 2)}
-                  </pre>
+              <div className="stage-header">
+                <h3>Here's What I Understand So Far</h3>
+                <p>Review this interim analysis before we continue to Stage 2.</p>
+              </div>
+
+              <div className="interim-panel">
+                <div className="interim-section">
+                  <h4>Understanding Summary</h4>
+                  <p className="interim-summary">{interimAnalysis.understanding_summary}</p>
+                </div>
+
+                {interimAnalysis.key_commitments?.length > 0 && (
+                  <div className="interim-section">
+                    <h4>Key Commitments You've Made</h4>
+                    <div className="badge-list">
+                      {interimAnalysis.key_commitments.map((c, i) => (
+                        <span key={i} className="commitment-badge">{c}</span>
+                      ))}
+                    </div>
+                  </div>
                 )}
+
+                {interimAnalysis.tensions_detected?.length > 0 && (
+                  <div className="interim-section">
+                    <h4>Tensions Detected</h4>
+                    <div className="tensions-list">
+                      {interimAnalysis.tensions_detected.map((t, i) => (
+                        <div key={i} className="tension-card">
+                          <span className="tension-badge">
+                            {t.marked_as_dialectic ? '⚡ Dialectic' : 'Tension'}
+                          </span>
+                          <p>{t.description}</p>
+                          <div className="tension-poles">
+                            <span className="pole">{t.pole_a}</span>
+                            <span className="vs">vs</span>
+                            <span className="pole">{t.pole_b}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {interimAnalysis.gaps_identified?.length > 0 && (
+                  <div className="interim-section">
+                    <h4>Gaps to Explore in Stage 2</h4>
+                    <ul className="gaps-list">
+                      {interimAnalysis.gaps_identified.map((g, i) => (
+                        <li key={i} className="gap-item">{g}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="interim-section">
+                  <h4>Preliminary Definition</h4>
+                  <div className="preliminary-def">
+                    {interimAnalysis.preliminary_definition}
+                  </div>
+                </div>
+              </div>
+
+              <div className="wizard-actions">
+                <button className="btn btn-secondary" onClick={onCancel}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={continueToStage2}>
+                  Continue to Stage 2
+                </button>
               </div>
             </div>
           )}
 
-          {/* STAGE: Questions */}
-          {stage === STAGES.QUESTIONS && currentQuestion && (
+          {/* STAGE: Implications Preview */}
+          {stage === STAGES.IMPLICATIONS_PREVIEW && implicationsPreview && (
+            <div className="wizard-stage">
+              <div className="stage-header">
+                <h3>Implications of Your Choices</h3>
+                <p>Here's what your Stage 2 answers mean for the concept.</p>
+              </div>
+
+              <div className="implications-panel">
+                <div className="implications-section">
+                  <h4>Definitional Trajectory</h4>
+                  <p className="trajectory">{implicationsPreview.definition_trajectory}</p>
+                </div>
+
+                {implicationsPreview.key_differentiations?.length > 0 && (
+                  <div className="implications-section">
+                    <h4>Key Differentiations</h4>
+                    <div className="differentiations-list">
+                      {implicationsPreview.key_differentiations.map((d, i) => (
+                        <div key={i} className="differentiation-card">
+                          <div className="diff-header">
+                            <strong>vs {d.from_concept}</strong>
+                          </div>
+                          <p className="diff-distinction">{d.distinction}</p>
+                          <p className="diff-consequence">
+                            <em>This means:</em> {d.consequence}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {implicationsPreview.remaining_tensions?.length > 0 && (
+                  <div className="implications-section">
+                    <h4>Remaining Tensions</h4>
+                    <ul className="tensions-remaining">
+                      {implicationsPreview.remaining_tensions.map((t, i) => (
+                        <li key={i}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="implications-section">
+                  <h4>Focus for Stage 3</h4>
+                  <p className="grounding-focus">{implicationsPreview.grounding_focus}</p>
+                </div>
+              </div>
+
+              <div className="wizard-actions">
+                <button className="btn btn-secondary" onClick={onCancel}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={continueToStage3}>
+                  Continue to Stage 3
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Questions (Stage 1, 2, or 3) */}
+          {(stage === STAGES.STAGE1 || stage === STAGES.STAGE2 || stage === STAGES.STAGE3) && currentQuestion && (
             <div className="wizard-stage">
               <div className="question-counter">
-                Question {currentQuestionIndex + 1} of {questions.length}
+                Stage {getStageNumber()}: Question {currentQuestionIndex + 1} of {questions.length}
               </div>
 
               <div className="question-card">
                 <div className="question-header">
-                  <span className="question-stage-badge">
-                    Stage {currentQuestion.stage || 1}
-                  </span>
                   {currentQuestion.rationale && (
                     <span className="question-rationale" title={currentQuestion.rationale}>
                       Why this question?
@@ -518,82 +849,137 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 {currentQuestion.type === QUESTION_TYPES.OPEN && (
                   <div className="answer-input">
                     <textarea
-                      value={currentAnswer}
-                      onChange={e => setCurrentAnswer(e.target.value)}
+                      value={currentAnswer.textAnswer}
+                      onChange={e => setCurrentAnswer(prev => ({ ...prev, textAnswer: e.target.value }))}
                       placeholder={currentQuestion.placeholder || 'Type your answer...'}
                       rows={currentQuestion.rows || 4}
                       className="wizard-textarea"
                     />
                     {currentQuestion.min_length && (
                       <div className="char-count">
-                        {currentAnswer.length} / {currentQuestion.min_length} min characters
+                        {currentAnswer.textAnswer.length} / {currentQuestion.min_length} min characters
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Multiple choice */}
-                {currentQuestion.type === QUESTION_TYPES.CHOICE && (
+                {/* Multiple choice / Multi-select */}
+                {(currentQuestion.type === QUESTION_TYPES.CHOICE || currentQuestion.type === QUESTION_TYPES.MULTI) && (
                   <div className="answer-options">
-                    {currentQuestion.options?.map((opt, idx) => (
-                      <div
-                        key={idx}
-                        className={`option-card ${selectedOptions.includes(opt.value) ? 'selected' : ''}`}
-                        onClick={() => toggleOption(opt.value, false)}
-                      >
-                        <div className="option-radio">
-                          {selectedOptions.includes(opt.value) ? '●' : '○'}
+                    {currentQuestion.options?.map((opt, idx) => {
+                      const isSelected = currentAnswer.selectedOptions.includes(opt.value)
+                      const hasExclusivity = opt.exclusivity_group !== null && opt.exclusivity_group !== undefined
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`option-card ${isSelected ? 'selected' : ''} ${hasExclusivity ? 'exclusive' : ''}`}
+                          onClick={() => toggleOption(opt, currentQuestion)}
+                        >
+                          <div className="option-selector">
+                            {currentQuestion.type === QUESTION_TYPES.MULTI
+                              ? (isSelected ? '☑' : '☐')
+                              : (isSelected ? '●' : '○')
+                            }
+                          </div>
+                          <div className="option-content">
+                            <div className="option-label">{opt.label}</div>
+                            {opt.description && (
+                              <div className="option-description">{opt.description}</div>
+                            )}
+                            {/* Show implications when selected */}
+                            {isSelected && opt.implications && (
+                              <div className="option-implications">
+                                <strong>Implications:</strong> {opt.implications}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="option-content">
-                          <div className="option-label">{opt.label}</div>
-                          {opt.description && (
-                            <div className="option-description">{opt.description}</div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
 
-                {/* Multi-select */}
-                {currentQuestion.type === QUESTION_TYPES.MULTI && (
-                  <div className="answer-options">
-                    {currentQuestion.options?.map((opt, idx) => (
-                      <div
-                        key={idx}
-                        className={`option-card ${selectedOptions.includes(opt.value) ? 'selected' : ''}`}
-                        onClick={() => toggleOption(opt.value, true)}
-                      >
-                        <div className="option-checkbox">
-                          {selectedOptions.includes(opt.value) ? '☑' : '☐'}
-                        </div>
-                        <div className="option-content">
-                          <div className="option-label">{opt.label}</div>
-                          {opt.description && (
-                            <div className="option-description">{opt.description}</div>
-                          )}
-                        </div>
+                {/* Custom response (write-in) */}
+                {currentQuestion.allow_custom_response && currentQuestion.type !== QUESTION_TYPES.OPEN && (
+                  <div className="custom-response-section">
+                    <div className="custom-response-header">
+                      <span>Add your own response:</span>
+                      <div className="custom-categories">
+                        {(currentQuestion.custom_response_categories || ['Alternative Answer', 'Comment', 'Refinement']).map(cat => (
+                          <button
+                            key={cat}
+                            className={`category-btn ${currentAnswer.customCategory === cat ? 'active' : ''}`}
+                            onClick={() => setCurrentAnswer(prev => ({
+                              ...prev,
+                              customCategory: prev.customCategory === cat ? null : cat
+                            }))}
+                          >
+                            {cat}
+                          </button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Scale */}
-                {currentQuestion.type === QUESTION_TYPES.SCALE && (
-                  <div className="answer-scale">
-                    <input
-                      type="range"
-                      min={currentQuestion.min || 1}
-                      max={currentQuestion.max || 5}
-                      value={currentAnswer || currentQuestion.min || 1}
-                      onChange={e => setCurrentAnswer(e.target.value)}
-                      className="wizard-slider"
-                    />
-                    <div className="scale-labels">
-                      <span>{currentQuestion.min_label || 'Low'}</span>
-                      <span className="scale-value">{currentAnswer || currentQuestion.min || 1}</span>
-                      <span>{currentQuestion.max_label || 'High'}</span>
                     </div>
+                    {currentAnswer.customCategory && (
+                      <textarea
+                        value={currentAnswer.customResponse}
+                        onChange={e => setCurrentAnswer(prev => ({ ...prev, customResponse: e.target.value }))}
+                        placeholder={`Enter your ${currentAnswer.customCategory.toLowerCase()}...`}
+                        rows={3}
+                        className="wizard-textarea custom-textarea"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Mark as Dialectic toggle */}
+                {currentQuestion.allow_mark_dialectic && (
+                  <div className="dialectic-section">
+                    <label
+                      className={`dialectic-toggle ${currentAnswer.isDialectic ? 'active' : ''}`}
+                      onClick={() => setCurrentAnswer(prev => ({ ...prev, isDialectic: !prev.isDialectic }))}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={currentAnswer.isDialectic}
+                        onChange={() => {}}
+                      />
+                      <span className="dialectic-icon">⚡</span>
+                      <span>Mark as Dialectic</span>
+                      <span className="dialectic-hint">Keep this as a productive tension</span>
+                    </label>
+
+                    {currentAnswer.isDialectic && (
+                      <div className="dialectic-details">
+                        {currentQuestion.dialectic_hint && (
+                          <p className="dialectic-hint-text">{currentQuestion.dialectic_hint}</p>
+                        )}
+                        <div className="dialectic-poles">
+                          <input
+                            type="text"
+                            value={currentAnswer.dialecticPoleA}
+                            onChange={e => setCurrentAnswer(prev => ({ ...prev, dialecticPoleA: e.target.value }))}
+                            placeholder="Pole A (e.g., theoretical)"
+                            className="wizard-input pole-input"
+                          />
+                          <span className="vs-label">vs</span>
+                          <input
+                            type="text"
+                            value={currentAnswer.dialecticPoleB}
+                            onChange={e => setCurrentAnswer(prev => ({ ...prev, dialecticPoleB: e.target.value }))}
+                            placeholder="Pole B (e.g., empirical)"
+                            className="wizard-input pole-input"
+                          />
+                        </div>
+                        <textarea
+                          value={currentAnswer.dialecticNote}
+                          onChange={e => setCurrentAnswer(prev => ({ ...prev, dialecticNote: e.target.value }))}
+                          placeholder="Why is this tension productive? (optional)"
+                          rows={2}
+                          className="wizard-textarea dialectic-note"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -604,28 +990,6 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 )}
               </div>
 
-              {/* Previous answers summary */}
-              {Object.keys(answers).length > 0 && (
-                <div className="answers-summary">
-                  <button
-                    className="summary-toggle"
-                    onClick={() => {
-                      const el = document.querySelector('.answers-list')
-                      if (el) el.classList.toggle('collapsed')
-                    }}
-                  >
-                    Previous answers ({Object.keys(answers).length})
-                  </button>
-                  <div className="answers-list collapsed">
-                    {questions.slice(0, currentQuestionIndex).map((q, idx) => (
-                      <div key={q.id} className="answer-preview">
-                        <strong>Q{idx + 1}:</strong> {String(answers[q.id]).slice(0, 100)}...
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="wizard-actions">
                 <button className="btn btn-secondary" onClick={onCancel}>
                   Cancel
@@ -633,7 +997,11 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 {currentQuestionIndex > 0 && (
                   <button
                     className="btn btn-secondary"
-                    onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
+                    onClick={() => {
+                      setCurrentQuestionIndex(currentQuestionIndex - 1)
+                      // TODO: restore previous answer
+                      resetCurrentAnswer()
+                    }}
                   >
                     Back
                   </button>
@@ -643,41 +1011,17 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   onClick={submitAnswer}
                   disabled={loading}
                 >
-                  {currentQuestionIndex < questions.length - 1 ? 'Next' : 'Finish'}
+                  {currentQuestionIndex < questions.length - 1 ? 'Next' : 'Complete Stage'}
                 </button>
               </div>
             </div>
           )}
 
-          {/* STAGE: Processing */}
-          {stage === STAGES.PROCESSING && (
+          {/* No questions fallback */}
+          {(stage === STAGES.STAGE1 || stage === STAGES.STAGE2 || stage === STAGES.STAGE3) && !currentQuestion && (
             <div className="wizard-stage">
-              <div className="stage-header">
-                <h3>Processing Your Concept</h3>
-                <p>
-                  Claude is synthesizing your answers into a comprehensive concept definition
-                  for "{conceptName}".
-                </p>
-              </div>
-
-              <div className="thinking-panel">
-                <div className="thinking-header">
-                  <span className="thinking-indicator">
-                    <span className="pulse"></span>
-                    Building concept...
-                  </span>
-                  <button
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => setThinkingVisible(!thinkingVisible)}
-                  >
-                    {thinkingVisible ? 'Hide' : 'Show'} Thinking
-                  </button>
-                </div>
-                {thinkingVisible && (
-                  <div className="thinking-content" ref={thinkingRef}>
-                    {thinking || 'Synthesizing your responses...'}
-                  </div>
-                )}
+              <div className="wizard-error">
+                No questions loaded for this stage. Questions: {questions.length}, Index: {currentQuestionIndex}
               </div>
             </div>
           )}
@@ -709,18 +1053,13 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                         <span className="preview-label">Type:</span>
                         <span>{conceptData.genesis.type}</span>
                       </div>
-                      <div>
-                        <span className="preview-label">Lineage:</span>
-                        <span>{conceptData.genesis.lineage}</span>
-                      </div>
+                      {conceptData.genesis.lineage && (
+                        <div>
+                          <span className="preview-label">Lineage:</span>
+                          <span>{conceptData.genesis.lineage}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-
-                {conceptData.problem_space && (
-                  <div className="preview-section">
-                    <h4>Problem Space</h4>
-                    <p className="preview-value">{conceptData.problem_space.gap}</p>
                   </div>
                 )}
 
@@ -737,11 +1076,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {conceptData.paradigmatic_case && (
+                {dialectics.length > 0 && (
                   <div className="preview-section">
-                    <h4>Paradigmatic Case</h4>
-                    <p className="preview-value">{conceptData.paradigmatic_case.name}</p>
-                    <p className="preview-secondary">{conceptData.paradigmatic_case.why}</p>
+                    <h4>Preserved Dialectics</h4>
+                    <div className="dialectics-preserved">
+                      {dialectics.map((d, i) => (
+                        <div key={i} className="dialectic-preview">
+                          <span className="dialectic-badge">⚡</span>
+                          <span>{d.pole_a}</span>
+                          <span className="vs">vs</span>
+                          <span>{d.pole_b}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -751,19 +1098,6 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     <ul className="preview-list">
                       {conceptData.recognition_markers.map((m, i) => (
                         <li key={i}>{m.description}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {conceptData.core_claims?.length > 0 && (
-                  <div className="preview-section">
-                    <h4>Core Claims</h4>
-                    <ul className="preview-list">
-                      {conceptData.core_claims.map((c, i) => (
-                        <li key={i}>
-                          <span className="claim-type">[{c.type}]</span> {c.statement}
-                        </li>
                       ))}
                     </ul>
                   </div>

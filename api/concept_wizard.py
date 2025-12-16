@@ -79,12 +79,16 @@ class SaveConceptRequest(BaseModel):
 
 
 class QuestionOption(BaseModel):
+    """Enhanced option for multiple choice questions."""
     value: str
     label: str
     description: Optional[str] = None
+    exclusivity_group: Optional[int] = None  # Mutually exclusive options share same group
+    implications: Optional[str] = None       # What choosing this option implies for the concept
 
 
 class WizardQuestion(BaseModel):
+    """Enhanced wizard question with adaptive features."""
     id: str
     text: str
     type: str = "open_ended"  # open_ended, multiple_choice, multi_select, scale
@@ -99,12 +103,101 @@ class WizardQuestion(BaseModel):
     rows: Optional[int] = None
     required: bool = True
 
+    # Enhanced features for adaptive questioning
+    allow_custom_response: bool = True  # Enable write-in for choice questions
+    custom_response_categories: Optional[List[str]] = None  # ["Alternative Answer", "Comment", "Refinement"]
+    allow_mark_dialectic: bool = False  # Can user mark this as a productive tension
+    dialectic_hint: Optional[str] = None  # Hint for when to mark as dialectic
+    depends_on: Optional[List[str]] = None  # Question IDs this depends on
+    skip_if: Optional[Dict[str, Any]] = None  # Conditional skip logic
+
+
+class Tension(BaseModel):
+    """A detected or user-marked productive tension."""
+    description: str
+    pole_a: str
+    pole_b: str
+    marked_as_dialectic: bool = False
+    user_note: Optional[str] = None
+
+
+class InterimAnalysis(BaseModel):
+    """Intermediate understanding shown between stages."""
+    understanding_summary: str  # "Based on your answers, I understand..."
+    key_commitments: List[str]  # Core positions you've taken
+    tensions_detected: List[Tension]  # Potential dialectics
+    gaps_identified: List[str]  # What we still need to know
+    preliminary_definition: str  # Working definition so far
+
+
+class InterimAnalysisResponse(BaseModel):
+    """Response containing interim analysis and next stage questions."""
+    interim_analysis: InterimAnalysis
+    next_stage_questions: List['WizardQuestion']
+
+
+class AnswerWithMeta(BaseModel):
+    """Answer with metadata for custom responses and dialectics."""
+    question_id: str
+    selected_options: Optional[List[str]] = None  # For choice questions
+    text_answer: Optional[str] = None  # For open-ended
+    custom_response: Optional[str] = None  # Write-in text
+    custom_response_category: Optional[str] = None  # Category of write-in
+    is_dialectic: bool = False
+    dialectic_pole_a: Optional[str] = None
+    dialectic_pole_b: Optional[str] = None
+    dialectic_note: Optional[str] = None
+
 
 # =============================================================================
-# DEFAULT QUESTIONS (used when no notes provided)
+# STAGE 1 QUESTIONS: Genesis & Problem Space
 # =============================================================================
 
-DEFAULT_QUESTIONS = [
+STAGE1_QUESTIONS = [
+    WizardQuestion(
+        id="genesis_type",
+        text="How would you characterize the origin of this concept?",
+        type="multiple_choice",
+        stage=1,
+        options=[
+            QuestionOption(
+                value="theoretical_innovation",
+                label="A new theoretical framework or lens",
+                description="You are proposing a new way of understanding something",
+                implications="Needs strong theoretical grounding and clear differentiation from existing frameworks"
+            ),
+            QuestionOption(
+                value="empirical_discovery",
+                label="A pattern discovered through observation",
+                description="You noticed something in the world that needs naming",
+                implications="Needs concrete examples and documented evidence of the pattern"
+            ),
+            QuestionOption(
+                value="synthetic_unification",
+                label="A synthesis of previously separate ideas",
+                description="You are combining existing concepts in a new way",
+                implications="Needs to show what's gained by the synthesis that separate concepts miss"
+            ),
+            QuestionOption(
+                value="paradigm_shift",
+                label="A fundamental reconceptualization",
+                description="You are challenging basic assumptions in a field",
+                implications="Needs to identify what assumptions are challenged and why"
+            ),
+            QuestionOption(
+                value="normative_reframing",
+                label="A normative or evaluative reframing",
+                description="You are proposing a new way to evaluate or judge something",
+                implications="Needs clear criteria and distinction from related evaluative concepts"
+            ),
+        ],
+        help="This helps us understand what kind of support and validation your concept needs.",
+        rationale="Understanding origin type shapes how we approach validation",
+        allow_custom_response=True,
+        custom_response_categories=["Mixed/Complex origin", "Other type"],
+        allow_mark_dialectic=True,
+        dialectic_hint="If you're torn between origins (e.g., both theoretical AND empirical), this may be a productive tension worth exploring"
+    ),
     WizardQuestion(
         id="core_definition",
         text="In one paragraph, provide your working definition of this concept.",
@@ -114,117 +207,153 @@ DEFAULT_QUESTIONS = [
         example="Technological sovereignty refers to the capacity of a political entity to exercise meaningful control over the technological systems upon which its economy, security, and social functioning depend...",
         min_length=100,
         rows=5,
-        rationale="Forces initial precision; becomes anchor for later refinement"
+        rationale="Forces initial precision; becomes anchor for later refinement",
+        allow_custom_response=False  # Already open-ended
     ),
     WizardQuestion(
-        id="genesis_type",
-        text="How would you characterize the origin of this concept?",
+        id="problem_addressed",
+        text="What problem or gap in understanding does this concept address?",
+        type="open_ended",
+        stage=1,
+        help="A concept needs to DO something. What can we understand, explain, or do with this concept that we couldn't before?",
+        min_length=80,
+        rows=4,
+        rationale="Justifies concept's existence; clarifies its purpose",
+        allow_custom_response=False
+    ),
+    WizardQuestion(
+        id="adjacent_concepts",
+        text="Which existing concepts come closest to what you're describing?",
+        type="multi_select",
+        stage=1,
+        options=[
+            # Common conceptual neighbors - user can add their own
+            QuestionOption(value="sovereignty", label="Sovereignty", description="Control over territory/decisions", exclusivity_group=None),
+            QuestionOption(value="autonomy", label="Autonomy", description="Self-governance, independence", exclusivity_group=None),
+            QuestionOption(value="dependency", label="Dependency", description="Reliance on external entities", exclusivity_group=None),
+            QuestionOption(value="power", label="Power", description="Capacity to influence or control", exclusivity_group=None),
+            QuestionOption(value="agency", label="Agency", description="Capacity for action", exclusivity_group=None),
+            QuestionOption(value="resilience", label="Resilience", description="Ability to recover from setbacks", exclusivity_group=None),
+            QuestionOption(value="security", label="Security", description="Protection from threats", exclusivity_group=None),
+            QuestionOption(value="freedom", label="Freedom", description="Absence of constraints", exclusivity_group=None),
+        ],
+        help="Select all that seem related - we'll explore differences in the next stage",
+        rationale="Identifies differentiation targets for Stage 2",
+        allow_custom_response=True,
+        custom_response_categories=["Add concept not listed"]
+    ),
+    WizardQuestion(
+        id="domain_scope",
+        text="What is the primary domain or scope of this concept?",
         type="multiple_choice",
         stage=1,
         options=[
-            QuestionOption(value="theoretical_innovation", label="A new theoretical framework or lens", description="You are proposing a new way of understanding something"),
-            QuestionOption(value="empirical_discovery", label="A pattern discovered through observation", description="You noticed something in the world that needs naming"),
-            QuestionOption(value="synthetic_unification", label="A synthesis of previously separate ideas", description="You are combining existing concepts in a new way"),
-            QuestionOption(value="paradigm_shift", label="A fundamental reconceptualization", description="You are challenging basic assumptions in a field"),
+            QuestionOption(
+                value="domain_specific",
+                label="Domain-specific (applies to one field)",
+                description="The concept is primarily relevant to a specific domain",
+                implications="Will need to specify the domain and may need domain-specific validation",
+                exclusivity_group=1
+            ),
+            QuestionOption(
+                value="cross_domain",
+                label="Cross-domain (applies across multiple fields)",
+                description="The concept spans multiple domains or disciplines",
+                implications="Will need examples from multiple domains and care about different manifestations",
+                exclusivity_group=1
+            ),
+            QuestionOption(
+                value="meta_level",
+                label="Meta-level (about how we think/analyze)",
+                description="The concept is about methodology or cognition itself",
+                implications="Will need to show its applicability and avoid being merely abstract",
+                exclusivity_group=1
+            ),
         ],
-        help="This helps us understand what kind of support and validation your concept needs.",
-        rationale="Understanding origin type shapes how we approach validation"
+        help="Choose the scope that best fits. This affects how we approach examples and validation.",
+        rationale="Scope determines validation approach",
+        allow_custom_response=True,
+        custom_response_categories=["Complex scope"],
+        allow_mark_dialectic=True,
+        dialectic_hint="If the concept operates at multiple levels (both domain-specific and meta), that's worth noting"
     ),
-    WizardQuestion(
-        id="problem_space",
-        text="What problem or gap in understanding does this concept address? Why do we need a new concept for this?",
-        type="open_ended",
-        stage=2,
-        help="A concept needs to DO something. What can we understand, explain, or do with this concept that we couldn't before?",
-        min_length=100,
-        rows=4,
-        rationale="Justifies concept's existence; clarifies its purpose"
-    ),
-    WizardQuestion(
-        id="failed_alternatives",
-        text="What existing concepts have you tried using for this phenomenon? Why are they inadequate?",
-        type="open_ended",
-        stage=2,
-        help="List at least 2-3 existing concepts you considered and explain why each falls short.",
-        example="Digital sovereignty: too narrow, focused on data/software. National security: too broad, loses technological specificity...",
-        min_length=80,
-        rows=4,
-        rationale="Forces confrontation with existing vocabulary"
-    ),
-    WizardQuestion(
-        id="most_confused_with",
-        text="What existing concept is this MOST likely to be confused with?",
-        type="open_ended",
-        stage=3,
-        help="Pick ONE concept that poses the greatest confusion risk.",
-        placeholder="e.g., Digital Sovereignty",
-        rationale="Identifies primary differentiation target"
-    ),
-    WizardQuestion(
-        id="confusion_consequence",
-        text="Why is this confusion problematic? What understanding is lost if someone treats your concept as equivalent to the one you just mentioned?",
-        type="open_ended",
-        stage=3,
-        help="Be specific about what analysis, insight, or action would be missed.",
-        min_length=80,
-        rows=4,
-        rationale="Makes differentiation concrete and consequential"
-    ),
+]
+
+
+# =============================================================================
+# STAGE 3 QUESTIONS: Grounding & Recognition (predefined, refined by Stage 2)
+# =============================================================================
+
+STAGE3_QUESTIONS = [
     WizardQuestion(
         id="paradigmatic_case",
-        text="What is the single best example that captures the essence of this concept? Describe it in detail.",
+        text="What is the single best example that captures the essence of this concept?",
         type="open_ended",
-        stage=4,
-        help="Think: if you had to explain this concept to someone new and could only use ONE example, what would it be?",
+        stage=3,
+        help="If you had to explain this concept using only ONE example, what would it be? Describe it in detail.",
         example="The European 5G and Huawei dilemma. European nations faced decisions about allowing Huawei equipment in their 5G networks...",
         min_length=150,
         rows=6,
-        rationale="Paradigmatic cases are crucial for concept teaching"
+        rationale="Paradigmatic cases are crucial for concept teaching",
+        allow_custom_response=False
     ),
     WizardQuestion(
         id="implicit_domain",
-        text="In what domain do you see this concept operating WITHOUT being explicitly named? What proxy terms or euphemisms are used instead?",
+        text="Where do you see this concept operating WITHOUT being explicitly named?",
         type="open_ended",
-        stage=4,
-        help="Where do people discuss this phenomenon without having the vocabulary? What words do they use instead?",
-        example="Semiconductor policy: discussions of 'supply chain security,' 'strategic autonomy,' 'onshoring' all circle around technological sovereignty without naming it...",
+        stage=3,
+        help="Where do people discuss this phenomenon without having the vocabulary? What proxy terms or euphemisms are used?",
+        example="Semiconductor policy discussions use terms like 'supply chain security,' 'strategic autonomy,' 'onshoring' that circle around technological sovereignty without naming it...",
         min_length=100,
         rows=4,
-        rationale="Essential for document search and implicit instance discovery"
+        rationale="Essential for document search and implicit instance discovery",
+        allow_custom_response=False
+    ),
+    WizardQuestion(
+        id="recognition_markers",
+        text="How can we recognize an implicit instance of this concept in a text that doesn't use the term?",
+        type="open_ended",
+        stage=3,
+        help="Describe linguistic patterns, argument structures, or situational descriptions that indicate this concept is in play.",
+        example="Look for: arguments that technology choices have political implications beyond economics; descriptions of lock-in that constrains strategic options...",
+        min_length=100,
+        rows=5,
+        rationale="Essential for LLM-assisted document analysis",
+        allow_custom_response=False
     ),
     WizardQuestion(
         id="core_claim",
-        text="What is the most fundamental claim about reality that your concept makes? What must be TRUE for this concept to be meaningful?",
+        text="What is the most fundamental claim about reality that your concept makes?",
         type="open_ended",
-        stage=5,
-        help="A concept makes claims about how the world works. What's yours?",
+        stage=3,
+        help="A concept makes claims about how the world works. What must be TRUE for this concept to be meaningful?",
         example="Technological dependencies can constitute a form of sovereignty loss that is distinct from and not reducible to economic, political, or military dependencies.",
         min_length=80,
         rows=4,
-        rationale="Forces articulation of core commitment; enables testing"
+        rationale="Forces articulation of core commitment; enables testing",
+        allow_custom_response=False,
+        allow_mark_dialectic=True,
+        dialectic_hint="If your core claim exists in tension with another valid claim, that may be a productive dialectic"
     ),
     WizardQuestion(
         id="falsification_condition",
-        text="What would prove this concept useless or wrong? What would have to be true for you to abandon it?",
+        text="What would prove this concept useless or wrong?",
         type="open_ended",
-        stage=5,
+        stage=3,
         help="Be honest about what would make you give up this concept. A concept that can't be wrong isn't saying anything.",
         min_length=80,
         rows=4,
-        rationale="Forces intellectual honesty; enables refutation"
-    ),
-    WizardQuestion(
-        id="recognition_pattern",
-        text="How can we recognize an implicit instance of this concept in a text that doesn't use the term? What patterns should we look for?",
-        type="open_ended",
-        stage=6,
-        help="Describe linguistic patterns, argument structures, or situational descriptions that indicate this concept is in play.",
-        example="Look for: arguments that technology choices have political/sovereignty implications beyond economics; descriptions of lock-in that constrains strategic options...",
-        min_length=100,
-        rows=5,
-        rationale="Essential for LLM-assisted document analysis"
+        rationale="Forces intellectual honesty; enables refutation",
+        allow_custom_response=False
     ),
 ]
+
+
+# =============================================================================
+# DEFAULT QUESTIONS (legacy - used for backward compatibility)
+# =============================================================================
+
+DEFAULT_QUESTIONS = STAGE1_QUESTIONS + STAGE3_QUESTIONS
 
 
 # =============================================================================
@@ -412,6 +541,167 @@ Be thorough but only include what can be derived from the user's answers. Don't 
 
 
 # =============================================================================
+# STAGED WIZARD PROMPTS
+# =============================================================================
+
+INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
+
+The user has completed Stage 1 questions about their concept "{concept_name}". Your task is to:
+1. Synthesize their answers into an interim understanding
+2. Identify key commitments they've made
+3. Detect potential tensions (which might become productive dialectics)
+4. Identify gaps that need addressing in Stage 2
+
+## User's Stage 1 Answers:
+{stage1_answers}
+
+## Dialectics Marked by User:
+{marked_dialectics}
+
+Produce a JSON response with:
+{{
+    "interim_analysis": {{
+        "understanding_summary": "Based on your answers, I understand that [concept_name] is... (2-3 sentences)",
+        "key_commitments": ["List 3-5 core positions the user has taken"],
+        "tensions_detected": [
+            {{
+                "description": "Brief description of the tension",
+                "pole_a": "One side of the tension",
+                "pole_b": "The opposing side",
+                "marked_as_dialectic": true/false
+            }}
+        ],
+        "gaps_identified": ["Aspects that need more exploration in Stage 2"],
+        "preliminary_definition": "A working 1-paragraph definition based on what we know so far"
+    }}
+}}
+
+Be specific to what the user actually said. Don't fabricate or assume beyond their answers."""
+
+
+STAGE2_GENERATION_PROMPT = """Based on the user's Stage 1 answers about their novel concept "{concept_name}":
+
+## Stage 1 Responses:
+{stage1_summary}
+
+## Interim Analysis:
+{interim_analysis}
+
+## Adjacent Concepts Selected:
+{adjacent_concepts}
+
+Generate 4-6 Stage 2 questions that:
+1. **Probe specific gaps** identified in the interim analysis
+2. **Sharpen distinctions** from the adjacent concepts they mentioned
+3. **Test commitments** they've made to see if they hold under scrutiny
+4. **Explore tensions** they flagged as dialectics or that you detected
+
+For each question:
+- Decide if it should be multiple_choice (when there are clear alternatives), multi_select, or open_ended
+- For multiple choice: specify which options are mutually exclusive (same exclusivity_group number)
+- Include "implications" for each option - what that choice means for the concept
+- Set allow_mark_dialectic=true for questions that might reveal productive tensions
+
+Output JSON array of questions:
+{{
+    "stage2_questions": [
+        {{
+            "id": "differentiation_from_X",
+            "text": "How does {concept_name} differ from [adjacent concept]?",
+            "type": "multiple_choice",
+            "stage": 2,
+            "options": [
+                {{
+                    "value": "narrower_scope",
+                    "label": "Narrower scope",
+                    "description": "Applies to a subset of cases",
+                    "exclusivity_group": 1,
+                    "implications": "Will need to specify what's included/excluded"
+                }},
+                {{
+                    "value": "broader_scope",
+                    "label": "Broader scope",
+                    "description": "Encompasses more phenomena",
+                    "exclusivity_group": 1,
+                    "implications": "Must show what's gained by the broader framing"
+                }}
+            ],
+            "help": "This distinction is important because...",
+            "rationale": "Why we're asking this",
+            "allow_custom_response": true,
+            "custom_response_categories": ["Different relationship", "Complex"],
+            "allow_mark_dialectic": true,
+            "dialectic_hint": "Hint for when this might be a dialectic"
+        }}
+    ]
+}}
+
+Generate questions that are specific to THIS concept and what the user has said. Don't ask generic questions."""
+
+
+STAGE3_REFINEMENT_PROMPT = """Based on the user's Stage 2 answers about "{concept_name}":
+
+## Stage 1 + Stage 2 Context:
+{full_context}
+
+## Differentiations Made:
+{differentiations}
+
+## Tensions/Dialectics:
+{dialectics}
+
+The user will now answer Stage 3 questions about grounding and recognition.
+
+Before they do, generate an "implications preview" that shows them what their Stage 2 choices mean:
+
+{{
+    "implications_preview": {{
+        "definition_trajectory": "Based on your choices, the concept is moving toward... (summarize the definitional direction)",
+        "key_differentiations": [
+            {{
+                "from_concept": "Adjacent concept",
+                "distinction": "The key distinction",
+                "consequence": "This means..."
+            }}
+        ],
+        "remaining_tensions": ["Tensions that are still unresolved"],
+        "grounding_focus": "For Stage 3, focus on... (guide for what examples/evidence to provide)"
+    }}
+}}
+
+Be concrete and specific to what the user has actually said."""
+
+
+# =============================================================================
+# REQUEST SCHEMAS FOR STAGED WIZARD
+# =============================================================================
+
+class Stage1AnswersRequest(BaseModel):
+    concept_name: str
+    notes: Optional[str] = None
+    answers: List[AnswerWithMeta]
+    source_id: Optional[int] = None
+
+
+class Stage2AnswersRequest(BaseModel):
+    concept_name: str
+    notes: Optional[str] = None
+    stage1_answers: List[AnswerWithMeta]
+    stage2_answers: List[AnswerWithMeta]
+    interim_analysis: InterimAnalysis
+    source_id: Optional[int] = None
+
+
+class FinalizeRequest(BaseModel):
+    concept_name: str
+    notes: Optional[str] = None
+    all_answers: Dict[str, List[AnswerWithMeta]]  # stage1, stage2, stage3
+    interim_analysis: InterimAnalysis
+    dialectics: List[Tension]
+    source_id: Optional[int] = None
+
+
+# =============================================================================
 # ENDPOINTS
 # =============================================================================
 
@@ -548,3 +838,370 @@ async def save_concept(request: SaveConceptRequest, db: AsyncSession = Depends(g
             "recognition_markers": concept_data.get("recognition_markers")
         }
     }
+
+
+# =============================================================================
+# STAGED WIZARD ENDPOINTS
+# =============================================================================
+
+@router.post("/stage1")
+async def get_stage1_questions(request: StartWizardRequest):
+    """Get Stage 1 questions (Genesis & Problem Space)."""
+    questions = [q.model_dump() for q in STAGE1_QUESTIONS]
+
+    response_data = {
+        "status": "stage1_ready",
+        "concept_name": request.concept_name,
+        "stage": 1,
+        "stage_title": "Genesis & Problem Space",
+        "stage_description": "Let's understand the origin and purpose of your concept.",
+        "questions": questions
+    }
+    return StreamingResponse(
+        sse_response(response_data),
+        media_type="text/event-stream"
+    )
+
+
+def format_answers_for_prompt(answers: List[AnswerWithMeta]) -> str:
+    """Format answers for LLM prompt."""
+    formatted = []
+    for ans in answers:
+        parts = [f"Question: {ans.question_id}"]
+        if ans.selected_options:
+            parts.append(f"Selected: {', '.join(ans.selected_options)}")
+        if ans.text_answer:
+            parts.append(f"Answer: {ans.text_answer}")
+        if ans.custom_response:
+            category = ans.custom_response_category or "Custom"
+            parts.append(f"[{category}]: {ans.custom_response}")
+        if ans.is_dialectic:
+            parts.append(f"DIALECTIC MARKED: {ans.dialectic_pole_a} vs {ans.dialectic_pole_b}")
+            if ans.dialectic_note:
+                parts.append(f"Note: {ans.dialectic_note}")
+        formatted.append("\n".join(parts))
+    return "\n\n".join(formatted)
+
+
+def extract_dialectics_from_answers(answers: List[AnswerWithMeta]) -> List[Tension]:
+    """Extract user-marked dialectics from answers."""
+    dialectics = []
+    for ans in answers:
+        if ans.is_dialectic and ans.dialectic_pole_a and ans.dialectic_pole_b:
+            dialectics.append(Tension(
+                description=f"Tension in {ans.question_id}",
+                pole_a=ans.dialectic_pole_a,
+                pole_b=ans.dialectic_pole_b,
+                marked_as_dialectic=True,
+                user_note=ans.dialectic_note
+            ))
+    return dialectics
+
+
+def extract_adjacent_concepts(answers: List[AnswerWithMeta]) -> str:
+    """Extract adjacent concepts from Stage 1 answers."""
+    for ans in answers:
+        if ans.question_id == "adjacent_concepts":
+            concepts = []
+            if ans.selected_options:
+                concepts.extend(ans.selected_options)
+            if ans.custom_response:
+                concepts.append(ans.custom_response)
+            return ", ".join(concepts) if concepts else "None specified"
+    return "None specified"
+
+
+@router.post("/analyze-stage1")
+async def analyze_stage1(request: Stage1AnswersRequest):
+    """
+    Analyze Stage 1 answers and generate:
+    1. Interim analysis (what we understand so far)
+    2. Dynamically generated Stage 2 questions
+    """
+    # Format answers for prompt
+    stage1_text = format_answers_for_prompt(request.answers)
+    marked_dialectics = extract_dialectics_from_answers(request.answers)
+    adjacent_concepts = extract_adjacent_concepts(request.answers)
+
+    dialectics_text = "\n".join([
+        f"- {d.pole_a} vs {d.pole_b} ({d.user_note or 'no note'})"
+        for d in marked_dialectics
+    ]) if marked_dialectics else "None marked"
+
+    # First LLM call: Generate interim analysis
+    interim_prompt = INTERIM_ANALYSIS_PROMPT.format(
+        concept_name=request.concept_name,
+        stage1_answers=stage1_text,
+        marked_dialectics=dialectics_text
+    )
+
+    # Second LLM call: Generate Stage 2 questions (will use interim analysis)
+    async def stream_analysis_and_questions():
+        try:
+            client = get_claude_client()
+            logger.info("Starting Stage 1 analysis with interim + Stage 2 generation")
+
+            # Phase 1: Generate interim analysis
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'interim_analysis'})}\n\n"
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis helping articulate novel theoretical concepts.",
+                messages=[{"role": "user", "content": interim_prompt}]
+            ) as stream:
+                thinking_text = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            thinking_text += event.delta.thinking
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+
+                final = stream.get_final_message()
+                interim_text = ""
+                for block in final.content:
+                    if hasattr(block, 'text'):
+                        interim_text = block.text
+                        break
+
+            interim_data = parse_wizard_response(interim_text)
+            interim_analysis = interim_data.get("interim_analysis", {})
+
+            yield f"data: {json.dumps({'type': 'interim_complete', 'data': interim_analysis})}\n\n"
+
+            # Phase 2: Generate Stage 2 questions based on interim
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'stage2_generation'})}\n\n"
+
+            stage2_prompt = STAGE2_GENERATION_PROMPT.format(
+                concept_name=request.concept_name,
+                stage1_summary=stage1_text,
+                interim_analysis=json.dumps(interim_analysis, indent=2),
+                adjacent_concepts=adjacent_concepts
+            )
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis generating adaptive follow-up questions.",
+                messages=[{"role": "user", "content": stage2_prompt}]
+            ) as stream:
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+
+                final = stream.get_final_message()
+                stage2_text = ""
+                for block in final.content:
+                    if hasattr(block, 'text'):
+                        stage2_text = block.text
+                        break
+
+            stage2_data = parse_wizard_response(stage2_text)
+            stage2_questions = stage2_data.get("stage2_questions", [])
+
+            # Return complete response
+            yield f"data: {json.dumps({'type': 'complete', 'data': {
+                'status': 'stage2_ready',
+                'concept_name': request.concept_name,
+                'stage': 2,
+                'stage_title': 'Differentiation & Clarification',
+                'stage_description': 'Let\\'s sharpen the distinctions and explore tensions.',
+                'interim_analysis': interim_analysis,
+                'marked_dialectics': [d.model_dump() for d in marked_dialectics],
+                'questions': stage2_questions
+            }})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in analyze_stage1: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_analysis_and_questions(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/analyze-stage2")
+async def analyze_stage2(request: Stage2AnswersRequest):
+    """
+    Analyze Stage 2 answers and generate:
+    1. Implications preview (what the choices mean)
+    2. Refined Stage 3 questions
+    """
+    # Combine Stage 1 and Stage 2 answers
+    all_answers = request.stage1_answers + request.stage2_answers
+    full_context = format_answers_for_prompt(all_answers)
+    all_dialectics = extract_dialectics_from_answers(all_answers)
+
+    # Extract differentiation info from Stage 2 answers
+    differentiations = []
+    for ans in request.stage2_answers:
+        if "differentiation" in ans.question_id:
+            diff_info = {
+                "question": ans.question_id,
+                "choice": ", ".join(ans.selected_options) if ans.selected_options else ans.text_answer,
+                "custom_note": ans.custom_response
+            }
+            differentiations.append(diff_info)
+
+    async def stream_implications_and_stage3():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'implications_preview'})}\n\n"
+
+            implications_prompt = STAGE3_REFINEMENT_PROMPT.format(
+                concept_name=request.concept_name,
+                full_context=full_context,
+                differentiations=json.dumps(differentiations, indent=2),
+                dialectics=json.dumps([d.model_dump() for d in all_dialectics], indent=2)
+            )
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis showing implications of definitional choices.",
+                messages=[{"role": "user", "content": implications_prompt}]
+            ) as stream:
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+
+                final = stream.get_final_message()
+                impl_text = ""
+                for block in final.content:
+                    if hasattr(block, 'text'):
+                        impl_text = block.text
+                        break
+
+            impl_data = parse_wizard_response(impl_text)
+            implications_preview = impl_data.get("implications_preview", {})
+
+            # Return Stage 3 questions (predefined but could be customized based on context)
+            stage3_questions = [q.model_dump() for q in STAGE3_QUESTIONS]
+
+            yield f"data: {json.dumps({'type': 'complete', 'data': {
+                'status': 'stage3_ready',
+                'concept_name': request.concept_name,
+                'stage': 3,
+                'stage_title': 'Grounding & Recognition',
+                'stage_description': 'Let\\'s establish how to recognize and validate this concept.',
+                'implications_preview': implications_preview,
+                'dialectics': [d.model_dump() for d in all_dialectics],
+                'questions': stage3_questions
+            }})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in analyze_stage2: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_implications_and_stage3(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/finalize")
+async def finalize_concept(request: FinalizeRequest):
+    """
+    Final synthesis of all stages into a complete concept definition.
+    """
+    # Combine all answers
+    all_answers_flat = []
+    for stage_name, answers in request.all_answers.items():
+        all_answers_flat.extend(answers)
+
+    full_context = format_answers_for_prompt(all_answers_flat)
+
+    async def stream_final_synthesis():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'final_synthesis'})}\n\n"
+
+            synthesis_prompt = f"""Synthesize all the user's answers into a comprehensive concept definition for "{request.concept_name}".
+
+## User's Initial Notes:
+{request.notes or "(No initial notes provided)"}
+
+## All Wizard Answers (Stages 1-3):
+{full_context}
+
+## Interim Analysis:
+{json.dumps(request.interim_analysis.model_dump(), indent=2)}
+
+## Dialectics/Tensions Identified:
+{json.dumps([d.model_dump() for d in request.dialectics], indent=2)}
+
+Create a complete concept definition following the Genesis Dimension schema. Include:
+- Full definition
+- Genesis type and lineage
+- Problem space and failed alternatives
+- All differentiations
+- Paradigmatic case
+- Recognition markers
+- Dialectics to preserve (productive tensions)
+
+Output comprehensive JSON matching the PROCESS_ANSWERS_SYSTEM schema."""
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system=PROCESS_ANSWERS_SYSTEM,
+                messages=[{"role": "user", "content": synthesis_prompt}]
+            ) as stream:
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                        elif hasattr(event.delta, 'text'):
+                            yield f"data: {json.dumps({'type': 'text', 'content': event.delta.text})}\n\n"
+
+                final = stream.get_final_message()
+                synthesis_text = ""
+                for block in final.content:
+                    if hasattr(block, 'text'):
+                        synthesis_text = block.text
+                        break
+
+            concept_data = parse_wizard_response(synthesis_text)
+
+            yield f"data: {json.dumps({'type': 'complete', 'data': {
+                'status': 'complete',
+                'concept_name': request.concept_name,
+                'concept': concept_data.get('concept', concept_data),
+                'dialectics_preserved': [d.model_dump() for d in request.dialectics]
+            }})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in finalize_concept: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_final_synthesis(),
+        media_type="text/event-stream"
+    )
