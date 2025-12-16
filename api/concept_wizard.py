@@ -48,7 +48,7 @@ def get_claude_client():
 # Model configuration
 MODEL = "claude-opus-4-5-20251101"  # Correct model ID for Opus 4.5
 THINKING_BUDGET = 32000
-MAX_OUTPUT = 16000
+MAX_OUTPUT = 64000  # Must be > THINKING_BUDGET
 
 
 # =============================================================================
