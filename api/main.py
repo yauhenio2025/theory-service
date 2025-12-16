@@ -43,6 +43,9 @@ from .schemas import (
     ClusterType as ClusterTypeSchema
 )
 
+# Import concept wizard router
+from .concept_wizard import router as wizard_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,6 +70,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include concept wizard router
+app.include_router(wizard_router)
 
 
 # =============================================================================

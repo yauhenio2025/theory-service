@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import './index.css'
+import ConceptSetupWizard from './ConceptSetupWizard'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://theory-api.onrender.com'
 
@@ -914,6 +915,7 @@ function App() {
   const [showConceptForm, setShowConceptForm] = useState(false)
   const [showDialecticForm, setShowDialecticForm] = useState(false)
   const [showClaimForm, setShowClaimForm] = useState(false)
+  const [showConceptWizard, setShowConceptWizard] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
 
   // Filters
@@ -1162,9 +1164,14 @@ function App() {
           <div className="card">
             <div className="card-header">
               <h2>Concepts</h2>
-              <button className="btn btn-primary btn-sm" onClick={() => { setEditingItem(null); setShowConceptForm(true) }}>
-                + New Concept
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setShowConceptWizard(true)}>
+                  + Novel Concept Wizard
+                </button>
+                <button className="btn btn-primary btn-sm" onClick={() => { setEditingItem(null); setShowConceptForm(true) }}>
+                  + New Concept
+                </button>
+              </div>
             </div>
             <div className="toolbar" style={{ padding: '1rem 1.25rem 0' }}>
               <input
@@ -1460,6 +1467,20 @@ function App() {
         <Modal title={editingItem ? 'Edit Claim' : 'New Claim'} onClose={() => { setShowClaimForm(false); setEditingItem(null) }}>
           <ClaimForm claim={editingItem} onSave={saveClaim} onCancel={() => { setShowClaimForm(false); setEditingItem(null) }} />
         </Modal>
+      )}
+
+      {/* Concept Setup Wizard */}
+      {showConceptWizard && (
+        <ConceptSetupWizard
+          sourceId={sourceFilter ? parseInt(sourceFilter) : null}
+          onComplete={(concept) => {
+            setShowConceptWizard(false)
+            loadConcepts()
+            loadStats()
+            addToast(`Created concept: ${concept.term}`)
+          }}
+          onCancel={() => setShowConceptWizard(false)}
+        />
       )}
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
