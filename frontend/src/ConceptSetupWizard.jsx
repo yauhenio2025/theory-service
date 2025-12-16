@@ -23,6 +23,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://theory-api.onrender.com
 // Enhanced wizard stages
 const STAGES = {
   NOTES: 'notes',
+  ANALYZING_NOTES: 'analyzing_notes',
+  UNDERSTANDING_VALIDATION: 'understanding_validation',  // New: validate LLM's understanding
   STAGE1: 'stage1',
   ANALYZING_STAGE1: 'analyzing_stage1',
   INTERIM_ANALYSIS: 'interim_analysis',
@@ -88,13 +90,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [implicationsPreview, setImplicationsPreview] = useState(null)
   const [dialectics, setDialectics] = useState([])
 
+  // Understanding validation state (Phase 2)
+  const [notesUnderstanding, setNotesUnderstanding] = useState(null)
+  const [understandingRating, setUnderstandingRating] = useState(0)  // 1-5 stars
+  const [understandingCorrection, setUnderstandingCorrection] = useState('')
+  const [isRegenerating, setIsRegenerating] = useState(false)
+
   // Thinking/processing state
   const [thinking, setThinking] = useState('')
   const [thinkingVisible, setThinkingVisible] = useState(true)
   const [currentPhase, setCurrentPhase] = useState(null)
 
-  // Progress state
-  const [progress, setProgress] = useState({ stage: 0, total: 8, label: 'Getting started' })
+  // Progress state (9 stages total with understanding validation)
+  const [progress, setProgress] = useState({ stage: 0, total: 9, label: 'Getting started' })
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -275,8 +283,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       return
     }
 
-    setStage(STAGES.ANALYZING_STAGE1)
-    setProgress({ stage: 1, total: 8, label: 'Analyzing your notes...' })
+    setStage(STAGES.ANALYZING_NOTES)
+    setProgress({ stage: 1, total: 9, label: 'Analyzing your notes...' })
 
     await streamWizardRequest(
       '/concepts/wizard/stage1',
@@ -286,6 +294,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           setThinking(prev => prev + content)
         },
         onComplete: (data) => {
+          // Store questions and analysis for later use
           setQuestions(data.questions || [])
           setStageData(prev => ({
             ...prev,
@@ -318,8 +327,119 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             }))
           }
 
-          setProgress({ stage: 2, total: 8, label: 'Stage 1: Genesis & Problem Space' })
-          setStage(STAGES.STAGE1)
+          // Build understanding object for validation
+          const understanding = {
+            summary: data.notes_analysis?.summary || 'Unable to extract summary from your notes.',
+            preliminaryDefinition: data.notes_analysis?.preliminary_definition || null,
+            keyInsights: data.notes_analysis?.key_insights || [],
+            potentialTensions: data.potential_tensions || [],
+            prefilledCount: prefilledAnswers.length,
+            totalQuestions: (data.questions || []).length,
+            confidenceLevels: prefilledAnswers.reduce((acc, p) => {
+              const conf = p.prefilled_confidence || 'low'
+              acc[conf] = (acc[conf] || 0) + 1
+              return acc
+            }, {})
+          }
+          setNotesUnderstanding(understanding)
+
+          // Go to understanding validation instead of directly to Stage 1
+          setProgress({ stage: 2, total: 9, label: 'Validate my understanding' })
+          setStage(STAGES.UNDERSTANDING_VALIDATION)
+          setThinking('')
+        }
+      }
+    )
+  }
+
+  /**
+   * Accept understanding and proceed to Stage 1
+   */
+  const acceptUnderstandingAndContinue = () => {
+    setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
+    setStage(STAGES.STAGE1)
+    setCurrentQuestionIndex(0)
+  }
+
+  /**
+   * Regenerate understanding with user feedback
+   */
+  const regenerateUnderstanding = async () => {
+    if (!understandingCorrection.trim() && understandingRating === 0) {
+      setError('Please provide a rating or correction to regenerate')
+      return
+    }
+
+    setIsRegenerating(true)
+    setError(null)
+    setThinking('')
+    setStage(STAGES.ANALYZING_NOTES)
+    setProgress({ stage: 1, total: 9, label: 'Re-analyzing with your feedback...' })
+
+    await streamWizardRequest(
+      '/concepts/wizard/regenerate-understanding',
+      {
+        concept_name: conceptName,
+        notes: notes,
+        previous_understanding: notesUnderstanding,
+        user_rating: understandingRating,
+        user_correction: understandingCorrection,
+        source_id: sourceId
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          setQuestions(data.questions || [])
+          setStageData(prev => ({
+            ...prev,
+            stage1: {
+              ...prev.stage1,
+              questions: data.questions || [],
+              notesAnalysis: data.notes_analysis || null,
+              potentialTensions: data.potential_tensions || []
+            }
+          }))
+
+          // Update prefilled answers
+          const prefilledAnswers = []
+          for (const q of (data.questions || [])) {
+            if (q.prefilled && q.prefilled.value) {
+              prefilledAnswers.push({
+                question_id: q.id,
+                selected_options: Array.isArray(q.prefilled.value) ? q.prefilled.value :
+                                  (q.type === 'multiple_choice' || q.type === 'multi_select') ? [q.prefilled.value] : null,
+                text_answer: q.type === 'open_ended' ? q.prefilled.value : null,
+                prefilled_confidence: q.prefilled.confidence,
+                prefilled_reasoning: q.prefilled.reasoning
+              })
+            }
+          }
+
+          // Update understanding
+          const understanding = {
+            summary: data.notes_analysis?.summary || 'Unable to extract summary.',
+            preliminaryDefinition: data.notes_analysis?.preliminary_definition || null,
+            keyInsights: data.notes_analysis?.key_insights || [],
+            potentialTensions: data.potential_tensions || [],
+            prefilledCount: prefilledAnswers.length,
+            totalQuestions: (data.questions || []).length,
+            confidenceLevels: prefilledAnswers.reduce((acc, p) => {
+              const conf = p.prefilled_confidence || 'low'
+              acc[conf] = (acc[conf] || 0) + 1
+              return acc
+            }, {}),
+            regeneratedFromFeedback: true
+          }
+          setNotesUnderstanding(understanding)
+
+          // Reset correction for next round
+          setUnderstandingCorrection('')
+          setIsRegenerating(false)
+
+          setProgress({ stage: 2, total: 9, label: 'Validate my understanding' })
+          setStage(STAGES.UNDERSTANDING_VALIDATION)
           setThinking('')
         }
       }
@@ -419,8 +539,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
       const stageNum = stage === STAGES.STAGE1 ? 1 : stage === STAGES.STAGE2 ? 2 : 3
       setProgress({
-        stage: stageNum + 1,
-        total: 8,
+        stage: stageNum + 2,  // +2 because of understanding validation stage
+        total: 9,
         label: `Stage ${stageNum}: Question ${currentQuestionIndex + 2} of ${questions.length}`
       })
     } else {
@@ -442,7 +562,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
    */
   const analyzeStage1 = async (answers) => {
     setStage(STAGES.ANALYZING_STAGE1)
-    setProgress({ stage: 3, total: 8, label: 'Analyzing your answers...' })
+    setProgress({ stage: 4, total: 9, label: 'Analyzing your answers...' })
 
     await streamWizardRequest(
       '/concepts/wizard/analyze-stage1',
@@ -455,9 +575,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       {
         onPhase: (phase) => {
           if (phase === 'interim_analysis') {
-            setProgress({ stage: 3, total: 8, label: 'Building interim understanding...' })
+            setProgress({ stage: 4, total: 9, label: 'Building interim understanding...' })
           } else if (phase === 'stage2_generation') {
-            setProgress({ stage: 4, total: 8, label: 'Generating Stage 2 questions...' })
+            setProgress({ stage: 5, total: 9, label: 'Generating Stage 2 questions...' })
           }
         },
         onInterimComplete: (interim) => {
@@ -480,7 +600,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           }))
 
           // Show interim analysis first
-          setProgress({ stage: 4, total: 8, label: 'Review interim analysis' })
+          setProgress({ stage: 5, total: 9, label: 'Review interim analysis' })
           setStage(STAGES.INTERIM_ANALYSIS)
         }
       }
@@ -494,7 +614,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setQuestions(stageData.stage2.questions)
     setCurrentQuestionIndex(0)
     resetCurrentAnswer()
-    setProgress({ stage: 5, total: 8, label: 'Stage 2: Differentiation & Clarification' })
+    setProgress({ stage: 6, total: 9, label: 'Stage 2: Differentiation & Clarification' })
     setStage(STAGES.STAGE2)
   }
 
@@ -503,7 +623,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
    */
   const analyzeStage2 = async (answers) => {
     setStage(STAGES.ANALYZING_STAGE2)
-    setProgress({ stage: 5, total: 8, label: 'Analyzing differentiations...' })
+    setProgress({ stage: 6, total: 9, label: 'Analyzing differentiations...' })
 
     await streamWizardRequest(
       '/concepts/wizard/analyze-stage2',
@@ -528,7 +648,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           setImplicationsPreview(data.implications_preview)
 
           // Show implications preview
-          setProgress({ stage: 6, total: 8, label: 'Review implications' })
+          setProgress({ stage: 7, total: 9, label: 'Review implications' })
           setStage(STAGES.IMPLICATIONS_PREVIEW)
         }
       }
@@ -542,7 +662,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setQuestions(stageData.stage3.questions)
     setCurrentQuestionIndex(0)
     resetCurrentAnswer()
-    setProgress({ stage: 7, total: 8, label: 'Stage 3: Grounding & Recognition' })
+    setProgress({ stage: 8, total: 9, label: 'Stage 3: Grounding & Recognition' })
     setStage(STAGES.STAGE3)
   }
 
@@ -551,7 +671,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
    */
   const finalizeConceptWorkflow = async (stage3Answers) => {
     setStage(STAGES.PROCESSING)
-    setProgress({ stage: 8, total: 8, label: 'Creating final concept definition...' })
+    setProgress({ stage: 9, total: 9, label: 'Creating final concept definition...' })
 
     await streamWizardRequest(
       '/concepts/wizard/finalize',
@@ -570,7 +690,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       {
         onComplete: (data) => {
           setConceptData(data.concept)
-          setProgress({ stage: 8, total: 8, label: 'Complete!' })
+          setProgress({ stage: 9, total: 9, label: 'Complete!' })
           setStage(STAGES.COMPLETE)
         }
       }
@@ -761,7 +881,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           )}
 
           {/* STAGE: Analyzing (any analysis stage) */}
-          {(stage === STAGES.ANALYZING_STAGE1 || stage === STAGES.ANALYZING_STAGE2 || stage === STAGES.PROCESSING) && (
+          {(stage === STAGES.ANALYZING_NOTES || stage === STAGES.ANALYZING_STAGE1 || stage === STAGES.ANALYZING_STAGE2 || stage === STAGES.PROCESSING) && (
             <div className="wizard-stage">
               <div className="stage-header">
                 <h3>
@@ -794,6 +914,146 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     {thinking || 'Starting analysis...'}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Understanding Validation - User rates and corrects LLM's understanding */}
+          {stage === STAGES.UNDERSTANDING_VALIDATION && notesUnderstanding && (
+            <div className="wizard-stage">
+              <div className="stage-header">
+                <h3>Here's What I Understand From Your Notes</h3>
+                <p>Please validate my understanding before we proceed. Rate how well I captured your concept and add any corrections.</p>
+              </div>
+
+              <div className="understanding-validation-panel">
+                {/* Regeneration indicator */}
+                {notesUnderstanding.regeneratedFromFeedback && (
+                  <div className="regenerated-badge">
+                    Re-analyzed with your feedback
+                  </div>
+                )}
+
+                {/* Understanding Summary */}
+                <div className="uv-section uv-summary">
+                  <h4>My Summary of Your Concept</h4>
+                  <p className="uv-summary-text">{notesUnderstanding.summary}</p>
+                </div>
+
+                {/* Preliminary Definition */}
+                {notesUnderstanding.preliminaryDefinition && (
+                  <div className="uv-section uv-definition">
+                    <h4>Working Definition</h4>
+                    <div className="uv-definition-text">
+                      {notesUnderstanding.preliminaryDefinition}
+                    </div>
+                  </div>
+                )}
+
+                {/* Key Insights Extracted */}
+                {notesUnderstanding.keyInsights?.length > 0 && (
+                  <div className="uv-section uv-insights">
+                    <h4>Key Insights Extracted</h4>
+                    <ul className="uv-insights-list">
+                      {notesUnderstanding.keyInsights.map((insight, i) => (
+                        <li key={i}>{insight}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Potential Tensions */}
+                {notesUnderstanding.potentialTensions?.length > 0 && (
+                  <div className="uv-section uv-tensions">
+                    <h4>Potential Tensions Detected</h4>
+                    <div className="uv-tensions-list">
+                      {notesUnderstanding.potentialTensions.map((tension, i) => (
+                        <div key={i} className="uv-tension-item">
+                          <span className="tension-icon">⚡</span>
+                          {tension}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Confidence Indicators */}
+                <div className="uv-section uv-confidence">
+                  <h4>Pre-filled Confidence</h4>
+                  <div className="uv-confidence-grid">
+                    <div className="uv-confidence-item">
+                      <span className="conf-label">Questions pre-filled:</span>
+                      <span className="conf-value">{notesUnderstanding.prefilledCount} / {notesUnderstanding.totalQuestions}</span>
+                    </div>
+                    {notesUnderstanding.confidenceLevels && Object.entries(notesUnderstanding.confidenceLevels).map(([level, count]) => (
+                      <div key={level} className={`uv-confidence-item conf-${level}`}>
+                        <span className="conf-label">{level} confidence:</span>
+                        <span className="conf-value">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rating Section */}
+                <div className="uv-section uv-rating">
+                  <h4>Rate My Understanding</h4>
+                  <p className="uv-rating-help">How well did I capture your concept? (1 = poor, 5 = excellent)</p>
+                  <div className="star-rating">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`star-btn ${understandingRating >= star ? 'active' : ''}`}
+                        onClick={() => setUnderstandingRating(star)}
+                      >
+                        {understandingRating >= star ? '★' : '☆'}
+                      </button>
+                    ))}
+                    {understandingRating > 0 && (
+                      <span className="rating-label">
+                        {understandingRating === 1 && 'Poor - needs significant correction'}
+                        {understandingRating === 2 && 'Fair - several things wrong'}
+                        {understandingRating === 3 && 'Okay - some corrections needed'}
+                        {understandingRating === 4 && 'Good - minor adjustments'}
+                        {understandingRating === 5 && 'Excellent - captured it well'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Correction Input */}
+                <div className="uv-section uv-correction">
+                  <h4>Add Corrections or Clarifications</h4>
+                  <p className="uv-correction-help">
+                    If I misunderstood something, please explain. This will improve the questions I ask.
+                  </p>
+                  <textarea
+                    value={understandingCorrection}
+                    onChange={e => setUnderstandingCorrection(e.target.value)}
+                    placeholder="What did I get wrong? What's missing? What needs clarification?"
+                    rows={4}
+                    className="wizard-textarea uv-correction-textarea"
+                  />
+                </div>
+              </div>
+
+              <div className="wizard-actions">
+                <button className="btn btn-secondary" onClick={onCancel}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={regenerateUnderstanding}
+                  disabled={isRegenerating || (!understandingCorrection.trim() && understandingRating === 0)}
+                >
+                  {isRegenerating ? 'Re-analyzing...' : 'Regenerate with Feedback'}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={acceptUnderstandingAndContinue}
+                >
+                  Accept & Continue to Stage 1
+                </button>
               </div>
             </div>
           )}

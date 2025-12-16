@@ -2930,6 +2930,188 @@ textarea {
   border-top: 1px solid #30363d;
 }
 
+/* Enhanced Understanding Validation - UV sections */
+.uv-section {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.uv-section h4 {
+  color: #58a6ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.uv-summary-text {
+  color: #e6edf3;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.uv-definition-text {
+  color: #c9d1d9;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.75rem;
+  background: #161b22;
+  border-left: 3px solid #58a6ff;
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+}
+
+.uv-insights-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.uv-insights-list li {
+  color: #c9d1d9;
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+  border-bottom: 1px solid #21262d;
+}
+
+.uv-insights-list li:last-child {
+  border-bottom: none;
+}
+
+.uv-insights-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: #3fb950;
+}
+
+.uv-tensions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.uv-tension-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #21262d;
+  border-radius: 4px;
+  color: #d29922;
+  font-size: 0.9rem;
+}
+
+.uv-tension-item .tension-icon {
+  flex-shrink: 0;
+}
+
+.uv-confidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.uv-confidence-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: #161b22;
+  border-radius: 4px;
+}
+
+.uv-confidence-item .conf-label {
+  color: #8b949e;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.uv-confidence-item .conf-value {
+  color: #e6edf3;
+  font-weight: 600;
+}
+
+.uv-confidence-item.conf-high .conf-value {
+  color: #3fb950;
+}
+
+.uv-confidence-item.conf-medium .conf-value {
+  color: #d29922;
+}
+
+.uv-confidence-item.conf-low .conf-value {
+  color: #f85149;
+}
+
+/* Star rating for understanding validation */
+.uv-rating-help {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #30363d;
+  transition: all 0.15s ease;
+  padding: 0;
+  line-height: 1;
+}
+
+.star-btn:hover {
+  transform: scale(1.15);
+}
+
+.star-btn.active {
+  color: #f0883e;
+}
+
+.star-rating .rating-label {
+  color: #8b949e;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
+/* Correction section */
+.uv-correction-help {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.uv-correction-textarea {
+  width: 100%;
+  min-height: 100px;
+}
+
+/* Regenerated badge */
+.regenerated-badge {
+  background: linear-gradient(135deg, #238636 0%, #196c2e 100%);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
 /* Generated Examples Panel */
 .generated-examples-panel {
   margin-top: 1.5rem;

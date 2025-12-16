@@ -773,6 +773,103 @@ class FinalizeRequest(BaseModel):
     source_id: Optional[int] = None
 
 
+class RegenerateUnderstandingRequest(BaseModel):
+    """Request to regenerate understanding with user feedback."""
+    concept_name: str
+    notes: str
+    previous_understanding: Dict[str, Any]
+    user_rating: int  # 1-5 stars
+    user_correction: str
+    source_id: Optional[int] = None
+
+
+# =============================================================================
+# REGENERATE UNDERSTANDING PROMPT
+# =============================================================================
+
+REGENERATE_UNDERSTANDING_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
+
+The user has provided initial notes about a concept they're developing called "{concept_name}".
+
+Previously, you analyzed these notes and produced an understanding. The user has reviewed this and provided feedback.
+
+## User's Original Notes:
+{notes}
+
+## Your Previous Understanding:
+{previous_understanding}
+
+## User's Rating: {user_rating}/5 stars
+
+## User's Corrections/Clarifications:
+{user_correction}
+
+Your task is to:
+1. Carefully consider the user's feedback and corrections
+2. Revise your understanding to address their concerns
+3. Re-extract what can be inferred from notes WITH their corrections in mind
+4. Generate improved pre-filled answers for Stage 1 questions
+
+## Stage 1 Questions to Pre-fill:
+1. genesis_type: How would you characterize the origin of this concept?
+   Options: theoretical_innovation, empirical_discovery, synthesis, reconceptualization, normative_reframing
+
+2. core_definition: In one paragraph, provide your working definition of this concept.
+
+3. problem_addressed: What problem or gap does this concept address?
+
+4. adjacent_concepts: Which existing concepts come closest to what you're describing?
+
+5. distinguishing_feature: What most clearly distinguishes this concept from adjacent ones?
+
+Analyze the notes with the user's corrections in mind and produce a JSON response:
+{{
+    "notes_analysis": {{
+        "summary": "REVISED summary based on user feedback (2-3 sentences)",
+        "key_insights": ["REVISED key ideas incorporating corrections"],
+        "preliminary_definition": "REVISED working definition"
+    }},
+    "prefilled_answers": [
+        {{
+            "question_id": "genesis_type",
+            "suggested_value": "theoretical_innovation|empirical_discovery|synthesis|reconceptualization|normative_reframing|null",
+            "confidence": "high|medium|low",
+            "reasoning": "How this was derived, noting any user corrections considered",
+            "source_excerpt": "Quote from notes or user correction that supports this"
+        }},
+        {{
+            "question_id": "core_definition",
+            "suggested_value": "REVISED extracted/synthesized definition",
+            "confidence": "high|medium|low",
+            "reasoning": "How user feedback influenced this"
+        }},
+        {{
+            "question_id": "problem_addressed",
+            "suggested_value": "REVISED problem/gap description",
+            "confidence": "high|medium|low",
+            "reasoning": "Evidence from notes and user corrections"
+        }},
+        {{
+            "question_id": "adjacent_concepts",
+            "suggested_values": ["REVISED list of concepts"],
+            "confidence": "high|medium|low",
+            "reasoning": "Why these seem related, considering user feedback"
+        }},
+        {{
+            "question_id": "distinguishing_feature",
+            "suggested_value": "REVISED distinguishing feature",
+            "confidence": "high|medium|low",
+            "reasoning": "Evidence from notes and user corrections"
+        }}
+    ],
+    "questions_to_prioritize": ["question_ids that still need user clarification"],
+    "potential_tensions": ["Any contradictions or tensions detected, including from user feedback"],
+    "changes_made": ["List of specific changes made based on user feedback"]
+}}
+
+Be responsive to user feedback - if they rated poorly or provided corrections, make significant adjustments."""
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
@@ -827,6 +924,113 @@ Please analyze these notes and generate adaptive follow-up questions that will h
 
     return StreamingResponse(
         stream_thinking_response(messages, ANALYZE_NOTES_SYSTEM),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/regenerate-understanding")
+async def regenerate_understanding(request: RegenerateUnderstandingRequest):
+    """
+    Regenerate notes analysis with user feedback incorporated.
+    User provides rating and corrections, we re-run analysis with that context.
+    """
+    async def stream_regenerated_analysis():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'regenerating_understanding'})}\n\n"
+
+            # Format previous understanding for prompt
+            prev_understanding_str = json.dumps(request.previous_understanding, indent=2)
+
+            prompt = REGENERATE_UNDERSTANDING_PROMPT.format(
+                concept_name=request.concept_name,
+                notes=request.notes,
+                previous_understanding=prev_understanding_str,
+                user_rating=request.user_rating,
+                user_correction=request.user_correction or "(No specific correction provided)"
+            )
+
+            # Call Claude with extended thinking
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis. Incorporate user feedback to improve your understanding.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse the regenerated analysis
+            analysis_data = parse_wizard_response(response_text)
+            notes_analysis = analysis_data.get("notes_analysis", {})
+            prefilled_answers = analysis_data.get("prefilled_answers", [])
+            questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
+            potential_tensions = analysis_data.get("potential_tensions", [])
+            changes_made = analysis_data.get("changes_made", [])
+
+            # Build questions with pre-filled values
+            questions = []
+            for q in STAGE1_QUESTIONS:
+                q_dict = q.model_dump()
+
+                for prefill in prefilled_answers:
+                    if prefill.get("question_id") == q.id:
+                        q_dict["prefilled"] = {
+                            "value": prefill.get("suggested_value") or prefill.get("suggested_values"),
+                            "confidence": prefill.get("confidence", "low"),
+                            "reasoning": prefill.get("reasoning", ""),
+                            "source_excerpt": prefill.get("source_excerpt", "")
+                        }
+                        break
+
+                if q.id in questions_to_prioritize:
+                    q_dict["needs_clarification"] = True
+
+                questions.append(q_dict)
+
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'status': 'stage1_ready',
+                    'concept_name': request.concept_name,
+                    'stage': 1,
+                    'stage_title': 'Genesis & Problem Space',
+                    'stage_description': "I've revised my understanding based on your feedback.",
+                    'notes_analysis': notes_analysis,
+                    'potential_tensions': potential_tensions,
+                    'changes_made': changes_made,
+                    'questions': questions,
+                    'regenerated': True
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in regenerate_understanding: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_regenerated_analysis(),
         media_type="text/event-stream"
     )
 
