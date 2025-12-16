@@ -937,17 +937,18 @@ async def get_stage1_questions(request: StartWizardRequest):
             notes_analysis = {}
             prefilled_answers = []
 
-            async with client.messages.stream(
-                model="claude-opus-4-5-20250514",
-                max_tokens=16000,
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
                 thinking={
                     "type": "enabled",
-                    "budget_tokens": 10000
+                    "budget_tokens": THINKING_BUDGET
                 },
+                system="You are an expert in conceptual analysis helping articulate novel theoretical concepts.",
                 messages=[{"role": "user", "content": prompt}]
             ) as stream:
                 response_text = ""
-                async for event in stream:
+                for event in stream:
                     if hasattr(event, 'type'):
                         if event.type == "content_block_delta":
                             if hasattr(event, 'delta'):
@@ -956,8 +957,8 @@ async def get_stage1_questions(request: StartWizardRequest):
                                 elif hasattr(event.delta, 'text'):
                                     response_text += event.delta.text
 
-                # Get final message for usage stats
-                final_message = await stream.get_final_message()
+                # Get final message for text content
+                final_message = stream.get_final_message()
                 for block in final_message.content:
                     if hasattr(block, 'text'):
                         response_text = block.text
