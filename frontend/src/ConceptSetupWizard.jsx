@@ -42,12 +42,13 @@ const QUESTION_TYPES = {
   SCALE: 'scale'
 }
 
-// Custom response categories
-const CUSTOM_CATEGORIES = {
-  ALTERNATIVE: 'Alternative Answer',
-  COMMENT: 'Comment',
-  REFINEMENT: 'Refinement'
-}
+// Custom response categories (essay-flow pattern)
+const CUSTOM_CATEGORIES = [
+  { key: 'qualification', label: 'Qualification', description: 'Clarify or narrow the scope' },
+  { key: 'addon', label: 'Add-on', description: 'Supplement the selected option' },
+  { key: 'alternative', label: 'Alternative', description: 'Provide a different answer entirely' },
+  { key: 'refinement', label: 'Refinement', description: 'Improve or refine an option' }
+]
 
 export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   // Wizard state
@@ -75,8 +76,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     isDialectic: false,
     dialecticPoleA: '',
     dialecticPoleB: '',
-    dialecticNote: ''
+    dialecticNote: '',
+    optionComments: {}  // { optionValue: comment }
   })
+
+  // Option comment expansion state
+  const [expandedComments, setExpandedComments] = useState({})
 
   // Analysis results
   const [interimAnalysis, setInterimAnalysis] = useState(null)
@@ -136,8 +141,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       isDialectic: false,
       dialecticPoleA: '',
       dialecticPoleB: '',
-      dialecticNote: ''
+      dialecticNote: '',
+      optionComments: {}
     })
+    setExpandedComments({})
   }
 
   // Load prefilled answer for current question if available
@@ -159,7 +166,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         isDialectic: false,
         dialecticPoleA: '',
         dialecticPoleB: '',
-        dialecticNote: ''
+        dialecticNote: '',
+        optionComments: {}
       })
     } else {
       // multiple_choice or multi_select
@@ -172,9 +180,11 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         isDialectic: false,
         dialecticPoleA: '',
         dialecticPoleB: '',
-        dialecticNote: ''
+        dialecticNote: '',
+        optionComments: {}
       })
     }
+    setExpandedComments({})
   }
 
   /**
@@ -273,7 +283,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       { concept_name: conceptName, notes: notes, source_id: sourceId },
       {
         onThinking: (content) => {
-          setThinkingContent(prev => prev + content)
+          setThinking(prev => prev + content)
         },
         onComplete: (data) => {
           setQuestions(data.questions || [])
@@ -310,7 +320,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
           setProgress({ stage: 2, total: 8, label: 'Stage 1: Genesis & Problem Space' })
           setStage(STAGES.STAGE1)
-          setThinkingContent('')
+          setThinking('')
         }
       }
     )
@@ -329,8 +339,32 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       is_dialectic: currentAnswer.isDialectic,
       dialectic_pole_a: currentAnswer.dialecticPoleA || null,
       dialectic_pole_b: currentAnswer.dialecticPoleB || null,
-      dialectic_note: currentAnswer.dialecticNote || null
+      dialectic_note: currentAnswer.dialecticNote || null,
+      option_comments: Object.keys(currentAnswer.optionComments).length > 0 ? currentAnswer.optionComments : null
     }
+  }
+
+  /**
+   * Toggle option comment expansion
+   */
+  const toggleOptionComment = (optionValue) => {
+    setExpandedComments(prev => ({
+      ...prev,
+      [optionValue]: !prev[optionValue]
+    }))
+  }
+
+  /**
+   * Update option comment
+   */
+  const updateOptionComment = (optionValue, comment) => {
+    setCurrentAnswer(prev => ({
+      ...prev,
+      optionComments: {
+        ...prev.optionComments,
+        [optionValue]: comment
+      }
+    }))
   }
 
   /**
@@ -995,20 +1029,24 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     {currentQuestion.options?.map((opt, idx) => {
                       const isSelected = currentAnswer.selectedOptions.includes(opt.value)
                       const hasExclusivity = opt.exclusivity_group !== null && opt.exclusivity_group !== undefined
+                      const isCommentExpanded = expandedComments[opt.value]
+                      const hasComment = currentAnswer.optionComments[opt.value]
 
                       return (
                         <div
                           key={idx}
                           className={`option-card ${isSelected ? 'selected' : ''} ${hasExclusivity ? 'exclusive' : ''}`}
-                          onClick={() => toggleOption(opt, currentQuestion)}
                         >
-                          <div className="option-selector">
+                          <div
+                            className="option-selector"
+                            onClick={() => toggleOption(opt, currentQuestion)}
+                          >
                             {currentQuestion.type === QUESTION_TYPES.MULTI
                               ? (isSelected ? '☑' : '☐')
                               : (isSelected ? '●' : '○')
                             }
                           </div>
-                          <div className="option-content">
+                          <div className="option-content" onClick={() => toggleOption(opt, currentQuestion)}>
                             <div className="option-label">{opt.label}</div>
                             {opt.description && (
                               <div className="option-description">{opt.description}</div>
@@ -1020,39 +1058,62 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                               </div>
                             )}
                           </div>
+                          {/* Comment expand/collapse button */}
+                          <button
+                            type="button"
+                            className="option-comment-toggle"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleOptionComment(opt.value)
+                            }}
+                          >
+                            💬 {isCommentExpanded ? 'Hide' : (hasComment ? 'Edit' : 'Comment')}
+                          </button>
+                          {/* Comment input when expanded */}
+                          {isCommentExpanded && (
+                            <textarea
+                              className="option-comment-input"
+                              value={currentAnswer.optionComments[opt.value] || ''}
+                              onChange={(e) => updateOptionComment(opt.value, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder={`Comment on "${opt.label}"...`}
+                              rows={2}
+                            />
+                          )}
                         </div>
                       )
                     })}
                   </div>
                 )}
 
-                {/* Custom response (write-in) */}
+                {/* Custom response (write-in) - essay-flow pattern */}
                 {currentQuestion.allow_custom_response && currentQuestion.type !== QUESTION_TYPES.OPEN && (
-                  <div className="custom-response-section">
-                    <div className="custom-response-header">
-                      <span>Add your own response:</span>
-                      <div className="custom-categories">
-                        {(currentQuestion.custom_response_categories || ['Alternative Answer', 'Comment', 'Refinement']).map(cat => (
-                          <button
-                            key={cat}
-                            className={`category-btn ${currentAnswer.customCategory === cat ? 'active' : ''}`}
-                            onClick={() => setCurrentAnswer(prev => ({
-                              ...prev,
-                              customCategory: prev.customCategory === cat ? null : cat
-                            }))}
-                          >
-                            {cat}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="mc-custom-wrapper">
+                    <div className="mc-custom-header">
+                      <span className="mc-custom-label">Add your own:</span>
+                      {CUSTOM_CATEGORIES.map(cat => (
+                        <button
+                          key={cat.key}
+                          type="button"
+                          className={`mc-custom-category ${currentAnswer.customCategory === cat.key ? 'active' : ''}`}
+                          data-cat={cat.key}
+                          onClick={() => setCurrentAnswer(prev => ({
+                            ...prev,
+                            customCategory: prev.customCategory === cat.key ? null : cat.key
+                          }))}
+                          title={cat.description}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
                     </div>
                     {currentAnswer.customCategory && (
                       <textarea
                         value={currentAnswer.customResponse}
                         onChange={e => setCurrentAnswer(prev => ({ ...prev, customResponse: e.target.value }))}
-                        placeholder={`Enter your ${currentAnswer.customCategory.toLowerCase()}...`}
+                        placeholder={`Enter your ${CUSTOM_CATEGORIES.find(c => c.key === currentAnswer.customCategory)?.label.toLowerCase() || 'response'}...`}
                         rows={3}
-                        className="wizard-textarea custom-textarea"
+                        className="mc-custom-textarea"
                       />
                     )}
                   </div>
