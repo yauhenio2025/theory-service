@@ -123,6 +123,38 @@ async def run_migrations(db: AsyncSession = Depends(get_db)):
         await db.execute(text("ALTER TABLE emerging_dialectics ALTER COLUMN evidence_strength TYPE TEXT"))
         migrations_run.append("Changed evidence_strength column to TEXT")
 
+    # Mark mock data projects with [MOCK] prefix for clarity
+    # Projects 3 and 4 are synthetic test data
+    result = await db.execute(text("""
+        UPDATE challenges
+        SET source_project_name = '[MOCK] ' || source_project_name
+        WHERE source_project_id IN (3, 4)
+          AND source_project_name IS NOT NULL
+          AND source_project_name NOT LIKE '[MOCK]%'
+    """))
+    if result.rowcount > 0:
+        migrations_run.append(f"Marked {result.rowcount} challenges as [MOCK]")
+
+    result = await db.execute(text("""
+        UPDATE emerging_concepts
+        SET source_project_name = '[MOCK] ' || source_project_name
+        WHERE source_project_id IN (3, 4)
+          AND source_project_name IS NOT NULL
+          AND source_project_name NOT LIKE '[MOCK]%'
+    """))
+    if result.rowcount > 0:
+        migrations_run.append(f"Marked {result.rowcount} emerging_concepts as [MOCK]")
+
+    result = await db.execute(text("""
+        UPDATE emerging_dialectics
+        SET source_project_name = '[MOCK] ' || source_project_name
+        WHERE source_project_id IN (3, 4)
+          AND source_project_name IS NOT NULL
+          AND source_project_name NOT LIKE '[MOCK]%'
+    """))
+    if result.rowcount > 0:
+        migrations_run.append(f"Marked {result.rowcount} emerging_dialectics as [MOCK]")
+
     await db.commit()
 
     return {
