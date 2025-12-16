@@ -1006,7 +1006,7 @@ async def list_challenge_clusters(
     db: AsyncSession = Depends(get_db)
 ):
     """List challenge clusters, optionally filtered."""
-    query = select(ChallengeCluster)
+    query = select(ChallengeCluster).options(selectinload(ChallengeCluster.members))
 
     if status:
         query = query.where(ChallengeCluster.status == status)
@@ -1049,7 +1049,9 @@ async def get_challenge_cluster(
 ):
     """Get a specific challenge cluster with optional members."""
     result = await db.execute(
-        select(ChallengeCluster).where(ChallengeCluster.id == cluster_id)
+        select(ChallengeCluster)
+        .options(selectinload(ChallengeCluster.members))
+        .where(ChallengeCluster.id == cluster_id)
     )
     cluster = result.scalar_one_or_none()
     if not cluster:
