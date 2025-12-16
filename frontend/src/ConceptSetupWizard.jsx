@@ -1289,7 +1289,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                       {notesUnderstanding.potentialTensions.map((tension, i) => (
                         <div key={i} className="uv-tension-item">
                           <span className="tension-icon">⚡</span>
-                          {tension}
+                          {typeof tension === 'string' ? tension : (tension.description || tension.tension || JSON.stringify(tension))}
                         </div>
                       ))}
                     </div>
