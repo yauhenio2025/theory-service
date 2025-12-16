@@ -415,20 +415,25 @@ Be thorough but only include what can be derived from the user's answers. Don't 
 # ENDPOINTS
 # =============================================================================
 
+async def sse_response(data: dict):
+    """Properly formatted SSE async generator."""
+    yield f"data: {json.dumps({'type': 'complete', 'data': data})}\n\n"
+    yield "data: [DONE]\n\n"
+
+
 @router.post("/start")
 async def start_wizard(request: StartWizardRequest):
     """Start wizard without notes - return default questions."""
     # Return default questions (convert to dict format)
     questions = [q.model_dump() for q in DEFAULT_QUESTIONS]
 
-    # Return as SSE to match frontend expectations
     response_data = {
         "status": "ready",
         "concept_name": request.concept_name,
         "questions": questions
     }
     return StreamingResponse(
-        iter([f"data: {json.dumps({'type': 'complete', 'data': response_data})}\n\ndata: [DONE]\n\n"]),
+        sse_response(response_data),
         media_type="text/event-stream"
     )
 
@@ -440,7 +445,7 @@ async def analyze_notes(request: AnalyzeNotesRequest):
         # Not enough notes - return default questions
         questions = [q.model_dump() for q in DEFAULT_QUESTIONS]
         return StreamingResponse(
-            iter([f"data: {json.dumps({'type': 'complete', 'data': {'questions': questions}})}\n\ndata: [DONE]\n\n"]),
+            sse_response({'questions': questions}),
             media_type="text/event-stream"
         )
 
