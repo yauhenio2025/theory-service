@@ -15,10 +15,14 @@ Design Principles:
 import os
 import json
 import asyncio
+import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+
+# Set up logging
+logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,8 +32,18 @@ from .database import get_db
 
 router = APIRouter(prefix="/concepts/wizard", tags=["concept-wizard"])
 
-# Claude client
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+# Claude client - initialize lazily to handle missing API key gracefully
+_client = None
+
+def get_claude_client():
+    """Get Claude client, raising helpful error if API key missing."""
+    global _client
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY environment variable is not set. Please configure it in Render.")
+    if _client is None:
+        _client = Anthropic(api_key=api_key)
+    return _client
 
 # Model configuration
 MODEL = "claude-opus-4-5-20250514"
@@ -223,6 +237,10 @@ async def stream_thinking_response(messages: List[dict], system: str = None):
     Yields SSE events for thinking and text blocks.
     """
     try:
+        # Get client (will raise if API key missing)
+        client = get_claude_client()
+        logger.info(f"Starting Claude stream with model {MODEL}, thinking budget {THINKING_BUDGET}")
+
         # Use streaming for extended thinking
         with client.messages.stream(
             model=MODEL,
@@ -261,6 +279,7 @@ async def stream_thinking_response(messages: List[dict], system: str = None):
             yield f"data: {json.dumps({'type': 'complete', 'data': parse_wizard_response(response_text)})}\n\n"
 
     except Exception as e:
+        logger.error(f"Error in stream_thinking_response: {e}", exc_info=True)
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     yield "data: [DONE]\n\n"
@@ -402,11 +421,16 @@ async def start_wizard(request: StartWizardRequest):
     # Return default questions (convert to dict format)
     questions = [q.model_dump() for q in DEFAULT_QUESTIONS]
 
-    return {
+    # Return as SSE to match frontend expectations
+    response_data = {
         "status": "ready",
         "concept_name": request.concept_name,
         "questions": questions
     }
+    return StreamingResponse(
+        iter([f"data: {json.dumps({'type': 'complete', 'data': response_data})}\n\ndata: [DONE]\n\n"]),
+        media_type="text/event-stream"
+    )
 
 
 @router.post("/analyze-notes")
