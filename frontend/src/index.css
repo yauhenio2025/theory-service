@@ -1065,3 +1065,39 @@ header h1 {
 .content.full-width .card {
   max-width: 100%;
 }
+
+/* Mock data indicators */
+.mock-data {
+  border-left: 4px solid #f59e0b !important;
+  background: linear-gradient(to right, #fffbeb 0%, var(--bg-card) 20%);
+}
+
+.mock-badge {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.project-badge.mock {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.project-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin: 0.25rem;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.project-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

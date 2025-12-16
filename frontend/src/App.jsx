@@ -487,7 +487,7 @@ function ChallengeDashboard({ challenges, reviewChallenge, addToast, onRefresh }
             <div className="stat-number">{dashboardStats.emerging_dialectics}</div>
             <div className="stat-label">Emerging Dialectics</div>
           </div>
-          <div className="stat-card highlight" onClick={() => setSubTab('clusters')}>
+          <div className="stat-card highlight" onClick={() => setSubTab('clusters')} title="Groups of similar challenges for batch review">
             <div className="stat-number">{pendingClusters.length}</div>
             <div className="stat-label">Pending Clusters</div>
           </div>
@@ -534,16 +534,36 @@ function ChallengeDashboard({ challenges, reviewChallenge, addToast, onRefresh }
 
             {dashboardStats?.source_projects?.length > 0 && (
               <div className="detail-section">
-                <h4>Source Projects</h4>
+                <h4>Evidence Source Projects</h4>
+                <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem' }}>
+                  These are essay-flow projects where evidence was analyzed. Projects marked [MOCK] contain synthetic test data.
+                </p>
                 <div className="project-list">
                   {dashboardStats.source_projects.map(p => (
-                    <div key={p.id} className="project-badge">
+                    <div key={p.id} className={`project-badge ${p.name?.includes('[MOCK]') ? 'mock' : ''}`}>
                       {p.name} ({p.count} challenges)
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
+            <div className="detail-section">
+              <h4>What are Clusters?</h4>
+              <p style={{ marginBottom: '1rem' }}>
+                Clusters group <strong>similar challenges</strong> together for batch review. For example, if 3 different evidence clusters
+                all say "the Digital Sovereignty concept needs refinement", they get grouped into one cluster. The LLM analyzes them
+                and recommends whether to accept, reject, or review individually.
+              </p>
+            </div>
+
+            <div className="detail-section">
+              <h4>Source Attribution</h4>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>Evidence Project</strong> (shown on challenges): Where the evidence was analyzed (e.g., "Morozov Socialism After AI" essay).<br/>
+                <strong>Theory Source</strong> (in Concepts/Dialectics tabs): Where the theoretical concepts originated (e.g., "Morozov Theory Guide").
+              </p>
+            </div>
 
             <div className="detail-section">
               <h4>Workflow</h4>
@@ -684,14 +704,16 @@ function ChallengeDashboard({ challenges, reviewChallenge, addToast, onRefresh }
               </div>
             ) : (
               emergingConcepts.map(ec => (
-                <div key={ec.id} className={`card emerging-card ${ec.status}`}>
+                <div key={ec.id} className={`card emerging-card ${ec.status} ${ec.source_project_name?.includes('[MOCK]') ? 'mock-data' : ''}`}>
                   <div className="card-body">
                     <div className="emerging-header">
                       <h3>{ec.proposed_name}</h3>
                       <span className={`status ${ec.status}`}>{ec.status}</span>
                     </div>
                     <div className="emerging-meta">
-                      <span>{ec.source_project_name || `Project #${ec.source_project_id}`}</span>
+                      <span className={ec.source_project_name?.includes('[MOCK]') ? 'mock-badge' : ''}>
+                        {ec.source_project_name || `Project #${ec.source_project_id}`}
+                      </span>
                       {ec.evidence_strength && <span> • Strength: {ec.evidence_strength}</span>}
                       <span> • Confidence: {Math.round((ec.confidence || 0.8) * 100)}%</span>
                     </div>
@@ -805,6 +827,11 @@ function ChallengeDashboard({ challenges, reviewChallenge, addToast, onRefresh }
             </button>
           </div>
           <div className="card-body">
+            <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+              <strong>What are clusters?</strong> When multiple evidence sources make similar observations about a concept or dialectic,
+              they get grouped into a cluster. The LLM analyzes each cluster and recommends an action: <strong>accept</strong> (strong consensus),
+              <strong> reject</strong> (weak or contradicted), or <strong>human_review</strong> (complex case needing manual review).
+            </div>
             {clusters.length === 0 ? (
               <div className="empty-state">
                 <h3>No clusters yet</h3>
