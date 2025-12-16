@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 /**
  * Enhanced Concept Setup Wizard - Staged Adaptive Questioning
@@ -198,6 +198,11 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [tensionFeedback, setTensionFeedback] = useState({})  // { index: { status: 'approved'|'approved_with_comment'|'rejected', comment: '' } }
   const [expandedTensionComment, setExpandedTensionComment] = useState({})  // { index: true/false }
   const [isGeneratingTensions, setIsGeneratingTensions] = useState(false)
+
+  // Genealogy state - intellectual origins and influences
+  const [userInfluences, setUserInfluences] = useState([])  // User-added influences not detected
+  const [genealogyAnswers, setGenealogyAnswers] = useState({})  // Answers to probing questions
+  const [expandedGenealogy, setExpandedGenealogy] = useState(true)  // Show/hide genealogy section
 
   // Generated examples state (Phase 4 - synthetic case studies)
   const [generatedCases, setGeneratedCases] = useState([])
@@ -461,6 +466,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             preliminaryDefinition: data.notes_analysis?.preliminary_definition || null,
             keyInsights: data.notes_analysis?.key_insights || [],
             potentialTensions: data.potential_tensions || [],
+            // Genealogy - intellectual origins and influences
+            genealogy: data.genealogy || {
+              detected_influences: [],
+              emergence_context: {},
+              needs_probing: []
+            },
             prefilledCount: prefilledAnswers.length,
             totalQuestions: (data.questions || []).length,
             confidenceLevels: prefilledAnswers.reduce((acc, p) => {
@@ -488,8 +499,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     // Check if user provided any granular feedback
     const hasInsightFeedback = Object.keys(insightFeedback).length > 0
     const hasTensionFeedback = Object.keys(tensionFeedback).length > 0
+    const hasGenealogyAnswers = Object.keys(genealogyAnswers).length > 0
+    const hasUserInfluences = userInfluences.length > 0
 
-    if (hasInsightFeedback || hasTensionFeedback) {
+    if (hasInsightFeedback || hasTensionFeedback || hasGenealogyAnswers || hasUserInfluences) {
       // User provided granular feedback - refine pre-fills before continuing
       setStage(STAGES.ANALYZING_NOTES)
       setProgress({ stage: 2, total: 9, label: 'Refining understanding with your feedback...' })
@@ -504,10 +517,14 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             summary: notesUnderstanding.summary,
             preliminaryDefinition: notesUnderstanding.preliminaryDefinition,
             key_insights: notesUnderstanding.keyInsights,
-            potentialTensions: notesUnderstanding.potentialTensions
+            potentialTensions: notesUnderstanding.potentialTensions,
+            genealogy: notesUnderstanding.genealogy
           },
           insight_feedback: insightFeedback,
           tension_feedback: tensionFeedback,
+          // Genealogy user input
+          genealogy_answers: genealogyAnswers,
+          user_influences: userInfluences,
           original_questions: questions,
           source_id: sourceId
         },
@@ -536,6 +553,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             setTensionFeedback({})
             setExpandedInsightComment({})
             setExpandedTensionComment({})
+            // Clear genealogy feedback state
+            setGenealogyAnswers({})
+            setUserInfluences([])
 
             // Now proceed to Stage 1
             setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
@@ -720,6 +740,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             preliminaryDefinition: data.notes_analysis?.preliminary_definition || null,
             keyInsights: data.notes_analysis?.key_insights || [],
             potentialTensions: data.potential_tensions || [],
+            // Preserve or update genealogy from regeneration
+            genealogy: data.genealogy || notesUnderstanding?.genealogy || {
+              detected_influences: [],
+              emergence_context: {},
+              needs_probing: []
+            },
             prefilledCount: prefilledAnswers.length,
             totalQuestions: (data.questions || []).length,
             confidenceLevels: prefilledAnswers.reduce((acc, p) => {
@@ -790,16 +816,6 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setTensionFeedback(prev => ({
       ...prev,
       [index]: { ...prev[index], comment }
-    }))
-  }
-
-  /**
-   * Toggle tension comment expansion
-   */
-  const toggleTensionComment = (index) => {
-    setExpandedTensionComment(prev => ({
-      ...prev,
-      [index]: !prev[index]
     }))
   }
 
@@ -1848,6 +1864,117 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   ) : (
                     <div className="uv-tensions-empty">
                       <p>No tensions detected yet. Click "Generate More Tensions" to identify potential dialectics in your concept.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Genealogy Section - Intellectual Origins & Influences */}
+                <div className="uv-section uv-genealogy">
+                  <div className="uv-section-header" onClick={() => setExpandedGenealogy(!expandedGenealogy)}>
+                    <h4>📚 Intellectual Genealogy</h4>
+                    <span className="section-toggle">{expandedGenealogy ? '▼' : '▶'}</span>
+                  </div>
+                  <p className="uv-section-help">
+                    Help me understand the intellectual origins of your concept. Who or what inspired it?
+                  </p>
+
+                  {expandedGenealogy && (
+                    <div className="genealogy-content">
+                      {/* Detected Influences */}
+                      {notesUnderstanding.genealogy?.detected_influences?.length > 0 && (
+                        <div className="genealogy-subsection">
+                          <h5>Detected Influences</h5>
+                          <div className="influences-list">
+                            {notesUnderstanding.genealogy.detected_influences.map((influence, i) => (
+                              <div key={i} className="influence-item">
+                                <div className="influence-header">
+                                  <span className={`influence-type type-${influence.type}`}>
+                                    {influence.type === 'thinker' && '👤'}
+                                    {influence.type === 'framework' && '🔧'}
+                                    {influence.type === 'tradition' && '📜'}
+                                    {influence.type === 'concept' && '💡'}
+                                    {' '}{influence.name}
+                                  </span>
+                                  <span className={`confidence-badge conf-${influence.confidence}`}>
+                                    {influence.confidence}
+                                  </span>
+                                </div>
+                                <p className="influence-relationship">{influence.relationship}</p>
+                                {influence.source_excerpt && (
+                                  <p className="influence-excerpt">"{influence.source_excerpt}"</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Emergence Context */}
+                      {notesUnderstanding.genealogy?.emergence_context && (
+                        <div className="genealogy-subsection">
+                          <h5>Emergence Context</h5>
+                          <div className="context-grid">
+                            {notesUnderstanding.genealogy.emergence_context.domain && (
+                              <div className="context-item">
+                                <span className="context-label">Domain:</span>
+                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.domain}</span>
+                              </div>
+                            )}
+                            {notesUnderstanding.genealogy.emergence_context.field && (
+                              <div className="context-item">
+                                <span className="context-label">Field:</span>
+                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.field}</span>
+                              </div>
+                            )}
+                            {notesUnderstanding.genealogy.emergence_context.timeframe && (
+                              <div className="context-item">
+                                <span className="context-label">Timeframe:</span>
+                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.timeframe}</span>
+                              </div>
+                            )}
+                            {notesUnderstanding.genealogy.emergence_context.trigger && (
+                              <div className="context-item">
+                                <span className="context-label">Trigger:</span>
+                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.trigger}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Probing Questions */}
+                      {notesUnderstanding.genealogy?.needs_probing?.length > 0 && (
+                        <div className="genealogy-subsection probing">
+                          <h5>Help Me Understand Better</h5>
+                          <p className="probing-intro">I'd like to know more about these aspects:</p>
+                          {notesUnderstanding.genealogy.needs_probing.map((question, i) => (
+                            <div key={i} className="probing-question">
+                              <label>{question}</label>
+                              <textarea
+                                placeholder="Your answer..."
+                                value={genealogyAnswers[i] || ''}
+                                onChange={(e) => setGenealogyAnswers(prev => ({ ...prev, [i]: e.target.value }))}
+                                rows={2}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add Your Own Influences */}
+                      <div className="genealogy-subsection add-influence">
+                        <h5>Add Additional Influences</h5>
+                        <p className="add-influence-help">
+                          Mention any thinkers, frameworks, or experiences that shaped this concept:
+                        </p>
+                        <textarea
+                          className="add-influence-input"
+                          placeholder="E.g., 'I was influenced by Foucault's concept of power, my experience in tech policy, and readings on STS...'"
+                          value={userInfluences.join('\n')}
+                          onChange={(e) => setUserInfluences(e.target.value.split('\n').filter(s => s.trim()))}
+                          rows={3}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

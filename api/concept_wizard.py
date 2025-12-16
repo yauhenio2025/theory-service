@@ -549,11 +549,20 @@ NOTES_PREPROCESSING_PROMPT = """You are an expert in conceptual analysis helping
 
 The user has provided initial notes about a concept they're developing called "{concept_name}". Your task is to:
 1. Extract what can be inferred from these notes
-2. Pre-fill answers to Stage 1 questions where possible
-3. Identify what's still unclear and needs direct questioning
+2. Probe the GENEALOGY of this concept - its intellectual origins and inspirations
+3. Pre-fill answers to Stage 1 questions where possible
+4. Identify what's still unclear and needs direct questioning
 
 ## User's Notes:
 {notes}
+
+## GENEALOGY EXTRACTION (Critical)
+Look for any mentions of:
+- Thinkers, philosophers, or theorists who inspired this concept
+- Existing theoretical frameworks or traditions it builds on
+- The context (academic, professional, personal) in which this concept emerged
+- How long the user has been developing this concept
+- Key readings, experiences, or observations that sparked this concept
 
 ## Stage 1 Questions to Pre-fill:
 1. genesis_type: How would you characterize the origin of this concept?
@@ -574,6 +583,24 @@ Analyze the notes and produce a JSON response:
         "summary": "Brief summary of what the user is trying to articulate (2-3 sentences)",
         "key_insights": ["Main ideas extracted from the notes"],
         "preliminary_definition": "A working definition extracted/synthesized from the notes"
+    }},
+    "genealogy": {{
+        "detected_influences": [
+            {{
+                "name": "Thinker/Framework name",
+                "type": "thinker|framework|tradition|concept",
+                "relationship": "How this influenced the user's concept",
+                "confidence": "high|medium|low",
+                "source_excerpt": "Quote from notes if available"
+            }}
+        ],
+        "emergence_context": {{
+            "domain": "academic|professional|personal|mixed",
+            "field": "Specific field if detectable (e.g., political theory, STS, IR)",
+            "timeframe": "How long user has been developing this, if mentioned",
+            "trigger": "What sparked this concept, if mentioned"
+        }},
+        "needs_probing": ["Aspects of genealogy not clear from notes that should be asked about"]
     }},
     "prefilled_answers": [
         {{
@@ -613,7 +640,8 @@ Analyze the notes and produce a JSON response:
 }}
 
 Be conservative: only suggest values when you have clear evidence from the notes. Mark confidence appropriately.
-If the notes don't provide enough information for a question, set suggested_value to null."""
+If the notes don't provide enough information for a question, set suggested_value to null.
+For genealogy, actively look for intellectual influences even if not explicitly stated - note when you're inferring vs quoting."""
 
 
 INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
@@ -850,6 +878,9 @@ class RefineWithFeedbackRequest(BaseModel):
     insight_feedback: Dict[str, Any]  # { index: { status: 'approved'|'rejected', comment: '' } }
     tension_feedback: Dict[str, Any]  # { index: { status: 'approved'|..., comment: '' } }
     original_questions: List[Dict[str, Any]]  # Original stage 1 questions with pre-fills
+    # Genealogy user input
+    genealogy_answers: Optional[Dict[str, str]] = None  # User answers to probing questions
+    user_influences: Optional[List[str]] = None  # User-added influences not detected
     source_id: Optional[int] = None
 
 
@@ -1245,11 +1276,27 @@ REFINE_WITH_FEEDBACK_PROMPT = """You are an expert in conceptual analysis helpin
 ## Original Pre-filled Answers:
 {original_prefills}
 
+## INTELLECTUAL GENEALOGY
+The user was asked about the intellectual origins and influences behind their concept.
+
+### Detected Influences (from notes analysis):
+{detected_influences}
+
+### User's Answers to Genealogy Probing Questions:
+{genealogy_answers}
+
+### User-Declared Additional Influences:
+{user_influences}
+
 Your task is to generate REFINED pre-filled answers for Stage 1 questions that:
 1. Incorporate the user's approved insights (give them more weight)
 2. EXCLUDE or de-emphasize rejected insights
 3. Consider the comments/refinements the user provided
 4. Include the approved tensions as productive dialectics to preserve
+5. **CRITICAL**: Integrate the genealogy information - the intellectual lineage should inform:
+   - genesis_type (theoretical_innovation if building on frameworks, synthesis if combining traditions, etc.)
+   - adjacent_concepts (include the thinkers/frameworks mentioned as influences)
+   - The overall definition and framing
 
 ## Stage 1 Questions to Pre-fill:
 1. genesis_type: How would you characterize the origin of this concept?
@@ -1270,12 +1317,17 @@ Return your analysis as JSON:
     "refined_summary": "Updated summary incorporating user feedback...",
     "refined_definition": "Updated working definition...",
     "refined_insights": ["list", "of", "approved/refined", "insights"],
+    "refined_genealogy": {{
+        "key_influences": ["Thinker/framework 1", "Tradition 2"],
+        "lineage_summary": "Brief description of intellectual lineage",
+        "emergence_context": "Context in which this concept emerged"
+    }},
     "prefilled_answers": [
         {{
             "question_id": "genesis_type",
             "value": "theoretical_innovation",
             "confidence": "high|medium|low",
-            "reasoning": "Why this answer, considering user feedback...",
+            "reasoning": "Why this answer, considering user feedback and genealogy...",
             "source_excerpt": "relevant quote from notes if any"
         }},
         {{
@@ -1750,6 +1802,37 @@ async def refine_with_feedback(request: RefineWithFeedbackRequest):
 
             original_prefills_str = "\n".join(original_prefills) if original_prefills else "(No pre-fills)"
 
+            # Build genealogy summaries
+            genealogy_data = request.original_understanding.get('genealogy', {})
+            detected_influences_list = genealogy_data.get('detected_influences', [])
+            detected_influences_str = ""
+            if detected_influences_list:
+                for inf in detected_influences_list:
+                    name = inf.get('name', 'Unknown')
+                    inf_type = inf.get('type', 'influence')
+                    relationship = inf.get('relationship', '')
+                    detected_influences_str += f"- {name} ({inf_type}): {relationship}\n"
+            else:
+                detected_influences_str = "(No influences detected from notes)"
+
+            # Format user's genealogy answers
+            genealogy_answers_str = ""
+            if request.genealogy_answers:
+                probing_questions = genealogy_data.get('needs_probing', [])
+                for idx_str, answer in request.genealogy_answers.items():
+                    idx = int(idx_str)
+                    question = probing_questions[idx] if idx < len(probing_questions) else f"Probing question {idx}"
+                    genealogy_answers_str += f"Q: {question}\nA: {answer}\n\n"
+            else:
+                genealogy_answers_str = "(No probing questions answered)"
+
+            # Format user-declared additional influences
+            user_influences_str = ""
+            if request.user_influences:
+                user_influences_str = "\n".join([f"- {inf}" for inf in request.user_influences])
+            else:
+                user_influences_str = "(No additional influences declared)"
+
             prompt = REFINE_WITH_FEEDBACK_PROMPT.format(
                 concept_name=request.concept_name,
                 notes=request.notes,
@@ -1757,7 +1840,10 @@ async def refine_with_feedback(request: RefineWithFeedbackRequest):
                 original_insights="\n".join([f"- {ins}" for ins in original_insights]),
                 insight_feedback_summary=insight_feedback_summary,
                 approved_tensions=approved_tensions_str,
-                original_prefills=original_prefills_str
+                original_prefills=original_prefills_str,
+                detected_influences=detected_influences_str,
+                genealogy_answers=genealogy_answers_str,
+                user_influences=user_influences_str
             )
 
             client = get_claude_client()
