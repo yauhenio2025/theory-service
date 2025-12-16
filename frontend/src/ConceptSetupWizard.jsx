@@ -474,6 +474,21 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             </div>
           )}
 
+          {/* STAGE: Questions - Debug fallback */}
+          {stage === STAGES.QUESTIONS && !currentQuestion && (
+            <div className="wizard-stage">
+              <div className="wizard-error">
+                No questions loaded. Questions array length: {questions.length}.
+                Current index: {currentQuestionIndex}.
+                {questions.length > 0 && (
+                  <pre style={{fontSize: '10px', maxHeight: '200px', overflow: 'auto'}}>
+                    {JSON.stringify(questions[0], null, 2)}
+                  </pre>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* STAGE: Questions */}
           {stage === STAGES.QUESTIONS && currentQuestion && (
             <div className="wizard-stage">
