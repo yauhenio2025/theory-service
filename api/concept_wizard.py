@@ -1009,16 +1009,20 @@ async def analyze_stage1(request: Stage1AnswersRequest):
             stage2_questions = stage2_data.get("stage2_questions", [])
 
             # Return complete response
-            yield f"data: {json.dumps({'type': 'complete', 'data': {
-                'status': 'stage2_ready',
-                'concept_name': request.concept_name,
-                'stage': 2,
-                'stage_title': 'Differentiation & Clarification',
-                'stage_description': 'Let\\'s sharpen the distinctions and explore tensions.',
-                'interim_analysis': interim_analysis,
-                'marked_dialectics': [d.model_dump() for d in marked_dialectics],
-                'questions': stage2_questions
-            }})}\n\n"
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'status': 'stage2_ready',
+                    'concept_name': request.concept_name,
+                    'stage': 2,
+                    'stage_title': 'Differentiation & Clarification',
+                    'stage_description': "Let's sharpen the distinctions and explore tensions.",
+                    'interim_analysis': interim_analysis,
+                    'marked_dialectics': [d.model_dump() for d in marked_dialectics],
+                    'questions': stage2_questions
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
 
         except Exception as e:
             logger.error(f"Error in analyze_stage1: {e}", exc_info=True)
@@ -1096,16 +1100,20 @@ async def analyze_stage2(request: Stage2AnswersRequest):
             # Return Stage 3 questions (predefined but could be customized based on context)
             stage3_questions = [q.model_dump() for q in STAGE3_QUESTIONS]
 
-            yield f"data: {json.dumps({'type': 'complete', 'data': {
-                'status': 'stage3_ready',
-                'concept_name': request.concept_name,
-                'stage': 3,
-                'stage_title': 'Grounding & Recognition',
-                'stage_description': 'Let\\'s establish how to recognize and validate this concept.',
-                'implications_preview': implications_preview,
-                'dialectics': [d.model_dump() for d in all_dialectics],
-                'questions': stage3_questions
-            }})}\n\n"
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'status': 'stage3_ready',
+                    'concept_name': request.concept_name,
+                    'stage': 3,
+                    'stage_title': 'Grounding & Recognition',
+                    'stage_description': "Let's establish how to recognize and validate this concept.",
+                    'implications_preview': implications_preview,
+                    'dialectics': [d.model_dump() for d in all_dialectics],
+                    'questions': stage3_questions
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
 
         except Exception as e:
             logger.error(f"Error in analyze_stage2: {e}", exc_info=True)
@@ -1188,12 +1196,16 @@ Output comprehensive JSON matching the PROCESS_ANSWERS_SYSTEM schema."""
 
             concept_data = parse_wizard_response(synthesis_text)
 
-            yield f"data: {json.dumps({'type': 'complete', 'data': {
-                'status': 'complete',
-                'concept_name': request.concept_name,
-                'concept': concept_data.get('concept', concept_data),
-                'dialectics_preserved': [d.model_dump() for d in request.dialectics]
-            }})}\n\n"
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'status': 'complete',
+                    'concept_name': request.concept_name,
+                    'concept': concept_data.get('concept', concept_data),
+                    'dialectics_preserved': [d.model_dump() for d in request.dialectics]
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
 
         except Exception as e:
             logger.error(f"Error in finalize_concept: {e}", exc_info=True)
