@@ -116,6 +116,16 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     }
   }, [])
 
+  // Load prefilled answer when question changes (for Stage 1 preprocessing)
+  useEffect(() => {
+    if (questions.length > 0 && currentQuestionIndex >= 0 && currentQuestionIndex < questions.length) {
+      const currentQ = questions[currentQuestionIndex]
+      if (currentQ?.prefilled?.value) {
+        loadPrefilledAnswer(currentQ)
+      }
+    }
+  }, [questions, currentQuestionIndex])
+
   // Reset answer state when moving to new question
   const resetCurrentAnswer = () => {
     setCurrentAnswer({
@@ -128,6 +138,43 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       dialecticPoleB: '',
       dialecticNote: ''
     })
+  }
+
+  // Load prefilled answer for current question if available
+  const loadPrefilledAnswer = (question) => {
+    if (!question?.prefilled?.value) {
+      resetCurrentAnswer()
+      return
+    }
+
+    const prefill = question.prefilled
+    const value = prefill.value
+
+    if (question.type === 'open_ended') {
+      setCurrentAnswer({
+        selectedOptions: [],
+        textAnswer: value || '',
+        customResponse: '',
+        customCategory: null,
+        isDialectic: false,
+        dialecticPoleA: '',
+        dialecticPoleB: '',
+        dialecticNote: ''
+      })
+    } else {
+      // multiple_choice or multi_select
+      const options = Array.isArray(value) ? value : [value]
+      setCurrentAnswer({
+        selectedOptions: options,
+        textAnswer: '',
+        customResponse: '',
+        customCategory: null,
+        isDialectic: false,
+        dialecticPoleA: '',
+        dialecticPoleB: '',
+        dialecticNote: ''
+      })
+    }
   }
 
   /**
@@ -219,20 +266,51 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     }
 
     setStage(STAGES.ANALYZING_STAGE1)
-    setProgress({ stage: 1, total: 8, label: 'Loading Stage 1 questions...' })
+    setProgress({ stage: 1, total: 8, label: 'Analyzing your notes...' })
 
     await streamWizardRequest(
       '/concepts/wizard/stage1',
-      { concept_name: conceptName, source_id: sourceId },
+      { concept_name: conceptName, notes: notes, source_id: sourceId },
       {
+        onThinking: (content) => {
+          setThinkingContent(prev => prev + content)
+        },
         onComplete: (data) => {
           setQuestions(data.questions || [])
           setStageData(prev => ({
             ...prev,
-            stage1: { ...prev.stage1, questions: data.questions || [] }
+            stage1: {
+              ...prev.stage1,
+              questions: data.questions || [],
+              notesAnalysis: data.notes_analysis || null,
+              potentialTensions: data.potential_tensions || []
+            }
           }))
+
+          // Pre-populate answers from prefilled values
+          const prefilledAnswers = []
+          for (const q of (data.questions || [])) {
+            if (q.prefilled && q.prefilled.value) {
+              prefilledAnswers.push({
+                question_id: q.id,
+                selected_options: Array.isArray(q.prefilled.value) ? q.prefilled.value :
+                                  (q.type === 'multiple_choice' || q.type === 'multi_select') ? [q.prefilled.value] : null,
+                text_answer: q.type === 'open_ended' ? q.prefilled.value : null,
+                prefilled_confidence: q.prefilled.confidence,
+                prefilled_reasoning: q.prefilled.reasoning
+              })
+            }
+          }
+          if (prefilledAnswers.length > 0) {
+            setStageData(prev => ({
+              ...prev,
+              stage1: { ...prev.stage1, prefilledAnswers }
+            }))
+          }
+
           setProgress({ stage: 2, total: 8, label: 'Stage 1: Genesis & Problem Space' })
           setStage(STAGES.STAGE1)
+          setThinkingContent('')
         }
       }
     )
@@ -830,11 +908,49 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 Stage {getStageNumber()}: Question {currentQuestionIndex + 1} of {questions.length}
               </div>
 
+              {/* Notes Analysis Panel - show once at start of Stage 1 */}
+              {stage === STAGES.STAGE1 && currentQuestionIndex === 0 && stageData.stage1?.notesAnalysis && (
+                <div className="notes-analysis-panel">
+                  <div className="notes-analysis-header">
+                    <h4>📝 From Your Notes</h4>
+                    <span className="notes-analysis-subtitle">I extracted the following understanding:</span>
+                  </div>
+                  <div className="notes-analysis-content">
+                    <p className="notes-summary">{stageData.stage1.notesAnalysis.summary}</p>
+                    {stageData.stage1.notesAnalysis.preliminary_definition && (
+                      <div className="preliminary-def">
+                        <strong>Working definition:</strong>
+                        <p>{stageData.stage1.notesAnalysis.preliminary_definition}</p>
+                      </div>
+                    )}
+                    {stageData.stage1.notesAnalysis.key_insights?.length > 0 && (
+                      <div className="key-insights">
+                        <strong>Key insights:</strong>
+                        <ul>
+                          {stageData.stage1.notesAnalysis.key_insights.map((insight, i) => (
+                            <li key={i}>{insight}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  <p className="notes-analysis-note">
+                    I've pre-filled answers below where I had enough information. Please verify and adjust as needed.
+                  </p>
+                </div>
+              )}
+
               <div className="question-card">
                 <div className="question-header">
                   {currentQuestion.rationale && (
                     <span className="question-rationale" title={currentQuestion.rationale}>
                       Why this question?
+                    </span>
+                  )}
+                  {/* Prefilled indicator */}
+                  {currentQuestion.prefilled?.value && (
+                    <span className={`prefilled-badge prefilled-${currentQuestion.prefilled.confidence}`}>
+                      ✨ Pre-filled ({currentQuestion.prefilled.confidence} confidence)
                     </span>
                   )}
                 </div>
@@ -843,6 +959,16 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
                 {currentQuestion.help && (
                   <p className="question-help">{currentQuestion.help}</p>
+                )}
+
+                {/* Show prefilled reasoning */}
+                {currentQuestion.prefilled?.reasoning && (
+                  <div className="prefilled-reasoning">
+                    <span className="reasoning-label">Based on your notes:</span> {currentQuestion.prefilled.reasoning}
+                    {currentQuestion.prefilled.source_excerpt && (
+                      <blockquote className="source-excerpt">"{currentQuestion.prefilled.source_excerpt}"</blockquote>
+                    )}
+                  </div>
                 )}
 
                 {/* Open-ended answer */}

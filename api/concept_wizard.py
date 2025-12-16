@@ -63,6 +63,7 @@ class AnalyzeNotesRequest(BaseModel):
 
 class StartWizardRequest(BaseModel):
     concept_name: str
+    notes: str  # User's initial notes - REQUIRED for preprocessing
     source_id: Optional[int] = None
 
 
@@ -544,6 +545,77 @@ Be thorough but only include what can be derived from the user's answers. Don't 
 # STAGED WIZARD PROMPTS
 # =============================================================================
 
+NOTES_PREPROCESSING_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
+
+The user has provided initial notes about a concept they're developing called "{concept_name}". Your task is to:
+1. Extract what can be inferred from these notes
+2. Pre-fill answers to Stage 1 questions where possible
+3. Identify what's still unclear and needs direct questioning
+
+## User's Notes:
+{notes}
+
+## Stage 1 Questions to Pre-fill:
+1. genesis_type: How would you characterize the origin of this concept?
+   Options: theoretical_innovation, empirical_discovery, synthesis, reconceptualization, normative_reframing
+
+2. core_definition: In one paragraph, provide your working definition of this concept.
+
+3. problem_addressed: What problem or gap does this concept address?
+
+4. adjacent_concepts: Which existing concepts come closest to what you're describing?
+   (Can suggest specific concepts mentioned or implied in notes)
+
+5. distinguishing_feature: What most clearly distinguishes this concept from adjacent ones?
+
+Analyze the notes and produce a JSON response:
+{{
+    "notes_analysis": {{
+        "summary": "Brief summary of what the user is trying to articulate (2-3 sentences)",
+        "key_insights": ["Main ideas extracted from the notes"],
+        "preliminary_definition": "A working definition extracted/synthesized from the notes"
+    }},
+    "prefilled_answers": [
+        {{
+            "question_id": "genesis_type",
+            "suggested_value": "theoretical_innovation|empirical_discovery|synthesis|reconceptualization|normative_reframing|null",
+            "confidence": "high|medium|low",
+            "reasoning": "Why this seems to be the origin type based on the notes",
+            "source_excerpt": "Quote from notes that supports this"
+        }},
+        {{
+            "question_id": "core_definition",
+            "suggested_value": "Extracted or synthesized definition from notes, or null if unclear",
+            "confidence": "high|medium|low",
+            "reasoning": "How this was derived"
+        }},
+        {{
+            "question_id": "problem_addressed",
+            "suggested_value": "The problem/gap the user seems to be addressing, or null",
+            "confidence": "high|medium|low",
+            "reasoning": "Evidence from notes"
+        }},
+        {{
+            "question_id": "adjacent_concepts",
+            "suggested_values": ["List of concepts mentioned or implied in notes"],
+            "confidence": "high|medium|low",
+            "reasoning": "Why these seem related"
+        }},
+        {{
+            "question_id": "distinguishing_feature",
+            "suggested_value": "What makes this concept unique based on notes, or null",
+            "confidence": "high|medium|low",
+            "reasoning": "Evidence from notes"
+        }}
+    ],
+    "questions_to_prioritize": ["question_ids that need user clarification because notes were unclear"],
+    "potential_tensions": ["Any contradictions or tensions detected in the notes that could be productive dialectics"]
+}}
+
+Be conservative: only suggest values when you have clear evidence from the notes. Mark confidence appropriately.
+If the notes don't provide enough information for a question, set suggested_value to null."""
+
+
 INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
 
 The user has completed Stage 1 questions about their concept "{concept_name}". Your task is to:
@@ -846,19 +918,103 @@ async def save_concept(request: SaveConceptRequest, db: AsyncSession = Depends(g
 
 @router.post("/stage1")
 async def get_stage1_questions(request: StartWizardRequest):
-    """Get Stage 1 questions (Genesis & Problem Space)."""
-    questions = [q.model_dump() for q in STAGE1_QUESTIONS]
+    """
+    Pre-process user notes with Claude, then return Stage 1 questions
+    with pre-filled answers where the notes provide enough information.
+    """
+    async def stream_notes_analysis():
+        try:
+            # Phase 1: Analyzing notes
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'analyzing_notes'})}\n\n"
 
-    response_data = {
-        "status": "stage1_ready",
-        "concept_name": request.concept_name,
-        "stage": 1,
-        "stage_title": "Genesis & Problem Space",
-        "stage_description": "Let's understand the origin and purpose of your concept.",
-        "questions": questions
-    }
+            prompt = NOTES_PREPROCESSING_PROMPT.format(
+                concept_name=request.concept_name,
+                notes=request.notes
+            )
+
+            # Call Claude with extended thinking to analyze notes
+            notes_analysis = {}
+            prefilled_answers = []
+
+            async with client.messages.stream(
+                model="claude-opus-4-5-20250514",
+                max_tokens=16000,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 10000
+                },
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                async for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                # Get final message for usage stats
+                final_message = await stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse the analysis
+            analysis_data = parse_wizard_response(response_text)
+            notes_analysis = analysis_data.get("notes_analysis", {})
+            prefilled_answers = analysis_data.get("prefilled_answers", [])
+            questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
+            potential_tensions = analysis_data.get("potential_tensions", [])
+
+            # Build questions with pre-filled values
+            questions = []
+            for q in STAGE1_QUESTIONS:
+                q_dict = q.model_dump()
+
+                # Find if we have a prefilled answer for this question
+                for prefill in prefilled_answers:
+                    if prefill.get("question_id") == q.id:
+                        q_dict["prefilled"] = {
+                            "value": prefill.get("suggested_value") or prefill.get("suggested_values"),
+                            "confidence": prefill.get("confidence", "low"),
+                            "reasoning": prefill.get("reasoning", ""),
+                            "source_excerpt": prefill.get("source_excerpt", "")
+                        }
+                        break
+
+                # Mark if this question needs priority attention
+                if q.id in questions_to_prioritize:
+                    q_dict["needs_clarification"] = True
+
+                questions.append(q_dict)
+
+            # Return complete response with analysis and questions
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'status': 'stage1_ready',
+                    'concept_name': request.concept_name,
+                    'stage': 1,
+                    'stage_title': 'Genesis & Problem Space',
+                    'stage_description': "Let's verify and refine what we extracted from your notes.",
+                    'notes_analysis': notes_analysis,
+                    'potential_tensions': potential_tensions,
+                    'questions': questions
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in stage1 notes preprocessing: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
     return StreamingResponse(
-        sse_response(response_data),
+        stream_notes_analysis(),
         media_type="text/event-stream"
     )
 
