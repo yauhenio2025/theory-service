@@ -1880,13 +1880,16 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
                   {expandedGenealogy && (
                     <div className="genealogy-content">
-                      {/* Detected Influences */}
-                      {notesUnderstanding.genealogy?.detected_influences?.length > 0 && (
+                      {/* Hypothesized Influences - LLM's best guesses */}
+                      {(notesUnderstanding.genealogy?.hypothesized_influences?.length > 0 ||
+                        notesUnderstanding.genealogy?.detected_influences?.length > 0) && (
                         <div className="genealogy-subsection">
-                          <h5>Detected Influences</h5>
+                          <h5>🎯 Hypothesized Influences</h5>
+                          <p className="subsection-help">Based on your notes, I think these shaped your concept. Confirm or reject:</p>
                           <div className="influences-list">
-                            {notesUnderstanding.genealogy.detected_influences.map((influence, i) => (
-                              <div key={i} className="influence-item">
+                            {(notesUnderstanding.genealogy.hypothesized_influences ||
+                              notesUnderstanding.genealogy.detected_influences || []).map((influence, i) => (
+                              <div key={i} className={`influence-item ${genealogyAnswers[`influence_${i}`] || ''}`}>
                                 <div className="influence-header">
                                   <span className={`influence-type type-${influence.type}`}>
                                     {influence.type === 'thinker' && '👤'}
@@ -1899,10 +1902,32 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                     {influence.confidence}
                                   </span>
                                 </div>
-                                <p className="influence-relationship">{influence.relationship}</p>
+                                <p className="influence-reasoning">
+                                  {influence.why_hypothesized || influence.relationship}
+                                </p>
                                 {influence.source_excerpt && (
                                   <p className="influence-excerpt">"{influence.source_excerpt}"</p>
                                 )}
+                                <div className="influence-actions">
+                                  <button
+                                    className={`influence-btn confirm ${genealogyAnswers[`influence_${i}`] === 'confirmed' ? 'active' : ''}`}
+                                    onClick={() => setGenealogyAnswers(prev => ({ ...prev, [`influence_${i}`]: 'confirmed' }))}
+                                  >
+                                    ✓ Yes, this influenced me
+                                  </button>
+                                  <button
+                                    className={`influence-btn partial ${genealogyAnswers[`influence_${i}`] === 'partial' ? 'active' : ''}`}
+                                    onClick={() => setGenealogyAnswers(prev => ({ ...prev, [`influence_${i}`]: 'partial' }))}
+                                  >
+                                    ~ Partially
+                                  </button>
+                                  <button
+                                    className={`influence-btn reject ${genealogyAnswers[`influence_${i}`] === 'rejected' ? 'active' : ''}`}
+                                    onClick={() => setGenealogyAnswers(prev => ({ ...prev, [`influence_${i}`]: 'rejected' }))}
+                                  >
+                                    ✗ Not really
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1912,7 +1937,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                       {/* Emergence Context */}
                       {notesUnderstanding.genealogy?.emergence_context && (
                         <div className="genealogy-subsection">
-                          <h5>Emergence Context</h5>
+                          <h5>📍 Emergence Context</h5>
                           <div className="context-grid">
                             {notesUnderstanding.genealogy.emergence_context.domain && (
                               <div className="context-item">
@@ -1926,34 +1951,95 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                 <span className="context-value">{notesUnderstanding.genealogy.emergence_context.field}</span>
                               </div>
                             )}
-                            {notesUnderstanding.genealogy.emergence_context.timeframe && (
-                              <div className="context-item">
-                                <span className="context-label">Timeframe:</span>
-                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.timeframe}</span>
-                              </div>
-                            )}
-                            {notesUnderstanding.genealogy.emergence_context.trigger && (
+                            {(notesUnderstanding.genealogy.emergence_context.inferred_trigger ||
+                              notesUnderstanding.genealogy.emergence_context.trigger) && (
                               <div className="context-item">
                                 <span className="context-label">Trigger:</span>
-                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.trigger}</span>
+                                <span className="context-value">
+                                  {notesUnderstanding.genealogy.emergence_context.inferred_trigger ||
+                                   notesUnderstanding.genealogy.emergence_context.trigger}
+                                </span>
                               </div>
                             )}
                           </div>
                         </div>
                       )}
 
-                      {/* Probing Questions */}
-                      {notesUnderstanding.genealogy?.needs_probing?.length > 0 && (
+                      {/* Multiple Choice Genealogy Questions */}
+                      {notesUnderstanding.genealogy?.genealogy_questions?.length > 0 && (
+                        <div className="genealogy-subsection genealogy-questions">
+                          <h5>🔍 Help Me Refine the Lineage</h5>
+                          <p className="subsection-help">Select the options that best describe your concept's origins:</p>
+                          {notesUnderstanding.genealogy.genealogy_questions.map((q, qIndex) => (
+                            <div key={q.id || qIndex} className="genealogy-mc-question">
+                              <label className="genealogy-q-label">{q.question}</label>
+                              {q.rationale && <p className="genealogy-q-rationale">{q.rationale}</p>}
+                              <div className="genealogy-options">
+                                {q.options?.map((opt, optIndex) => (
+                                  <label
+                                    key={opt.value || optIndex}
+                                    className={`genealogy-option ${genealogyAnswers[q.id] === opt.value ? 'selected' : ''}`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`genealogy_${q.id}`}
+                                      value={opt.value}
+                                      checked={genealogyAnswers[q.id] === opt.value}
+                                      onChange={() => setGenealogyAnswers(prev => ({ ...prev, [q.id]: opt.value }))}
+                                    />
+                                    <span className="option-content">
+                                      <span className="option-label">{opt.label}</span>
+                                      {opt.description && <span className="option-desc">{opt.description}</span>}
+                                    </span>
+                                  </label>
+                                ))}
+                                {/* None of the above option */}
+                                <label className={`genealogy-option none-option ${genealogyAnswers[q.id] === 'none' ? 'selected' : ''}`}>
+                                  <input
+                                    type="radio"
+                                    name={`genealogy_${q.id}`}
+                                    value="none"
+                                    checked={genealogyAnswers[q.id] === 'none'}
+                                    onChange={() => setGenealogyAnswers(prev => ({ ...prev, [q.id]: 'none' }))}
+                                  />
+                                  <span className="option-content">
+                                    <span className="option-label">None of these</span>
+                                    <span className="option-desc">I'll specify below</span>
+                                  </span>
+                                </label>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Single Optional Open-Ended Question */}
+                      {notesUnderstanding.genealogy?.open_ended_question?.question && (
+                        <div className="genealogy-subsection open-ended">
+                          <h5>💭 One More Thing</h5>
+                          <p className="open-ended-why">{notesUnderstanding.genealogy.open_ended_question.why_needed}</p>
+                          <label className="open-ended-label">{notesUnderstanding.genealogy.open_ended_question.question}</label>
+                          <textarea
+                            placeholder="Your answer (optional)..."
+                            value={genealogyAnswers.open_ended || ''}
+                            onChange={(e) => setGenealogyAnswers(prev => ({ ...prev, open_ended: e.target.value }))}
+                            rows={2}
+                          />
+                        </div>
+                      )}
+
+                      {/* Fallback for old format: needs_probing */}
+                      {notesUnderstanding.genealogy?.needs_probing?.length > 0 &&
+                       !notesUnderstanding.genealogy?.genealogy_questions?.length && (
                         <div className="genealogy-subsection probing">
                           <h5>Help Me Understand Better</h5>
-                          <p className="probing-intro">I'd like to know more about these aspects:</p>
-                          {notesUnderstanding.genealogy.needs_probing.map((question, i) => (
+                          {notesUnderstanding.genealogy.needs_probing.slice(0, 2).map((question, i) => (
                             <div key={i} className="probing-question">
                               <label>{question}</label>
                               <textarea
                                 placeholder="Your answer..."
-                                value={genealogyAnswers[i] || ''}
-                                onChange={(e) => setGenealogyAnswers(prev => ({ ...prev, [i]: e.target.value }))}
+                                value={genealogyAnswers[`probe_${i}`] || ''}
+                                onChange={(e) => setGenealogyAnswers(prev => ({ ...prev, [`probe_${i}`]: e.target.value }))}
                                 rows={2}
                               />
                             </div>
@@ -1961,19 +2047,21 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                         </div>
                       )}
 
-                      {/* Add Your Own Influences */}
-                      <div className="genealogy-subsection add-influence">
-                        <h5>Add Additional Influences</h5>
-                        <p className="add-influence-help">
-                          Mention any thinkers, frameworks, or experiences that shaped this concept:
-                        </p>
-                        <textarea
-                          className="add-influence-input"
-                          placeholder="E.g., 'I was influenced by Foucault's concept of power, my experience in tech policy, and readings on STS...'"
-                          value={userInfluences.join('\n')}
-                          onChange={(e) => setUserInfluences(e.target.value.split('\n').filter(s => s.trim()))}
-                          rows={3}
-                        />
+                      {/* Add Your Own - only if user selected "none" anywhere or wants to add more */}
+                      <div className="genealogy-subsection add-influence collapsed-default">
+                        <details>
+                          <summary>➕ Add influences I missed</summary>
+                          <p className="add-influence-help">
+                            Mention any thinkers, frameworks, or experiences I didn't catch:
+                          </p>
+                          <textarea
+                            className="add-influence-input"
+                            placeholder="E.g., 'My main influence was actually X, which you didn't mention...'"
+                            value={userInfluences.join('\n')}
+                            onChange={(e) => setUserInfluences(e.target.value.split('\n').filter(s => s.trim()))}
+                            rows={2}
+                          />
+                        </details>
                       </div>
                     </div>
                   )}

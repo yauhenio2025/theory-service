@@ -3742,6 +3742,234 @@ textarea {
   color: #6e7681;
 }
 
+/* Influence Actions - Confirm/Partial/Reject buttons */
+.influence-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #21262d;
+}
+
+.influence-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  background: #161b22;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.influence-btn:hover {
+  background: #21262d;
+}
+
+.influence-btn.confirm:hover,
+.influence-btn.confirm.active {
+  background: rgba(63, 185, 80, 0.15);
+  border-color: #3fb950;
+  color: #3fb950;
+}
+
+.influence-btn.partial:hover,
+.influence-btn.partial.active {
+  background: rgba(210, 153, 34, 0.15);
+  border-color: #d29922;
+  color: #d29922;
+}
+
+.influence-btn.reject:hover,
+.influence-btn.reject.active {
+  background: rgba(248, 81, 73, 0.15);
+  border-color: #f85149;
+  color: #f85149;
+}
+
+/* Influence item states based on selection */
+.influence-item.confirmed {
+  border-left-color: #3fb950;
+  background: rgba(63, 185, 80, 0.05);
+}
+
+.influence-item.partial {
+  border-left-color: #d29922;
+  background: rgba(210, 153, 34, 0.05);
+}
+
+.influence-item.rejected {
+  border-left-color: #f85149;
+  background: rgba(248, 81, 73, 0.05);
+  opacity: 0.7;
+}
+
+.influence-reasoning {
+  margin: 0;
+  color: #8b949e;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.subsection-help {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+
+/* Genealogy MC Questions */
+.genealogy-questions {
+  border-color: #58a6ff;
+  background: rgba(88, 166, 255, 0.03);
+}
+
+.genealogy-mc-question {
+  margin-bottom: 1.5rem;
+}
+
+.genealogy-mc-question:last-child {
+  margin-bottom: 0;
+}
+
+.genealogy-q-label {
+  display: block;
+  color: #e6edf3;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.genealogy-q-rationale {
+  color: #8b949e;
+  font-size: 0.8rem;
+  margin: 0 0 0.75rem;
+  font-style: italic;
+}
+
+.genealogy-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.genealogy-option {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.genealogy-option:hover {
+  border-color: #58a6ff;
+  background: #21262d;
+}
+
+.genealogy-option.selected {
+  border-color: #58a6ff;
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.genealogy-option input[type="radio"] {
+  margin-right: 0.75rem;
+  margin-top: 0.15rem;
+  accent-color: #58a6ff;
+}
+
+.genealogy-option .option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.genealogy-option .option-label {
+  color: #e6edf3;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.genealogy-option .option-desc {
+  color: #8b949e;
+  font-size: 0.8rem;
+}
+
+.genealogy-option.none-option {
+  border-style: dashed;
+  background: transparent;
+}
+
+.genealogy-option.none-option.selected {
+  background: rgba(139, 148, 158, 0.1);
+  border-color: #8b949e;
+  border-style: solid;
+}
+
+/* Open-ended question */
+.genealogy-subsection.open-ended {
+  border-color: #a371f7;
+  background: rgba(163, 113, 247, 0.03);
+}
+
+.open-ended-why {
+  color: #a371f7;
+  font-size: 0.8rem;
+  margin: 0 0 0.75rem;
+  font-style: italic;
+}
+
+.open-ended-label {
+  display: block;
+  color: #c9d1d9;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+/* Collapsed add-influence section */
+.genealogy-subsection.collapsed-default {
+  background: transparent;
+  border-color: #21262d;
+  border-style: dashed;
+  padding: 0;
+}
+
+.genealogy-subsection.collapsed-default details {
+  width: 100%;
+}
+
+.genealogy-subsection.collapsed-default summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  color: #8b949e;
+  font-size: 0.9rem;
+  list-style: none;
+}
+
+.genealogy-subsection.collapsed-default summary::-webkit-details-marker {
+  display: none;
+}
+
+.genealogy-subsection.collapsed-default summary:hover {
+  color: #c9d1d9;
+}
+
+.genealogy-subsection.collapsed-default details[open] summary {
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #21262d;
+}
+
+.genealogy-subsection.collapsed-default details[open] .add-influence-help,
+.genealogy-subsection.collapsed-default details[open] .add-influence-input {
+  padding: 0 1rem;
+}
+
+.genealogy-subsection.collapsed-default details[open] .add-influence-input {
+  margin-bottom: 1rem;
+}
+
 /* Thinking mini panel */
 .thinking-mini {
   background: #0d1117;

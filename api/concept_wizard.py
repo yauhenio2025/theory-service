@@ -556,13 +556,23 @@ The user has provided initial notes about a concept they're developing called "{
 ## User's Notes:
 {notes}
 
-## GENEALOGY EXTRACTION (Critical)
-Look for any mentions of:
-- Thinkers, philosophers, or theorists who inspired this concept
-- Existing theoretical frameworks or traditions it builds on
-- The context (academic, professional, personal) in which this concept emerged
-- How long the user has been developing this concept
-- Key readings, experiences, or observations that sparked this concept
+## GENEALOGY INFERENCE (Critical - Use Your Knowledge!)
+You are Claude Opus 4.5 with extensive knowledge of intellectual history, philosophy, social sciences, and academic traditions.
+USE THIS KNOWLEDGE to HYPOTHESIZE the likely genealogy of this concept.
+
+Based on the concept's:
+- Domain and field (what academic traditions does this touch?)
+- Terminology used (what frameworks use similar language?)
+- Problem framing (what traditions address similar problems?)
+- Adjacent concepts mentioned (who else has worked on related ideas?)
+
+ACTIVELY INFER likely influences even if NOT explicitly stated. The user may not know the intellectual lineage of their own ideas - help them discover it.
+
+For example:
+- If discussing "power dynamics in tech" → likely influenced by Foucault, STS, critical theory
+- If framing "sovereignty" in non-territorial terms → IR theory, Krasner, Ruggie, possibly Agamben
+- If synthesizing economics + politics → political economy tradition, possibly IPE
+- If discussing "recognition" or "identity" → likely Hegel, Taylor, Honneth tradition
 
 ## Stage 1 Questions to Pre-fill:
 1. genesis_type: How would you characterize the origin of this concept?
@@ -585,22 +595,58 @@ Analyze the notes and produce a JSON response:
         "preliminary_definition": "A working definition extracted/synthesized from the notes"
     }},
     "genealogy": {{
-        "detected_influences": [
+        "hypothesized_influences": [
             {{
                 "name": "Thinker/Framework name",
                 "type": "thinker|framework|tradition|concept",
-                "relationship": "How this influenced the user's concept",
+                "why_hypothesized": "Why you infer this influence (terminology, framing, domain)",
                 "confidence": "high|medium|low",
-                "source_excerpt": "Quote from notes if available"
+                "source_excerpt": "Quote from notes if explicitly mentioned, or null if inferred"
             }}
         ],
         "emergence_context": {{
             "domain": "academic|professional|personal|mixed",
-            "field": "Specific field if detectable (e.g., political theory, STS, IR)",
-            "timeframe": "How long user has been developing this, if mentioned",
-            "trigger": "What sparked this concept, if mentioned"
+            "field": "Specific field (e.g., political theory, STS, IR)",
+            "inferred_trigger": "Best guess at what sparked this concept"
         }},
-        "needs_probing": ["Aspects of genealogy not clear from notes that should be asked about"]
+        "genealogy_questions": [
+            {{
+                "id": "primary_tradition",
+                "question": "Which intellectual tradition does this concept most draw from?",
+                "type": "multiple_choice",
+                "options": [
+                    {{"value": "tradition_1", "label": "Tradition Name", "description": "Brief explanation"}},
+                    {{"value": "tradition_2", "label": "Another Tradition", "description": "Why this might fit"}}
+                ],
+                "rationale": "Why you're asking this - what it will clarify"
+            }},
+            {{
+                "id": "key_thinker",
+                "question": "Whose work does this concept most resemble or build on?",
+                "type": "multiple_choice",
+                "options": [
+                    {{"value": "thinker_1", "label": "Thinker Name", "description": "Their relevant contribution"}},
+                    {{"value": "thinker_2", "label": "Another Thinker", "description": "How they relate"}}
+                ],
+                "rationale": "Why identifying the key influence matters"
+            }},
+            {{
+                "id": "genesis_experience",
+                "question": "What type of experience primarily shaped this concept?",
+                "type": "multiple_choice",
+                "options": [
+                    {{"value": "academic_reading", "label": "Academic reading/research", "description": "Scholarly engagement"}},
+                    {{"value": "professional_practice", "label": "Professional practice", "description": "Work experience"}},
+                    {{"value": "personal_observation", "label": "Personal observation", "description": "Life experience"}},
+                    {{"value": "theoretical_gap", "label": "Theoretical gap identified", "description": "Saw what was missing"}}
+                ],
+                "rationale": "Understanding origin helps frame the concept appropriately"
+            }}
+        ],
+        "open_ended_question": {{
+            "question": "One focused question that cannot be answered via MC - only if truly necessary",
+            "why_needed": "Explain why this can't be inferred or offered as options"
+        }}
     }},
     "prefilled_answers": [
         {{
@@ -639,9 +685,17 @@ Analyze the notes and produce a JSON response:
     "potential_tensions": ["Any contradictions or tensions detected in the notes that could be productive dialectics"]
 }}
 
-Be conservative: only suggest values when you have clear evidence from the notes. Mark confidence appropriately.
+Be conservative with pre-fills: only suggest values when you have clear evidence from the notes.
 If the notes don't provide enough information for a question, set suggested_value to null.
-For genealogy, actively look for intellectual influences even if not explicitly stated - note when you're inferring vs quoting."""
+
+GENEALOGY CRITICAL INSTRUCTIONS:
+1. HYPOTHESIZE influences aggressively using your knowledge - the user may not know their own intellectual lineage
+2. Generate 2-4 MULTIPLE CHOICE questions with domain-specific options (not generic)
+   - Options should reflect YOUR HYPOTHESIS about likely influences based on the concept
+   - Each option should be a real thinker, tradition, or framework relevant to this specific concept
+3. Only include ONE open_ended_question if absolutely necessary - and explain why it can't be MC
+4. If notes are rich enough, open_ended_question can be null
+5. The goal: user validates/corrects your hypotheses rather than generating from scratch"""
 
 
 INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
