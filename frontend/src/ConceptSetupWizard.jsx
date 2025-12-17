@@ -555,13 +555,14 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         dimensionalExtraction,
         questions,
         currentQuestionIndex,
+        interimAnalysis,
         savedAt: new Date().toISOString()
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData))
     } catch (e) {
       console.error('Error saving session:', e)
     }
-  }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex])
+  }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex, interimAnalysis])
 
   // Restore saved session
   const restoreSession = () => {
@@ -581,6 +582,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         setDimensionalExtraction(parsed.dimensionalExtraction || null)
         setQuestions(parsed.questions || [])
         setCurrentQuestionIndex(parsed.currentQuestionIndex || 0)
+        setInterimAnalysis(parsed.interimAnalysis || null)
         setHasSavedSession(false)
         setSavedSessionInfo(null)
       }
@@ -619,6 +621,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         dimensionalExtraction,
         questions,
         currentQuestionIndex,
+        interimAnalysis,
         savedAt: new Date().toISOString(),
         isManualCheckpoint: true
       }
