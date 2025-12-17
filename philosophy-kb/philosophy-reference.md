@@ -1,8 +1,8 @@
 # Philosophy Knowledge Base Reference
 
-*Exported: 2025-12-16 17:59:21*
+*Exported: 2025-12-16 19:45:46*
 
-**113 principles** | **189 features** | **0 groundings**
+**117 principles** | **193 features** | **0 groundings**
 
 ---
 
@@ -21,6 +21,8 @@
 **Structural kinship:** prn_decision_interface_modality_matching, prn_detail_deferral_with_accessibility, prn_visual_state_legibility
 
 **Embodied by features:**
+- `cognitive-task-to-scaffolding-modality-matching` - Cognitive Task to Scaffolding Modality Matching
+  *specializes*
 - `feat_structured_decision_presentation` - Structured Decision Presentation
   *Created by refactoring engine*
 
@@ -364,6 +366,8 @@ productive intellectual friction without the social costs.
 **Structural kinship:** prn_decision_interface_modality_matching, prn_detail_deferral_with_accessibility, prn_visual_state_legibility
 
 **Embodied by features:**
+- `cognitive-task-to-scaffolding-modality-matching` - Cognitive Task to Scaffolding Modality Matching
+  *specializes*
 - `feat_structured_decision_presentation` - Structured Decision Presentation
   *Created by refactoring engine*
 
@@ -687,6 +691,8 @@ Structural kinship: ['prn_chunking', 'prn_cybernetic_correction']
 **Structural kinship:** prn_staged_adaptive_interrogation, prn_proactive_insufficiency_signaling, prn_runtime_strategy_adaptation
 
 **Embodied by features:**
+- `non-predetermined-stage-sequencing` - Non-Predetermined Stage Sequencing
+  *extends*
 - `weight-gap-targeted-question-insertion` - Weight-Gap Targeted Question Insertion
   *embodies*
 
@@ -702,6 +708,8 @@ Structural kinship: ['prn_chunking', 'prn_cybernetic_correction']
 **Structural kinship:** prn_option_impact_preview, prn_abstract_concrete_progressive, prn_practical_discovery_over_theoretical
 
 **Embodied by features:**
+- `provisional-formulation-as-knowledge-probe` - Provisional Formulation as Knowledge Probe
+  *extends*
 - `embodied-decision-substrate-generation` - Embodied Decision Substrate Generation
   *embodies*
 
@@ -790,6 +798,25 @@ It represents tacit design knowledge that was implicitly operating but not yet f
   *embodies*
 - `schema-introspective-question-generation` - Schema-Introspective Question Generation
   *supports*
+
+
+### `prn_externalized_imagination_infrastructure`
+
+**AI systems should function as external cognitive infrastructure that enables imagination and conceptual exploration beyond what working memory and internal visualization can support, making thinkable what cannot be held 'in the head'.**
+
+*Rationale:* **Evidence from source:** The prompt explicitly states the goal is 'the most sophisticated cognitive/imagination support possible' and identifies the limitation as 'users have trouble conceptualizing in their head - when they think unabetted - or on paper when they just write'
+
+**Why this matters:** Reframes LLM systems from question-answering tools to imagination prosthetics - this changes what we build from interfaces that capture answers to environments that enable thinking users couldn't otherwise do
+
+**Structural kinship:** prn_interactive_cognition, prn_possibility_space_architecture
+
+**Embodied by features:**
+- `cognitive-task-to-scaffolding-modality-matching` - Cognitive Task to Scaffolding Modality Matching
+  *embodies*
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *embodies*
+- `provisional-formulation-as-knowledge-probe` - Provisional Formulation as Knowledge Probe
+  *embodies*
 
 
 ### `prn_extrapolative_inference_request`
@@ -949,6 +976,21 @@ It represents tacit design knowledge that was implicitly operating but not yet f
 - *(+3 more)*
 
 
+### `prn_impact_topology_materialization`
+
+**Make visible the full network topology of how conceptual choices propagate through an argument or system - not just listing impacts but rendering the structure of dependency and implication that users cannot maintain mentally.**
+
+*Rationale:* **Evidence from source:** Specific reference to 'analysis of impact of defining a concept this way rather than that way, with possible impact/implications on the rest of the argument' - emphasis on what users 'have trouble conceptualizing in their head'
+
+**Why this matters:** Arguments and conceptual systems have complex interdependencies; making these visible enables strategic conceptual decisions rather than ad-hoc choices that create unforeseen inconsistencies
+
+**Structural kinship:** prn_option_impact_preview, prn_change_impact_propagation, prn_possibility_as_foreclosure_warning
+
+**Embodied by features:**
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *embodies*
+
+
 ### `prn_interpretive_cascade_instantiation`
 
 **When interpretive choices cascade through interconnected structures, instantiate the full downstream revision requirements for each option rather than abstractly describing propagation effects.**
@@ -1052,6 +1094,21 @@ Structural kinship: ['prn_llm_first_creative', 'prn_compensate_llm_limits']
   *Re-linked from deprecated principle during refactoring*
 
 
+### `prn_multimodal_cognitive_scaffolding`
+
+**Different cognitive tasks (imagining possibilities, tracing implications, articulating beliefs, comparing options) require different scaffolding modalities - questions, visualizations, path-diagrams, and interfaces are all tools in a repertoire that must be matched to cognitive task type.**
+
+*Rationale:* **Evidence from source:** Explicit statement that 'questions are one way to do it but interfaces, visualizations of paths that can be taken, and the implications thereof, etc - all of that is part and parcel of our repertoire too' - and 'questions are like crutches - but so is the UI/interface'
+
+**Why this matters:** Treating questioning as the only elicitation modality misses that thinking involves spatial reasoning, comparison, path-tracing - modalities that text questions alone cannot scaffold
+
+**Structural kinship:** prn_cognitive_task_matched_presentation, prn_decision_interface_modality_matching
+
+**Embodied by features:**
+- `cognitive-task-to-scaffolding-modality-matching` - Cognitive Task to Scaffolding Modality Matching
+  *embodies*
+
+
 ### `prn_negative_selection_capture`
 
 **What users explicitly reject or pass over during selection processes provides informationally rich context that should be captured and propagated alongside positive selections, because choices are defined as much by what was not chosen as by what was.**
@@ -1095,6 +1152,8 @@ Structural kinship: ['prn_llm_first_creative', 'prn_compensate_llm_limits']
 **Structural kinship:** prn_bounded_propagation, prn_capability_addition_cascade_analysis, prn_possibility_as_foreclosure_warning
 
 **Embodied by features:**
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *specializes*
 - `interpretive-choice-cascade-pre-computation` - Interpretive Choice Cascade Pre-Computation
   *embodies*
 - `propagation-triggered-stress-testing` - Propagation-Triggered Stress Testing
@@ -1112,6 +1171,8 @@ Structural kinship: ['prn_llm_first_creative', 'prn_compensate_llm_limits']
 **Structural kinship:** prn_contrastive_context_enrichment, prn_negative_selection_capture, prn_front_load_decisions
 
 **Embodied by features:**
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *extends*
 - `mutual-exclusivity-mapping` - Mutual Exclusivity Mapping
   *embodies*
 
@@ -1226,6 +1287,23 @@ Structural kinship: ['prn_llm_first_creative', 'prn_compensate_llm_limits']
 
 **Embodied by features:**
 - `productivity-filtered-relationship-exploration` - Productivity-Filtered Relationship Exploration
+  *embodies*
+
+
+### `prn_provisional_articulation_as_catalyst`
+
+**System-generated provisional conclusions, formulations, and intermediate articulations serve as catalysts for extracting tacit user knowledge - the act of seeing an imperfect formulation crystallizes the user's ability to articulate what they actually think.**
+
+*Rationale:* **Evidence from source:** Explicit instruction: 'if you think that outputting some temporary conclusions/answers/formulations for stage 1 will help you extract better answers in stage 2, do not hesitate' - treating provisional outputs as elicitation tools rather than final products
+
+**Why this matters:** Users often know more than they can articulate on demand; seeing provisional framings activates recognition-based knowledge that generation-based questioning cannot reach
+
+**Structural kinship:** prn_embodied_decision_substrate, prn_forward_staged_data_harvesting
+
+**Embodied by features:**
+- `non-predetermined-stage-sequencing` - Non-Predetermined Stage Sequencing
+  *supports*
+- `provisional-formulation-as-knowledge-probe` - Provisional Formulation as Knowledge Probe
   *embodies*
 
 
@@ -1401,6 +1479,8 @@ Structural kinship: ['prn_llm_first_creative', 'prn_compensate_llm_limits']
 **Structural kinship:** prn_abductive_logic, prn_emergence_through_iterative_re, prn_abstraction_level_sequencing
 
 **Embodied by features:**
+- `non-predetermined-stage-sequencing` - Non-Predetermined Stage Sequencing
+  *embodies*
 - `precision-forcing-refinement-questions` - Precision-Forcing Refinement Questions
   *supports*
 - `dual-channel-progressive-specialization` - Dual-Channel Progressive Specialization
@@ -2022,6 +2102,8 @@ Structural kinship: ['prn_chunking', 'prn_cybernetic_correction']
 **Structural kinship:** prn_staged_adaptive_interrogation, prn_proactive_insufficiency_signaling, prn_runtime_strategy_adaptation
 
 **Embodied by features:**
+- `non-predetermined-stage-sequencing` - Non-Predetermined Stage Sequencing
+  *extends*
 - `weight-gap-targeted-question-insertion` - Weight-Gap Targeted Question Insertion
   *embodies*
 
@@ -2037,6 +2119,8 @@ Structural kinship: ['prn_chunking', 'prn_cybernetic_correction']
 **Structural kinship:** prn_option_impact_preview, prn_abstract_concrete_progressive, prn_practical_discovery_over_theoretical
 
 **Embodied by features:**
+- `provisional-formulation-as-knowledge-probe` - Provisional Formulation as Knowledge Probe
+  *extends*
 - `embodied-decision-substrate-generation` - Embodied Decision Substrate Generation
   *embodies*
 
@@ -2125,6 +2209,25 @@ It represents tacit design knowledge that was implicitly operating but not yet f
   *embodies*
 - `schema-introspective-question-generation` - Schema-Introspective Question Generation
   *supports*
+
+
+### `prn_externalized_imagination_infrastructure`
+
+**AI systems should function as external cognitive infrastructure that enables imagination and conceptual exploration beyond what working memory and internal visualization can support, making thinkable what cannot be held 'in the head'.**
+
+*Rationale:* **Evidence from source:** The prompt explicitly states the goal is 'the most sophisticated cognitive/imagination support possible' and identifies the limitation as 'users have trouble conceptualizing in their head - when they think unabetted - or on paper when they just write'
+
+**Why this matters:** Reframes LLM systems from question-answering tools to imagination prosthetics - this changes what we build from interfaces that capture answers to environments that enable thinking users couldn't otherwise do
+
+**Structural kinship:** prn_interactive_cognition, prn_possibility_space_architecture
+
+**Embodied by features:**
+- `cognitive-task-to-scaffolding-modality-matching` - Cognitive Task to Scaffolding Modality Matching
+  *embodies*
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *embodies*
+- `provisional-formulation-as-knowledge-probe` - Provisional Formulation as Knowledge Probe
+  *embodies*
 
 
 ### `prn_extrapolative_inference_request`
@@ -2317,6 +2420,21 @@ It represents tacit design knowledge that was implicitly operating but not yet f
 - *(+3 more)*
 
 
+### `prn_impact_topology_materialization`
+
+**Make visible the full network topology of how conceptual choices propagate through an argument or system - not just listing impacts but rendering the structure of dependency and implication that users cannot maintain mentally.**
+
+*Rationale:* **Evidence from source:** Specific reference to 'analysis of impact of defining a concept this way rather than that way, with possible impact/implications on the rest of the argument' - emphasis on what users 'have trouble conceptualizing in their head'
+
+**Why this matters:** Arguments and conceptual systems have complex interdependencies; making these visible enables strategic conceptual decisions rather than ad-hoc choices that create unforeseen inconsistencies
+
+**Structural kinship:** prn_option_impact_preview, prn_change_impact_propagation, prn_possibility_as_foreclosure_warning
+
+**Embodied by features:**
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *embodies*
+
+
 ### `prn_intellectual_profile`
 
 **Build explicit intellectual profiles—representations of theoretical interests, preferences, and positions—early in the process, because the stronger this profile, the more effective pattern-matching and collaboration with LLMs becomes.**
@@ -2448,6 +2566,21 @@ Structural kinship: ['prn_llm_first_creative', 'prn_compensate_llm_limits']
   *Re-linked from deprecated principle during refactoring*
 
 
+### `prn_multimodal_cognitive_scaffolding`
+
+**Different cognitive tasks (imagining possibilities, tracing implications, articulating beliefs, comparing options) require different scaffolding modalities - questions, visualizations, path-diagrams, and interfaces are all tools in a repertoire that must be matched to cognitive task type.**
+
+*Rationale:* **Evidence from source:** Explicit statement that 'questions are one way to do it but interfaces, visualizations of paths that can be taken, and the implications thereof, etc - all of that is part and parcel of our repertoire too' - and 'questions are like crutches - but so is the UI/interface'
+
+**Why this matters:** Treating questioning as the only elicitation modality misses that thinking involves spatial reasoning, comparison, path-tracing - modalities that text questions alone cannot scaffold
+
+**Structural kinship:** prn_cognitive_task_matched_presentation, prn_decision_interface_modality_matching
+
+**Embodied by features:**
+- `cognitive-task-to-scaffolding-modality-matching` - Cognitive Task to Scaffolding Modality Matching
+  *embodies*
+
+
 ### `prn_negative_selection_capture`
 
 **What users explicitly reject or pass over during selection processes provides informationally rich context that should be captured and propagated alongside positive selections, because choices are defined as much by what was not chosen as by what was.**
@@ -2476,6 +2609,8 @@ Structural kinship: ['prn_llm_first_creative', 'prn_compensate_llm_limits']
 **Structural kinship:** prn_bounded_propagation, prn_capability_addition_cascade_analysis, prn_possibility_as_foreclosure_warning
 
 **Embodied by features:**
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *specializes*
 - `interpretive-choice-cascade-pre-computation` - Interpretive Choice Cascade Pre-Computation
   *embodies*
 - `propagation-triggered-stress-testing` - Propagation-Triggered Stress Testing
@@ -2532,6 +2667,8 @@ productive intellectual friction without the social costs.
 **Structural kinship:** prn_contrastive_context_enrichment, prn_negative_selection_capture, prn_front_load_decisions
 
 **Embodied by features:**
+- `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+  *extends*
 - `mutual-exclusivity-mapping` - Mutual Exclusivity Mapping
   *embodies*
 
@@ -2646,6 +2783,23 @@ productive intellectual friction without the social costs.
 
 **Embodied by features:**
 - `productivity-filtered-relationship-exploration` - Productivity-Filtered Relationship Exploration
+  *embodies*
+
+
+### `prn_provisional_articulation_as_catalyst`
+
+**System-generated provisional conclusions, formulations, and intermediate articulations serve as catalysts for extracting tacit user knowledge - the act of seeing an imperfect formulation crystallizes the user's ability to articulate what they actually think.**
+
+*Rationale:* **Evidence from source:** Explicit instruction: 'if you think that outputting some temporary conclusions/answers/formulations for stage 1 will help you extract better answers in stage 2, do not hesitate' - treating provisional outputs as elicitation tools rather than final products
+
+**Why this matters:** Users often know more than they can articulate on demand; seeing provisional framings activates recognition-based knowledge that generation-based questioning cannot reach
+
+**Structural kinship:** prn_embodied_decision_substrate, prn_forward_staged_data_harvesting
+
+**Embodied by features:**
+- `non-predetermined-stage-sequencing` - Non-Predetermined Stage Sequencing
+  *supports*
+- `provisional-formulation-as-knowledge-probe` - Provisional Formulation as Knowledge Probe
   *embodies*
 
 
@@ -2804,6 +2958,8 @@ productive intellectual friction without the social costs.
 **Structural kinship:** prn_abductive_logic, prn_emergence_through_iterative_re, prn_abstraction_level_sequencing
 
 **Embodied by features:**
+- `non-predetermined-stage-sequencing` - Non-Predetermined Stage Sequencing
+  *embodies*
 - `precision-forcing-refinement-questions` - Precision-Forcing Refinement Questions
   *supports*
 - `dual-channel-progressive-specialization` - Dual-Channel Progressive Specialization
@@ -3385,8 +3541,8 @@ A learning module analyzes LLM responses to think through what new strategies or
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_abductive_logic` - Using operational data to refine system theory
 - `prn_cybernetic_correction` - System-level self-reflection and adjustment
+- `prn_abductive_logic` - Using operational data to refine system theory
 
 
 ### `llm-batch-ranking` - LLM Batch Ranking
@@ -3398,8 +3554,8 @@ Final ranking of harvested papers occurs in batches (up to 150-200) through LLM 
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_chunking` - Batch-based ranking as chunked evaluation process
 - `prn_llm_first_creative` - Using LLM judgment for relevance evaluation
+- `prn_chunking` - Batch-based ranking as chunked evaluation process
 
 
 ### `trans-cluster-operations` - Trans-Cluster Operations
@@ -3424,8 +3580,8 @@ Content and semantics-based search techniques—ways of combining semantic units
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_fixed_foundation` - Strategies form a stable repertoire of approaches
 - `prn_tacit_to_explicit` - Cultivated craft knowledge rendered explicit as named strategies
+- `prn_fixed_foundation` - Strategies form a stable repertoire of approaches
 
 
 ### `effectors-system` - Effectors System
@@ -3450,8 +3606,8 @@ At the midpoint of a Card's budget, the system evaluates whether results are sat
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_process_determinism` - Evaluation points are deterministic even if outcomes are not
 - `prn_cybernetic_correction` - Explicit checkpoint for course correction based on performance
+- `prn_process_determinism` - Evaluation points are deterministic even if outcomes are not
 
 
 ### `real-time-query-evaluation-and-correction` - Real-Time Query Evaluation and Correction
@@ -3463,9 +3619,9 @@ LLMs evaluate query results in real-time and draw on registries of possible acti
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_abductive_logic` - Using data from queries to refine subsequent query formulation
 - `prn_llm_first_creative` - LLM evaluation enables non-deterministic adaptation
 - `prn_cybernetic_correction` - Direct implementation of self-checking and course correction at every stage
-- `prn_abductive_logic` - Using data from queries to refine subsequent query formulation
 
 
 ### `cards-as-tactical-units` - Cards as Tactical Units
@@ -3477,8 +3633,8 @@ Within the discovery phase, Cards function as 'sub-sub-strategies' with individu
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cybernetic_correction` - Card-level granularity enables fine-grained course correction
 - `prn_chunking` - Cards are the smallest discrete chunks of the search process
+- `prn_cybernetic_correction` - Card-level granularity enables fine-grained course correction
 
 
 ### `anti-recency-discovery-phase` - Anti-Recency Discovery Phase
@@ -3503,8 +3659,8 @@ Phase 0 pulls landmark texts, authors, publications, and terms from LLM memory t
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_llm_first_creative` - Using LLM knowledge generation before external searches
 - `prn_compensate_llm_limits` - Extracting memory creates the baseline needed to compensate for cutoff dates
+- `prn_llm_first_creative` - Using LLM knowledge generation before external searches
 
 
 ### `four-phase-cluster-execution` - Four-Phase Cluster Execution
@@ -3516,8 +3672,8 @@ Each cluster executes through four distinct phases: Remembering (Phase 0), Disco
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_process_determinism` - Phases chain together building on each other's work
 - `prn_chunking` - Breaking execution into defined phases with distinct purposes
+- `prn_process_determinism` - Phases chain together building on each other's work
 
 
 ### `user-term-engagement-interface` - User Term Engagement Interface
@@ -3529,9 +3685,9 @@ Users can edit, add, delete, and tinker with terms and clusters before execution
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_interactive_cognition` - Re-linked from deprecated principle during refactoring
 - `prn_anthropologist_role` - Structured interface helps externalize tacit knowledge about relevant terms
 - `prn_thinking_environments` - Interface designed to solicit feedback and enable refinement
-- `prn_interactive_cognition` - Re-linked from deprecated principle during refactoring
 
 
 ### `fixed-and-flexible-categories` - Fixed and Flexible Categories
@@ -3543,9 +3699,9 @@ The system maintains both universal categories (Concepts, Thinkers) and field-sp
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_generative_personalization` - Re-linked from deprecated principle during refactoring
 - `prn_fixed_foundation` - Direct manifestation of keeping certain elements rigid while others flex
 - `prn_bespoke_contextual` - Flexible categories enable domain-appropriate customization
+- `prn_generative_personalization` - Re-linked from deprecated principle during refactoring
 
 
 ### `hierarchical-strategy-structure` - Hierarchical Strategy Structure
@@ -3584,9 +3740,9 @@ Follow-up questions are generated by LLMs based on research mode and user answer
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_bespoke_contextual` - Questions are personalized to the specific research context
-- `prn_llm_first_creative` - Using LLM non-determinism for creative question generation rather than fixed algorithmic questioning
 - `prn_generative_personalization` - Re-linked from deprecated principle during refactoring
+- `prn_llm_first_creative` - Using LLM non-determinism for creative question generation rather than fixed algorithmic questioning
+- `prn_bespoke_contextual` - Questions are personalized to the specific research context
 - `prn_anthropologist_role` - LLM-generated questions operationalize the anthropologist function of guided elicitation
 
 
@@ -3620,34 +3776,6 @@ Users must choose their research mode at the beginning, forcing them to confront
 
 ## Project: concrete-abstractor
 
-### `schema-versioning-evolution-tracking` - Schema Versioning and Evolution Tracking
-
-Maintain version control or diff-based tracking of how schemas change through refinement iterations.
-
-*Description:* As schemas evolve through multiple refinement passes, the system should track what changed, when, and why. This enables rollback, comparison of schema versions, understanding of schema development trajectory, and auditing of refinement decisions.
-
-
-*Confidence:* 85% | *Status:* draft
-
-**Embodies principles:**
-- `prn_tacit_to_explicit` - Version history makes evolution trajectory explicit
-- `prn_chunking` - Each version is a chunk in the evolution timeline
-
-
-### `trigger-based-invocation` - Trigger-Based Invocation
-
-Automatically initiate schema refinement when specific events occur across the system.
-
-*Description:* The tool can be triggered by multiple events: post-synthesis completion, new specimen added to corpus, another genre's schema modified (cross-genre trigger), scheduled periodic refinement, or manual invocation. This enables dynamic schema evolution in response to system changes.
-
-
-*Confidence:* 85% | *Status:* draft
-
-**Embodies principles:**
-- `prn_abductive_logic` - New data triggers theory revision
-- `prn_cybernetic_correction` - Triggers are environmental feedback signals
-
-
 ### `spiral-development-mechanism` - Spiral Development Mechanism
 
 Schema interrogates concrete, concrete reshapes schema, refined schema reveals new aspects previously invisible.
@@ -3660,6 +3788,20 @@ Schema interrogates concrete, concrete reshapes schema, refined schema reveals n
 **Embodies principles:**
 - `prn_epistemic_friction` - Each turn of the spiral requires confrontation with resistance
 - `prn_abductive_logic` - The spiral IS the theory-data movement made concrete
+
+
+### `schema-versioning-evolution-tracking` - Schema Versioning and Evolution Tracking
+
+Maintain version control or diff-based tracking of how schemas change through refinement iterations.
+
+*Description:* As schemas evolve through multiple refinement passes, the system should track what changed, when, and why. This enables rollback, comparison of schema versions, understanding of schema development trajectory, and auditing of refinement decisions.
+
+
+*Confidence:* 85% | *Status:* draft
+
+**Embodies principles:**
+- `prn_tacit_to_explicit` - Version history makes evolution trajectory explicit
+- `prn_chunking` - Each version is a chunk in the evolution timeline
 
 
 ### `resistance-based-refinement` - Resistance-Based Refinement
@@ -3676,22 +3818,6 @@ Use the schema's failure to categorize source material as the generative signal 
 - `prn_epistemic_friction` - Friction between schema and source is the generative mechanism
 
 
-### `reconciliation-handoff-protocol` - Reconciliation Handoff Protocol
-
-Determine when conflicting proposals should be handled internally versus delegated to Cross-Advisor tool.
-
-*Description:* When multiple source files produce conflicting refinement proposals, the system needs logic for deciding whether to reconcile internally (e.g., through confidence scoring or majority voting) or escalate to the Cross-Advisor tool for explicit reconciliation of divergent perspectives.
-
-
-*Confidence:* 75% | *Status:* draft
-
-**Embodies principles:**
-- `prn_compensate_llm_limits` - Escalation compensates for single-model limitations
-- `prn_epistemic_friction` - Genuine conflicts are epistemically valuable friction
-- `prn_cross_model_examination` - Cross-Advisor leverages model diversity for reconciliation
-- `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
-
-
 ### `proposal-interdependency-management` - Proposal Interdependency Management
 
 Handle cases where accepting one refinement proposal changes the context for evaluating other proposals.
@@ -3702,8 +3828,8 @@ Handle cases where accepting one refinement proposal changes the context for eva
 *Confidence:* 70% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cybernetic_correction` - Re-evaluation after each decision is a correction mechanism
 - `prn_chunking` - Dependency tracking adds complexity to chunked processing
+- `prn_cybernetic_correction` - Re-evaluation after each decision is a correction mechanism
 
 
 ### `iterative-schema-enrichment` - Iterative Schema Enrichment
@@ -3778,6 +3904,36 @@ Determine when iterative refinement has reached diminishing returns and should t
 - `prn_cybernetic_correction` - Meta-level feedback about the process itself
 
 
+### `reconciliation-handoff-protocol` - Reconciliation Handoff Protocol
+
+Determine when conflicting proposals should be handled internally versus delegated to Cross-Advisor tool.
+
+*Description:* When multiple source files produce conflicting refinement proposals, the system needs logic for deciding whether to reconcile internally (e.g., through confidence scoring or majority voting) or escalate to the Cross-Advisor tool for explicit reconciliation of divergent perspectives.
+
+
+*Confidence:* 75% | *Status:* draft
+
+**Embodies principles:**
+- `prn_compensate_llm_limits` - Escalation compensates for single-model limitations
+- `prn_epistemic_friction` - Genuine conflicts are epistemically valuable friction
+- `prn_cross_model_examination` - Cross-Advisor leverages model diversity for reconciliation
+- `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
+
+
+### `trigger-based-invocation` - Trigger-Based Invocation
+
+Automatically initiate schema refinement when specific events occur across the system.
+
+*Description:* The tool can be triggered by multiple events: post-synthesis completion, new specimen added to corpus, another genre's schema modified (cross-genre trigger), scheduled periodic refinement, or manual invocation. This enables dynamic schema evolution in response to system changes.
+
+
+*Confidence:* 85% | *Status:* draft
+
+**Embodies principles:**
+- `prn_abductive_logic` - New data triggers theory revision
+- `prn_cybernetic_correction` - Triggers are environmental feedback signals
+
+
 ## Project: cross-advisor
 
 ### `probabilistic-regularity-assumption` - Probabilistic Regularity Assumption
@@ -3802,8 +3958,8 @@ The system rapidly builds a model of the problem domain in each LLM's context by
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_abductive_logic` - Builds domain understanding through exposure to multiple data points
 - `prn_possibility_space` - Explores multiple solution trajectories to map the domain
+- `prn_abductive_logic` - Builds domain understanding through exposure to multiple data points
 
 
 ### `stress-tested-robust-output` - Stress-Tested Robust Output
@@ -3815,10 +3971,10 @@ The final output has been subjected to multiple rounds of critique, defense, and
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cross_model_examination` - Cross-examination is the mechanism for stress-testing
 - `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
-- `prn_epistemic_friction` - Friction through critique produces more robust outputs
+- `prn_cross_model_examination` - Cross-examination is the mechanism for stress-testing
 - `prn_cybernetic_correction` - Multiple correction cycles improve output quality
+- `prn_epistemic_friction` - Friction through critique produces more robust outputs
 
 
 ### `collaborative-implementation-planning` - Collaborative Implementation Planning
@@ -3844,9 +4000,9 @@ An independent evaluation process where all three models rank the best shots wit
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
 - `prn_epistemic_friction` - Different evaluation perspectives create productive friction in judgment
 - `prn_cross_model_examination` - Uses multiple models to evaluate outputs from multiple perspectives
+- `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
 
 
 ### `best-shot-formulation` - Best Shot Formulation
@@ -3871,10 +4027,10 @@ The system supports multiple rounds of solution refinement, with user-configurab
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cybernetic_correction` - Multiple rounds enable course correction at each stage
-- `prn_process_determinism` - Creates deterministic process structure while allowing non-deterministic content
-- `prn_chunking` - Breaks the process into explicit stages with defined insertion points
 - `prn_abductive_logic` - Iterative refinement spirals toward better understanding
+- `prn_process_determinism` - Creates deterministic process structure while allowing non-deterministic content
+- `prn_cybernetic_correction` - Multiple rounds enable course correction at each stage
+- `prn_chunking` - Breaks the process into explicit stages with defined insertion points
 
 
 ### `meta-exposure-to-peer-work` - Meta-Exposure to Peer Work
@@ -3886,9 +4042,9 @@ Each model sees not only critiques of its own work but also how other models sol
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
 - `prn_abductive_logic` - Multiple solution trajectories provide data for refining domain understanding
 - `prn_cross_model_examination` - Extends cross-examination to include observation of peer processes
-- `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
 
 
 ### `selective-critique-integration` - Selective Critique Integration
@@ -3900,8 +4056,8 @@ Models are instructed to discern and selectively accept or reject feedback rathe
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_epistemic_friction` - The resistance and selective acceptance creates productive friction
 - `prn_cybernetic_correction` - Models self-correct through judgment rather than mechanical acceptance
+- `prn_epistemic_friction` - The resistance and selective acceptance creates productive friction
 
 
 ### `multi-model-cross-examination` - Multi-Model Cross-Examination
@@ -3913,10 +4069,10 @@ Three different LLM models (Claude, Gemini, GPT) simultaneously solve the same p
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_possibility_space` - Generates multiple solution approaches to explore the problem space
-- `prn_cross_model_examination` - Directly implements cross-model examination as the core mechanism
 - `prn_divergence_as_signal` - Re-linked from deprecated principle during refactoring
+- `prn_possibility_space` - Generates multiple solution approaches to explore the problem space
 - `prn_epistemic_friction` - Creates productive conflict between different model perspectives
+- `prn_cross_model_examination` - Directly implements cross-model examination as the core mechanism
 
 
 ## Project: dictation-features
@@ -3930,10 +4086,10 @@ Food for thought items carry provenance tracking that attaches as context during
 *Confidence:* 84% | *Status:* draft
 
 **Embodies principles:**
-- `prn_process_as_data`
-- `prn_generative_personalization` - Re-linked from deprecated principle during refactoring
-- `prn_structured_integration`
 - `prn_bespoke_contextual`
+- `prn_generative_personalization` - Re-linked from deprecated principle during refactoring
+- `prn_process_as_data`
+- `prn_structured_integration`
 
 
 ### `abundance-carrying-with-deferred-closure` - Abundance Carrying with Deferred Closure
@@ -3946,10 +4102,10 @@ For factual information, the system maintains multiple possibilities throughout 
 
 **Embodies principles:**
 - `prn_deferred_selection`
+- `prn_epistemic_weight_routing`
 - `prn_optionality_preservation`
 - `prn_adaptive_termination`
 - `prn_possibility_space`
-- `prn_epistemic_weight_routing`
 
 
 ### `plain-language-direction-with-llm-classification` - Plain Language Direction with LLM Classification
@@ -3961,11 +4117,11 @@ Users express intentions in natural language while LLMs handle classification in
 *Confidence:* 88% | *Status:* draft
 
 **Embodies principles:**
-- `prn_interactive_cognition` - Re-linked from deprecated principle during refactoring
 - `prn_genre_as_scaffold`
 - `prn_thinking_environments`
 - `prn_anthropologist_role`
 - `prn_hegelian_abstraction`
+- `prn_interactive_cognition` - Re-linked from deprecated principle during refactoring
 
 
 ### `choice-creation-through-analysis-cycles` - Choice Creation Through Analysis Cycles
@@ -4009,9 +4165,9 @@ The system maintains explicit links between logical propositions and rhetorical 
 
 **Embodies principles:**
 - `prn_dual_outline_constraint`
-- `prn_genre_as_scaffold`
 - `prn_cybernetic_correction`
 - `prn_abstraction_independence`
+- `prn_genre_as_scaffold`
 
 
 ### `food-for-thought-integration-pathways` - Food for Thought Integration Pathways
@@ -4023,9 +4179,9 @@ Approved propositions integrate into the outline through explicit pathways: fold
 *Confidence:* 87% | *Status:* draft
 
 **Embodies principles:**
-- `prn_structured_integration`
 - `prn_controlled_propagation`
 - `prn_llm_first_creative`
+- `prn_structured_integration`
 
 
 ### `cross-pollination-proposition-generation` - Cross-Pollination Proposition Generation
@@ -4037,10 +4193,10 @@ The system generates propositions as discrete units of cross-pollination between
 *Confidence:* 91% | *Status:* draft
 
 **Embodies principles:**
-- `prn_epistemic_friction`
 - `prn_deferred_selection`
 - `prn_tacit_to_explicit`
 - `prn_chunking`
+- `prn_epistemic_friction`
 - `prn_emergent_choice`
 
 
@@ -4053,12 +4209,12 @@ Facts are extracted comprehensively but mobilized on-demand based on the functio
 *Confidence:* 89% | *Status:* draft
 
 **Embodies principles:**
-- `prn_deferred_selection`
-- `prn_compensate_llm_limits`
 - `prn_registry_exposed_to_llm`
-- `prn_possibility_space`
 - `prn_machine_legible_affordances` - Re-linked from deprecated principle during refactoring
 - `prn_optionality_preservation`
+- `prn_deferred_selection`
+- `prn_compensate_llm_limits`
+- `prn_possibility_space`
 
 
 ### `genre-archetype-function-mapping` - Genre Archetype Function Mapping
@@ -4070,11 +4226,11 @@ Each genre archetype has a defined typology of logical functions and rhetorical 
 *Confidence:* 88% | *Status:* draft
 
 **Embodies principles:**
-- `prn_synthesis_first_bootstrap`
 - `prn_paradigm_embodiment`
-- `prn_perspective_as_structure` - Re-linked from deprecated principle during refactoring
-- `prn_dual_outline_constraint`
+- `prn_synthesis_first_bootstrap`
 - `prn_genre_as_scaffold`
+- `prn_dual_outline_constraint`
+- `prn_perspective_as_structure` - Re-linked from deprecated principle during refactoring
 
 
 ### `tiered-material-classification-with-differential-review` - Tiered Material Classification with Differential Review
@@ -4086,10 +4242,10 @@ Materials are classified into ideational claims requiring human review versus fa
 *Confidence:* 91% | *Status:* draft
 
 **Embodies principles:**
-- `prn_hegelian_abstraction`
 - `prn_epistemic_weight_routing`
 - `prn_human_authority_gate`
 - `prn_resource_proportionality`
+- `prn_hegelian_abstraction`
 
 
 ### `versioned-questionnaire-regeneration-pipeline` - Versioned Questionnaire Regeneration Pipeline
@@ -4102,10 +4258,10 @@ Each outline version generates new questionnaires, with explicit tracking of whi
 
 **Embodies principles:**
 - `prn_cascade_containment`
-- `prn_lens_dependent_extraction`
-- `prn_extraction_permanence_tiers`
-- `prn_logical_coherence`
 - `prn_process_as_data`
+- `prn_logical_coherence`
+- `prn_extraction_permanence_tiers`
+- `prn_lens_dependent_extraction`
 
 
 ### `eternal-ephemeral-extraction-dichotomy` - Eternal-Ephemeral Extraction Dichotomy
@@ -4118,9 +4274,9 @@ Corpus analysis separates fixed questions asked of all inputs from project-speci
 
 **Embodies principles:**
 - `prn_fixed_foundation`
-- `prn_event_driven_refinement`
-- `prn_extraction_permanence_tiers`
 - `prn_lens_dependent_extraction`
+- `prn_extraction_permanence_tiers`
+- `prn_event_driven_refinement`
 
 
 ### `outline-version-dependent-corpus-interrogation` - Outline-Version-Dependent Corpus Interrogation
@@ -4150,9 +4306,9 @@ Shows ripple effects when editing a slot, displaying affected throughlines, stra
 *Confidence:* 85% | *Status:* draft
 
 **Embodies principles:**
+- `prn_controlled_propagation`
 - `prn_cascade_containment`
 - `prn_logical_coherence`
-- `prn_controlled_propagation`
 
 
 ### `reasoning-chain-display` - Reasoning Chain Display
@@ -4164,8 +4320,8 @@ Shows the analytical reasoning that led to each suggested option, not just the o
 *Confidence:* 85% | *Status:* draft
 
 **Embodies principles:**
-- `prn_formalization_as_education`
 - `prn_emergent_choice`
+- `prn_formalization_as_education`
 
 
 ### `critical-question-prioritization` - Critical Question Prioritization
@@ -4190,8 +4346,8 @@ Tracks material density per functional slot and suggests when users have enough 
 *Confidence:* 90% | *Status:* draft
 
 **Embodies principles:**
-- `prn_gap_aware_processing`
 - `prn_adaptive_termination`
+- `prn_gap_aware_processing`
 
 
 ### `translation-map-display` - Translation Map Display
@@ -4208,6 +4364,79 @@ Shows users how their raw notes mapped to functional slots during analysis, maki
 
 
 ## Project: prompt-extraction
+
+### `non-predetermined-stage-sequencing` - Non-Predetermined Stage Sequencing
+
+Generate later elicitation stages only after processing earlier responses, preventing the predetermined feel of pre-scripted interrogation.
+
+*Description:* Generate later elicitation stages only after processing earlier responses, preventing the predetermined feel of pre-scripted interrogation.
+
+Rather than presenting a fixed question sequence, the system generates stage 2 questions only after stage 1 is answered, allowing the inquiry trajectory to genuinely respond to user input. This maintains the feeling that the process is exploring rather than administering a survey, supporting authentic knowledge extraction.
+
+**When to use:** When extracting complex or partially-formed user knowledge; when premature question exposure would anchor or constrain responses; when the value lies in probing rather than surveying.
+
+*Confidence:* 75% | *Status:* draft
+
+**Embodies principles:**
+- `prn_dynamic_elicitation_injection` - extends
+- `prn_provisional_articulation_as_catalyst` - supports
+- `prn_staged_adaptive_interrogation` - embodies
+
+
+### `cognitive-task-to-scaffolding-modality-matching` - Cognitive Task to Scaffolding Modality Matching
+
+Deploy questions, visualizations, path-diagrams, and interfaces as distinct tools matched to specific cognitive support needs.
+
+*Description:* Deploy questions, visualizations, path-diagrams, and interfaces as distinct tools matched to specific cognitive support needs.
+
+Different cognitive operations—imagining possibilities, tracing implications, articulating beliefs—require different external supports. The system treats questions as one modality among many, selecting or combining visualizations, interactive interfaces, and path diagrams based on what the cognitive task actually requires rather than defaulting to verbal interrogation.
+
+**When to use:** When verbal questions hit diminishing returns; when users need to 'see' rather than 'answer'; when the cognitive task is spatial (path exploration) rather than propositional (assertion).
+
+*Confidence:* 75% | *Status:* draft
+
+**Embodies principles:**
+- `prn_multimodal_cognitive_scaffolding` - embodies
+- `prn_cognitive_task_matched_presentation` - specializes
+- `prn_externalized_imagination_infrastructure` - embodies
+
+
+### `choice-impact-topology-rendering` - Choice-Impact Topology Rendering
+
+Visualize the network of downstream implications when a conceptual choice is made one way versus another.
+
+*Description:* Visualize the network of downstream implications when a conceptual choice is made one way versus another.
+
+When users face definitional or conceptual decisions, the system renders visible the propagation topology—showing how defining concept X one way affects arguments Y and Z, versus defining it differently. This makes conceptual interdependencies navigable rather than requiring users to hold complex implication chains mentally.
+
+**When to use:** When conceptual definitions have cascading effects on argument structure; when users need to understand trade-offs between formulation choices; when the 'cost' of a decision is its downstream constraints.
+
+*Confidence:* 75% | *Status:* draft
+
+**Embodies principles:**
+- `prn_externalized_imagination_infrastructure` - embodies
+- `prn_possibility_as_foreclosure_warning` - extends
+- `prn_option_impact_preview` - specializes
+- `prn_impact_topology_materialization` - embodies
+
+
+### `provisional-formulation-as-knowledge-probe` - Provisional Formulation as Knowledge Probe
+
+Output tentative conclusions and articulations mid-process to catalyze user's ability to express tacit knowledge.
+
+*Description:* Output tentative conclusions and articulations mid-process to catalyze user's ability to express tacit knowledge.
+
+Rather than only asking questions, the system generates provisional answers, formulations, or conclusions at intermediate stages. These imperfect articulations serve as stimuli that help users recognize and correct toward what they actually think—extracting knowledge they 'may know but may not have yet articulated.'
+
+**When to use:** When users possess relevant knowledge but struggle to articulate it directly; when questions alone fail to surface tacit understanding; when seeing a 'wrong' answer helps clarify the 'right' one.
+
+*Confidence:* 75% | *Status:* draft
+
+**Embodies principles:**
+- `prn_externalized_imagination_infrastructure` - embodies
+- `prn_embodied_decision_substrate` - extends
+- `prn_provisional_articulation_as_catalyst` - embodies
+
 
 ### `type-generic-element-processing` - Type-Generic Element Processing
 
@@ -4256,8 +4485,8 @@ The refinement stage examines the current schema to discover what theoretical el
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_schema_reflexive_generation` - embodies
 - `prn_extensibility_as_design_criterion` - supports
+- `prn_schema_reflexive_generation` - embodies
 
 
 ### `explicit-criterion-threading-between-llm-calls` - Explicit Criterion Threading Between LLM Calls
@@ -4309,8 +4538,8 @@ Add an explicit process-design phase where, after initial questions, an LLM gene
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_early_consequential_decisions` - enables
 - `prn_refinement_versioning` - applies
+- `prn_early_consequential_decisions` - enables
 - `prn_explicit_process_externalization` - embodies
 
 
@@ -4328,8 +4557,8 @@ When formulating questions at any stage, explicitly check the current process pl
 
 **Embodies principles:**
 - `prn_stage_appropriate_question_types` - specializes
-- `prn_downstream_aware_generation` - enables
 - `prn_process_parameterized_questioning` - embodies
+- `prn_downstream_aware_generation` - enables
 
 
 ### `preemptive-output-structure-anticipation` - Preemptive Output Structure Anticipation
@@ -4345,8 +4574,8 @@ The system explicitly reasons about what throughlines might exist and what weigh
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_anticipatory_model_instantiation` - embodies
 - `prn_downstream_aware_generation` - implements
+- `prn_anticipatory_model_instantiation` - embodies
 
 
 ### `continuous-background-weight-refinement` - Continuous Background Weight Refinement
@@ -4362,9 +4591,9 @@ Instead of treating weight determination as a discrete phase that occurs after d
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_continuous_background_synthesis` - embodies
 - `prn_continuous_strategic_reasoning` - Created by refactoring engine
 - `prn_iterative_theory_data_dialectic` - extends
-- `prn_continuous_background_synthesis` - embodies
 
 
 ### `weight-gap-targeted-question-insertion` - Weight-Gap Targeted Question Insertion
@@ -4414,8 +4643,8 @@ The verification layer produces correction suggestions rather than direct fixes.
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_correction_before_commitment` - embodies
 - `prn_human_authority_gate` - supports
+- `prn_correction_before_commitment` - embodies
 - `prn_cybernetic_feedback` - embodies
 
 
@@ -4433,8 +4662,8 @@ Frame the verification task as checking whether each output field correctly deri
 
 **Embodies principles:**
 - `prn_input_anchored_validation` - embodies
-- `prn_verification_easier_than_generation` - supports
 - `prn_provenance_preservation` - supports
+- `prn_verification_easier_than_generation` - supports
 
 
 ### `cross-model-economic-verification` - Cross-Model Economic Verification
@@ -4486,9 +4715,9 @@ Rather than executing predetermined pipelines, the system should 'strategize on 
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_continuous_strategic_reasoning` - embodies
 - `prn_cybernetic_feedback` - supports
 - `prn_runtime_pipeline_orchestration` - supports
+- `prn_continuous_strategic_reasoning` - embodies
 
 
 ### `maximum-resource-allocation-for-strategic-reasonin` - Maximum Resource Allocation for Strategic Reasoning
@@ -4521,9 +4750,9 @@ Customization depth increases through two complementary channels: a contextual d
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_context_as_configuration` - embodies
 - `prn_staged_adaptive_interrogation` - supports
 - `prn_dialogue_emergent_relevance` - embodies
-- `prn_context_as_configuration` - embodies
 
 
 ### `domain-agnostic-initial-architecture` - Domain-Agnostic Initial Architecture
@@ -4574,9 +4803,9 @@ Rather than pre-determining extraction schemas, allow the evolving conversation 
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_dialogue_emergent_relevance` - embodies
-- `prn_contextual_extraction_superiority` - embodies
 - `prn_dialectical_refinement` - supports
+- `prn_contextual_extraction_superiority` - embodies
+- `prn_dialogue_emergent_relevance` - embodies
 
 
 ### `document-collection-staging-without-processing` - Document Collection Staging Without Processing
@@ -4609,10 +4838,10 @@ The core processing modules (generating through-lines, strategic items, semantic
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_generative_personalization` - relates_to
-- `prn_domain_transcendent_abstraction` - embodies
 - `prn_context_as_configuration` - Created by refactoring engine
+- `prn_generative_personalization` - relates_to
 - `prn_context_specific_adaptation` - supports
+- `prn_domain_transcendent_abstraction` - embodies
 
 
 ### `arbitrary-point-content-injection` - Arbitrary-Point Content Injection
@@ -4628,8 +4857,8 @@ The system supports inserting enrichment materials (news articles, policy report
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_arbitrary_insertion_architecture` - embodies
 - `prn_forward_staged_data_harvesting` - relates_to
+- `prn_arbitrary_insertion_architecture` - embodies
 
 
 ### `task-driven-pipeline-composition` - Task-Driven Pipeline Composition
@@ -4646,8 +4875,8 @@ Rather than prescribing a fixed flow, the system determines which operations to 
 
 **Embodies principles:**
 - `prn_event_driven_refinement` - relates_to
-- `prn_runtime_pipeline_orchestration` - embodies
 - `prn_cybernetic_feedback` - supports
+- `prn_runtime_pipeline_orchestration` - embodies
 
 
 ### `position-agnostic-module-definition` - Position-Agnostic Module Definition
@@ -4680,9 +4909,9 @@ Explicitly design the interaction flow so that friction-causing evidence command
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cognitive_division_of_labor` - implements
-- `prn_resource_proportionality` - supports
 - `prn_friction_focused_attention_allocation` - embodies
+- `prn_resource_proportionality` - supports
+- `prn_cognitive_division_of_labor` - implements
 
 
 ### `granular-post-hoc-override-controls` - Granular Post-Hoc Override Controls
@@ -4734,9 +4963,9 @@ Before attempting integration, assess each piece of evidence against target slot
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_conflict_triage` - embodies
-- `prn_structural_fit_assessment_phase` - embodies
 - `prn_content_based_routing` - implements
+- `prn_structural_fit_assessment_phase` - embodies
+- `prn_conflict_triage` - embodies
 
 
 ### `sub-option-dependent-revision-branching` - Sub-Option Dependent Revision Branching
@@ -4854,8 +5083,8 @@ When presenting virtual options for modifying one throughline, the system should
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_bounded_propagation` - supports
 - `prn_option_impact_preview` - embodies
+- `prn_bounded_propagation` - supports
 
 
 ### `source-framework-relationship-classification` - Source-Framework Relationship Classification
@@ -4888,9 +5117,9 @@ When one element is generated, immediately trigger generation of elements that l
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_forward_staged_data_harvesting` - embodies
-- `prn_activity_state_gated_automation` - variant_of
 - `prn_possibility_space_architecture` - Pre-generates branching possibility spaces for navigation
+- `prn_activity_state_gated_automation` - variant_of
+- `prn_forward_staged_data_harvesting` - embodies
 
 
 ### `substance-instance-matrices` - Substance × Instance Matrices
@@ -4906,8 +5135,8 @@ For each archetypal type (substance), generate a fixed number of concrete instan
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_abstract_concrete_progressive_` - supports
 - `prn_substance_instance_tiering` - Direct implementation of two-tier substance/instance selection pattern
+- `prn_abstract_concrete_progressive_` - supports
 - `prn_pre_curation_with_option_prese` - embodies
 
 
@@ -4924,8 +5153,8 @@ Present each element with a two-layer structure: a visible structural summary (b
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_function_form_phase_separation` - supports
 - `prn_format_for_decision_support` - embodies
+- `prn_function_form_phase_separation` - supports
 - `prn_detail_deferral_with_accessibility` - Implements collapsed-by-default detail with expand-on-demand access
 
 
@@ -4942,11 +5171,11 @@ Each element has a 'sharpen' action that regenerates it using enriched context f
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_regeneration_over_retrofitting` - embodies
 - `prn_contrastive_context_enrichment` - embodies
 - `prn_upstream_regeneration_from_downstream` - Enables downstream refinements to trigger upstream regeneration
-- `prn_negative_selection_capture` - embodies
 - `prn_refinement_versioning` - Tracks version numbers through iterative sharpen cycles
-- `prn_regeneration_over_retrofitting` - embodies
+- `prn_negative_selection_capture` - embodies
 
 
 ### `in-slot-option-swapping` - In-Slot Option Swapping
@@ -4962,9 +5191,9 @@ When presenting multiple possibilities for an element (e.g., transition options 
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_visual_state_legibility` - embodies
 - `prn_format_for_decision_support` - supports
 - `prn_possibility_space_architecture` - Allows navigation within pre-populated option spaces
-- `prn_visual_state_legibility` - embodies
 
 
 ### `logical-rhetorical-translation-prerequisites` - Logical-Rhetorical Translation Prerequisites
@@ -4980,8 +5209,8 @@ Before attempting to translate logical structures into rhetorical presentations,
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_dual_outline_constraint` - embodies
 - `prn_downstream_aware_generation` - embodies
+- `prn_dual_outline_constraint` - embodies
 - `prn_function_form_phase_separation` - embodies
 
 
@@ -4999,8 +5228,8 @@ Rather than perfecting each stage before advancing, generate provisional outputs
 
 **Embodies principles:**
 - `prn_dialectical_refinement` - embodies
-- `prn_process_as_data` - embodies
 - `prn_practical_discovery_over_theoretical` - embodies
+- `prn_process_as_data` - embodies
 
 
 ### `rhetorical-gap-taxonomy` - Rhetorical Gap Taxonomy
@@ -5016,9 +5245,9 @@ When transitioning from structural to presentational concerns, systematically ch
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_domain_archetypes` - embodies
-- `prn_benchmark_driven_best_practice` - embodies
 - `prn_gap_aware_processing` - embodies
+- `prn_benchmark_driven_best_practice` - embodies
+- `prn_domain_archetypes` - embodies
 
 
 ### `comprehensive-execution-brief` - Comprehensive Execution Brief
@@ -5034,9 +5263,9 @@ When delegating to a new LLM session, produce a brief that contains: complete ba
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cross_session_context_handoff` - embodies
 - `prn_context_immersion_for_execution` - embodies
 - `prn_context_completeness` - embodies
+- `prn_cross_session_context_handoff` - embodies
 
 
 ### `stage-bridging-extraction-strategy` - Stage-Bridging Extraction Strategy
@@ -5052,8 +5281,8 @@ At each processing stage, explicitly analyze what information could be gathered 
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_downstream_aware_generation` - embodies
 - `prn_forward_staged_data_harvesting` - embodies
+- `prn_downstream_aware_generation` - embodies
 - `prn_structured_elicitation` - embodies
 
 
@@ -5070,8 +5299,8 @@ The prompt frames the entire analysis around "researchers who want to make quick
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_function_based_on_demand_retri` - supports
 - `prn_user_archetype_grounding` - embodies
+- `prn_function_based_on_demand_retri` - supports
 
 
 ### `noise-aware-prompt-framing` - Noise-Aware Prompt Framing
@@ -5104,8 +5333,8 @@ The engines/bundles/media trinity provides three lenses for classifying the same
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_provisional_structures` - embodies
 - `prn_extrapolative_inference_request` - enables
+- `prn_provisional_structures` - embodies
 
 
 ### `streaming-progress-visibility` - Streaming Progress Visibility
@@ -5155,8 +5384,8 @@ Each file is processed independently, generating an analysis_[x].json artifact t
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cross_slot_synthesis_scanning` - enables
 - `prn_staged_processing` - embodies
+- `prn_cross_slot_synthesis_scanning` - enables
 
 
 ### `future-use-injection` - Future-Use Injection
@@ -5172,8 +5401,8 @@ This technique involves documenting all downstream operations that will be perfo
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_capability_addition_cascade_analysis` - supports
 - `prn_downstream_aware_generation` - embodies
+- `prn_capability_addition_cascade_analysis` - supports
 
 
 ### `bridging-strategy-elicitation` - Bridging Strategy Elicitation
@@ -5189,8 +5418,8 @@ Instead of asking "combine these throughlines," ask "what bridging strategies co
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cognitive_load_transfer` - embodies
 - `prn_possibility_space` - supports
+- `prn_cognitive_load_transfer` - embodies
 
 
 ### `slot-level-synthesis-abstraction` - Slot-Level Synthesis Abstraction
@@ -5224,8 +5453,8 @@ The pattern involves generating multiple independent "throughlines" (argument th
 
 **Embodies principles:**
 - `prn_downstream_aware_generation` - enables
-- `prn_cascading_virtuality` - embodies
 - `prn_shared_scaffold_parallel_streams` - embodies
+- `prn_cascading_virtuality` - embodies
 
 
 ### `recommendation-mode-request` - Recommendation Mode Request
@@ -5245,9 +5474,9 @@ The prompt design goal is that the LLM "would propose a default and we won't hav
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_cognitive_load_transfer` - enables
 - `prn_default_recommendation_elicitation` - embodies
 - `prn_human_authority_gate` - supports
-- `prn_cognitive_load_transfer` - enables
 
 
 ### `criteria-enumeration-in-advisory-prompts` - Criteria Enumeration in Advisory Prompts
@@ -5310,9 +5539,9 @@ The first API call focuses purely on generating the possibility space—in this 
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_chunking` - embodies
-- `prn_deferred_selection` - enables
 - `prn_generation_evaluation_separation` - embodies
+- `prn_deferred_selection` - enables
+- `prn_chunking` - embodies
 
 
 ### `assumption-grounded-question-sequencing` - Assumption-Grounded Question Sequencing
@@ -5328,9 +5557,9 @@ Map the dependency structure of questions—which questions assume answers to ot
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_logical_coherence` - enables
 - `prn_assumption_dependency_management` - embodies
 - `prn_front_load_decisions` - supports
-- `prn_logical_coherence` - enables
 
 
 ### `llm-deputized-exploration-pattern` - LLM-Deputized Exploration Pattern
@@ -5346,9 +5575,9 @@ Rather than asking users to generate options or articulate positions from scratc
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_possibility_space` - embodies
-- `prn_anthropologist_role` - enables
 - `prn_cognitive_load_transfer` - embodies
+- `prn_anthropologist_role` - enables
+- `prn_possibility_space` - embodies
 
 
 ### `progressive-batch-interrogation-pattern` - Progressive Batch Interrogation Pattern
@@ -5365,8 +5594,8 @@ Instead of presenting all questions upfront, divide interrogation into stages (e
 
 **Embodies principles:**
 - `prn_emergence_through_iterative_re` - supports
-- `prn_staged_adaptive_interrogation` - embodies
 - `prn_chunking` - embodies
+- `prn_staged_adaptive_interrogation` - embodies
 
 
 ### `multiple-choice-with-escape-valve-pattern` - Multiple-Choice with Escape Valve Pattern
@@ -5383,8 +5612,8 @@ Pre-generate sophisticated multiple choice answers (e.g., 5) that represent the 
 
 **Embodies principles:**
 - `prn_cognitive_load_transfer` - enables
-- `prn_wildcard_inclusion_for_complet` - embodies
 - `prn_possibility_space` - embodies
+- `prn_wildcard_inclusion_for_complet` - embodies
 
 
 ### `genre-indexed-requirement-templates` - Genre-Indexed Requirement Templates
@@ -5401,8 +5630,8 @@ For each genre (essay, analysis, proposal, etc.), the system maintains a templat
 
 **Embodies principles:**
 - `prn_domain_archetypes` - supports
-- `prn_benchmark_driven_best_practice` - enables
 - `prn_genre_as_scaffold` - embodies
+- `prn_benchmark_driven_best_practice` - enables
 
 
 ### `phase-readiness-gates` - Phase Readiness Gates
@@ -5418,8 +5647,8 @@ The system tracks "readiness" for phase transitions—e.g., rhetorical outlining
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_chunking` - supports
 - `prn_abstraction_level_sequencing` - embodies
+- `prn_chunking` - supports
 
 
 ### `theory-answer-multiplication` - Theory-Answer Multiplication
@@ -5436,8 +5665,8 @@ Rather than processing user answers in isolation, the system routes them through
 
 **Embodies principles:**
 - `prn_intellectual_profile` - supports
-- `prn_cross_pollination_as_generativ` - enables
 - `prn_theory_grounded_extraction` - embodies
+- `prn_cross_pollination_as_generativ` - enables
 
 
 ### `through-line-factory-pattern` - Through-line Factory Pattern
@@ -5453,8 +5682,8 @@ A dedicated processing component that takes a populated functional outline and s
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_cross_slot_synthesis_scanning` - embodies
 - `prn_gap_aware_processing` - enables
+- `prn_cross_slot_synthesis_scanning` - embodies
 
 
 ### `question-to-problematique-conversion` - Question-to-Problematique Conversion
@@ -5470,8 +5699,8 @@ When users cannot answer follow-up questions, the system offers to convert them 
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_optionality_preservation` - supports
 - `prn_productive_incompletion` - embodies
+- `prn_optionality_preservation` - supports
 
 
 ### `mutual-exclusivity-mapping` - Mutual Exclusivity Mapping
@@ -5487,8 +5716,8 @@ When generating multiple possibilities, analyze and mark which options can coexi
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_possibility_as_foreclosure_warning` - embodies
 - `prn_logical_coherence` - supports
+- `prn_possibility_as_foreclosure_warning` - embodies
 - `prn_contrastive_context_enrichment` - supports
 
 
@@ -5505,10 +5734,10 @@ Structure the system so that UI handles presentation, selection, and state manag
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_format_for_decision_support` - supports
 - `prn_thinking_environments` - embodies
-- `prn_interactive_cognition` - Re-linked from deprecated principle during refactoring
 - `prn_human_authority_gate` - supports
+- `prn_interactive_cognition` - Re-linked from deprecated principle during refactoring
+- `prn_format_for_decision_support` - supports
 
 
 ### `functional-slot-architecture` - Functional Slot Architecture
@@ -5524,9 +5753,9 @@ Decompose arguments (or other complex artifacts) into functional slots like "dia
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_genre_as_scaffold` - supports
 - `prn_trajectory_over_identity` - supports
 - `prn_function_form_phase_separation` - embodies
+- `prn_genre_as_scaffold` - supports
 
 
 ### `llm-driven-diagnostic-questioning` - LLM-Driven Diagnostic Questioning
@@ -5542,9 +5771,9 @@ Rather than generating complete outputs or asking generic questions, the LLM ana
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_emergence_through_iterative_re` - supports
 - `prn_anthropologist_role` - embodies
 - `prn_proactive_insufficiency_signaling` - embodies
+- `prn_emergence_through_iterative_re` - supports
 
 
 ### `multi-level-possibility-mapping-interface` - Multi-Level Possibility Mapping Interface
@@ -5560,9 +5789,9 @@ Create a UI pattern where possibilities exist at distinct abstraction layers (e.
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_visual_state_legibility` - supports
 - `prn_possibility_space` - embodies
 - `prn_cascading_virtuality` - embodies
+- `prn_visual_state_legibility` - supports
 
 
 ### `state-contrast-audit` - State Contrast Audit
@@ -5594,9 +5823,9 @@ When LLM outputs will be presented for human evaluation/selection, apply formatt
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
+- `prn_bespoke_contextual` - supports
 - `prn_format_for_decision_support` - embodies
 - `prn_generative_personalization` - Re-linked from deprecated principle during refactoring
-- `prn_bespoke_contextual` - supports
 
 
 ### `decision-context-bundle` - Decision Context Bundle
@@ -5612,9 +5841,9 @@ When users make selections, construct a structured bundle containing: (1) what o
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_contrastive_context_enrichment` - supports
 - `prn_negative_selection_capture` - enables
 - `prn_decision_space_propagation` - embodies
+- `prn_contrastive_context_enrichment` - supports
 
 
 ### `quiescence-triggered-automation` - Quiescence-Triggered Automation
@@ -5646,9 +5875,9 @@ When offering users the choice between pre-extraction (batch processing all type
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_dual_mode_operation` - embodies
-- `prn_budget_driven_strategy` - supports
 - `prn_constraint_as_strategy` - Re-linked from deprecated principle during refactoring
+- `prn_budget_driven_strategy` - supports
+- `prn_dual_mode_operation` - embodies
 
 
 ### `expert-transparency-mode` - Expert Transparency Mode
@@ -5681,9 +5910,9 @@ Users describe desired new visualization types in plain language. An LLM analyze
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_capability_addition_cascade_analysis` - enables
 - `prn_formalization_as_education` - embodies
 - `prn_human_authority_gate` - embodies
+- `prn_capability_addition_cascade_analysis` - enables
 
 
 ### `vision-model-output-verification-stage` - Vision-Model Output Verification Stage
@@ -5716,8 +5945,8 @@ The workflow separates extraction (pulling elements from source texts), curation
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_chunking` - embodies
 - `prn_process_determinism` - supports
+- `prn_chunking` - embodies
 
 
 ### `context-complete-session-briefing` - Context-Complete Session Briefing
@@ -5733,8 +5962,8 @@ When work must continue in a session that 'won't have any context apart from wha
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_comprehensive_context` - supports
 - `prn_cross_session_context_handoff` - embodies
+- `prn_comprehensive_context` - supports
 - `prn_context_completeness` - Re-linked from deprecated principle during refactoring
 
 
@@ -5751,8 +5980,8 @@ Use placeholders like 'Level 0', 'Root Category', 'Sub-Category' throughout extr
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_late_binding_semantic_labels` - embodies
 - `prn_abstract_concrete_progressive_` - enables
+- `prn_late_binding_semantic_labels` - embodies
 
 
 ### `multi-stage-suggestion-collection-with-late-reconc` - Multi-Stage Suggestion Collection with Late Reconciliation
@@ -5785,8 +6014,8 @@ After curation establishes logical structure and before rendering produces visua
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_particularity_recovery` - enables
 - `prn_late_binding_semantic_labels` - embodies
+- `prn_particularity_recovery` - enables
 
 
 ### `carryover-relationship-annotation` - Carryover Relationship Annotation
@@ -5802,8 +6031,8 @@ When relationships propagate through connection chains (e.g., groundings → fea
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_provenance_preservation` - embodies
 - `prn_controlled_propagation` - supports
+- `prn_provenance_preservation` - embodies
 
 
 ### `stray-element-as-workflow-trigger` - Stray Element as Workflow Trigger
@@ -5819,8 +6048,8 @@ Rather than waiting for users to notice gaps, systematically identify elements l
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_gap_aware_processing` - supports
 - `prn_event_driven_refinement` - embodies
+- `prn_gap_aware_processing` - supports
 
 
 ### `zero-modification-first-assessment` - Zero-Modification-First Assessment
@@ -5836,8 +6065,8 @@ Before triggering reformulation logic, explicitly check whether the elements can
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_graduated_intervention_intensity` - embodies
 - `prn_resource_proportionality` - supports
+- `prn_graduated_intervention_intensity` - embodies
 
 
 ### `bidirectional-reformulation-options` - Bidirectional Reformulation Options
@@ -6225,8 +6454,8 @@ Use LLMs to generate both content and design elements dynamically, creating besp
 *Confidence:* 75% | *Status:* draft
 
 **Embodies principles:**
-- `prn_context_as_configuration` - Created by refactoring engine
 - `prn_generative_personalization` - Created by refactoring engine
+- `prn_context_as_configuration` - Created by refactoring engine
 
 
 ### `feat_budget_front_loading` - Budget Front-Loading

@@ -425,9 +425,103 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [isTransformingCard, setIsTransformingCard] = useState(null)  // card_id being transformed
   const [cardReviewStage, setCardReviewStage] = useState('hypothesis')  // hypothesis, genealogy, differentiation
 
+  // Session persistence state
+  const [hasSavedSession, setHasSavedSession] = useState(false)
+  const [savedSessionInfo, setSavedSessionInfo] = useState(null)
+
   // Refs
   const thinkingRef = useRef(null)
   const abortControllerRef = useRef(null)
+
+  // =========================================================================
+  // SESSION PERSISTENCE - Save/Restore wizard state to localStorage
+  // =========================================================================
+  const STORAGE_KEY = `concept_wizard_session_${sourceId || 'default'}`
+
+  // Check for saved session on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.conceptName && parsed.stage !== STAGES.NOTES) {
+          setHasSavedSession(true)
+          setSavedSessionInfo({
+            conceptName: parsed.conceptName,
+            stage: parsed.stage,
+            savedAt: parsed.savedAt
+          })
+        }
+      }
+    } catch (e) {
+      console.error('Error checking saved session:', e)
+    }
+  }, [])
+
+  // Save session state on significant changes
+  useEffect(() => {
+    // Don't save if we're at the beginning or if no concept name
+    if (stage === STAGES.NOTES || !conceptName) return
+
+    try {
+      const sessionData = {
+        stage,
+        conceptName,
+        notes,
+        stageData,
+        notesUnderstanding,
+        hypothesisCards,
+        differentiationCards,
+        tensionFeedback,
+        uploadedDocuments,
+        dimensionalExtraction,
+        questions,
+        currentQuestionIndex,
+        savedAt: new Date().toISOString()
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData))
+    } catch (e) {
+      console.error('Error saving session:', e)
+    }
+  }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex])
+
+  // Restore saved session
+  const restoreSession = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        setStage(parsed.stage)
+        setConceptName(parsed.conceptName)
+        setNotes(parsed.notes || '')
+        setStageData(parsed.stageData || { stage1: { questions: [], answers: [] }, stage2: { questions: [], answers: [] }, stage3: { questions: [], answers: [] } })
+        setNotesUnderstanding(parsed.notesUnderstanding || null)
+        setHypothesisCards(parsed.hypothesisCards || [])
+        setDifferentiationCards(parsed.differentiationCards || [])
+        setTensionFeedback(parsed.tensionFeedback || {})
+        setUploadedDocuments(parsed.uploadedDocuments || [])
+        setDimensionalExtraction(parsed.dimensionalExtraction || null)
+        setQuestions(parsed.questions || [])
+        setCurrentQuestionIndex(parsed.currentQuestionIndex || 0)
+        setHasSavedSession(false)
+        setSavedSessionInfo(null)
+      }
+    } catch (e) {
+      console.error('Error restoring session:', e)
+      clearSavedSession()
+    }
+  }
+
+  // Clear saved session
+  const clearSavedSession = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      setHasSavedSession(false)
+      setSavedSessionInfo(null)
+    } catch (e) {
+      console.error('Error clearing session:', e)
+    }
+  }
 
   // Auto-scroll thinking panel
   useEffect(() => {
@@ -2333,6 +2427,31 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           {/* STAGE: Notes Input */}
           {stage === STAGES.NOTES && (
             <div className="wizard-stage">
+              {/* Resume Session Banner */}
+              {hasSavedSession && savedSessionInfo && (
+                <div className="resume-session-banner">
+                  <div className="resume-info">
+                    <strong>Resume previous session?</strong>
+                    <p>
+                      Found saved progress for "<em>{savedSessionInfo.conceptName}</em>"
+                      {savedSessionInfo.savedAt && (
+                        <span className="saved-time">
+                          {' '}(saved {new Date(savedSessionInfo.savedAt).toLocaleString()})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="resume-actions">
+                    <button className="btn btn-primary btn-sm" onClick={restoreSession}>
+                      Resume Session
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={clearSavedSession}>
+                      Start Fresh
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="stage-header">
                 <h3>Introduce Your Concept</h3>
                 <p>

@@ -1,0 +1,2470 @@
+meta:
+  exported_at: '2025-12-16 19:45:46'
+  total_principles: 117
+principles:
+- id: prn_abstraction_independence
+  statement: When extracting knowledge across abstraction levels, run independent discovery passes at each level before 
+    synthesis; grounding-first approaches bias toward the concrete and miss regulative principles that guide design 
+    without direct manifestation.
+  rationale: "This principle emerged from designing philosophy extraction workflows. The naive approach\nextracts macro principles
+    only when they can be traced to meso-level features and code\ngroundings. This creates systematic blind spots:\n\n**The
+    Embodiment Bias**: If we require principles to be \"expressible\" in concrete form,\nwe miss:\n- Regulative principles
+    (guide decisions but don't manifest directly)\n- Structural principles (govern relationships, not implementations)\n-
+    Negative principles (what NOT to do has no positive code signature)\n- Meta-principles (about the process itself, not
+    the product)\n\n**The Solution**: Run parallel independent extraction passes:\n1. Grounded pass: Find principles visible
+    in code/features\n2. Abstract pass: Find principles from description alone, ignoring expressibility\n3. Synthesis: Deduplicate,
+    keeping anything from (2) not captured by (1)\n\nThis ensures the concrete doesn't over-constrain the abstract.\n"
+  categories:
+  - methodology
+  - epistemology
+  tags:
+  - extraction
+  - multi-level-analysis
+  - bias-prevention
+  status: established
+  features:
+  - feature_id: logical-rhetorical-linkage-tracking
+    feature_name: Logical-Rhetorical Linkage Tracking
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_activity_state_gated_automation
+  statement: Automated system behaviors should be gated by detected user activity state, triggering only during 
+    quiescent periods rather than interrupting active exploration, because automation during active work creates chaotic
+    interference while automation during rest feels assistive.
+  rationale: "**Evidence from source:** auto-navigation has to be smarter - if we are still moving our mouse or clicking on
+    multiple selections we should not auto-navigate. this should happen ONLY if we are rest for some time... right now, it's
+    too chaotic\n\n**Why this matters:** Automation that doesn't respect user activity state creates frustrating interference—the
+    system \"helps\" precisely when the user is actively trying to do something themselves. Temporal sensitivity to user state
+    is essential for automation that feels assistive rather than adversarial.\n\n**Structural kinship:** ['prn_dual_mode_operation
+    (both concern human vs automated control)', 'prn_human_authority_gate (both preserve human agency over consequential actions)',
+    'prn_adaptive_termination (both involve systems detecting state changes to adjust behavior)']"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: cascaded-generation-triggers
+    feature_name: Cascaded Generation Triggers
+    how_embodied: variant_of
+    confidence: 0.8
+  - feature_id: quiescence-triggered-automation
+    feature_name: Quiescence-Triggered Automation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_arbitrary_insertion_architecture
+  statement: Design systems with validated insertion points throughout the workflow rather than fixed input stages, 
+    allowing contextual content to be introduced wherever it becomes relevant rather than only at designated entry 
+    points.
+  rationale: "**Evidence from source:** The prompt describes inserting 'news articles even before we generate any through-lines
+    or even before we generate any strategic items, just to enhance the context' and emphasizes that 'there may be some inputs—like
+    news articles and some additional context—that we might want to insert at any point.'\n\n**Why this matters:** Most LLM
+    workflows assume inputs arrive at the start. Real knowledge work discovers relevant context mid-process. Systems that
+    support arbitrary insertion must design prompts that gracefully incorporate new context into ongoing reasoning, not just
+    process initial inputs. This requires prompts that treat context as accumulating rather than fixed.\n\n**Structural kinship:**
+    prn_forward_staged_data_harvesting (information timing), prn_context_completeness (complete situational context)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: arbitrary-point-content-injection
+    feature_name: Arbitrary-Point Content Injection
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_archeological_pattern_mining
+  statement: '[DEPRECATED] Treat accumulated work as archeological data to analyze for patterns. Functionality covered by
+    prn_cybernetic_self_correction (process as analyzable data) and prn_dialectical_knowledge_production (patterns emerge
+    through iteration).'
+  rationale: "**Evidence from source:** in my earlier projects i've accumulated a lot of prompts... for analysis with the
+    view of understanding whether my previous techniques/methodology point to distinct engines/bundles/media\n\n**Why this
+    matters:** Past work embodies tacit knowledge that wasn't explicitly articulated. Mining it with fresh analytical frameworks
+    can recover implicit patterns and methodologies.\n\n**Structural kinship:** prn_synthesis_first_bootstrap, prn_theory_grounded_extraction"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features: []
+- id: prn_assumption_dependency_management
+  statement: Complex interrogation structures should track dependencies between questions and avoid building new 
+    questions on unverified assumptions from prior questions—validate foundations before stacking.
+  rationale: "**Evidence from source:** than stack 10 questions on top of assumptions we haven't probed\n\n**Why this matters:**
+    In multi-question flows, later questions often implicitly assume answers to earlier ones. If those assumptions are wrong,
+    the entire downstream inquiry becomes irrelevant or misleading. This principle demands explicit management of assumption
+    dependencies.\n\n**Structural kinship:** prn_front_load_decisions, prn_logical_coherence, prn_cascade_containment"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: assumption-grounded-question-sequencing
+    feature_name: Assumption-Grounded Question Sequencing
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_benchmark_driven_best_practice
+  statement: Analyze exemplary instances to derive patterns that define expectations and guide gap identification
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: rhetorical-gap-taxonomy
+    feature_name: Rhetorical Gap Taxonomy
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: genre-indexed-requirement-templates
+    feature_name: Genre-Indexed Requirement Templates
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_bidirectional_modification_symmetry
+  statement: When two elements need reconciliation, treat modification of either element as equally valid options; do 
+    not privilege one element's stability over the other without explicit justification.
+  rationale: "**Evidence from source:** The prompt consistently mentions 'modifying either principles or relationships or
+    both' and 'tweaked one or both elements' - refusing to assume that one category (principles vs features) has inherent
+    priority in modification decisions.\n\n**Why this matters:** Prevents hidden biases in knowledge curation. LLMs given
+    asymmetric instructions might always modify the 'lower-level' element. Symmetry ensures genuine options are surfaced for
+    human decision.\n\n**Structural kinship:** prn_optionality_preservation, prn_deferred_commitment"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: bidirectional-reformulation-options
+    feature_name: Bidirectional Reformulation Options
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_bidirectional_process_content_evolution
+  statement: Process structure and content outputs should evolve bidirectionally - the process determines what content 
+    is gathered, while accumulated content/results should trigger proposals for process restructuring.
+  rationale: "**Evidence from source:** Author notes 'LLMs might propose adjustment to the flow as we get results' and emphasizes
+    that this dynamic relationship should be explicit - the process isn't just executed but is itself a subject of evolution
+    based on what emerges.\n\n**Why this matters:** Fixed processes cannot adapt when early results reveal that planned stages
+    are unnecessary or that missing stages are needed. Bidirectional evolution allows the system to become smarter about its
+    own operation as it accumulates evidence about what works.\n\n**Structural kinship:** prn_runtime_strategy_adaptation,
+    prn_schema_data_co_evolution, prn_upstream_regeneration_from_downstream"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: result-triggered-process-restructuring
+    feature_name: Result-Triggered Process Restructuring
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_change_impact_propagation
+  statement: Changes must propagate through interconnected systems to maintain coherence—local modifications create 
+    inconsistencies that must be resolved through propagation to dependent elements, because systems with internal 
+    contradictions are unstable.
+  rationale: "**Evidence from source:** Split from prn_bounded_propagation, which conflated two distinct concerns: the necessity
+    of propagation for coherence, and the necessity of bounds to prevent cascades.\n\n**Why this matters:** This captures
+    the completeness side: without propagation, local changes create global inconsistencies. A database update that doesn't
+    propagate to dependent views leaves the system in contradiction.\n\n**Structural kinship:** Related to prn_propagation_bounds
+    (the containment counterpart), prn_provisional_frameworks (coherent evolution), prn_cybernetic_self_correction (systems
+    maintaining consistency)."
+  categories:
+  - governance
+  - split
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_llm_capability_impact_analysis
+    feature_name: LLM Capability Impact Analysis
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+- id: prn_closure_matches_problem
+  statement: 'Match output closure to problem structure: deliver complete answers for well-bounded queries, but generate productive
+    constraints and generative provocations for ambiguous, multi-interpretable problems where premature conclusion forecloses
+    exploration.'
+  rationale: "Different problem types demand different tool behaviors. Closed problems (factual, deterministic, convergent)
+    benefit from definitive resolution. Open problems (interpretive, generative, hermeneutic) benefit from catalytic outputs
+    that expand the solution space rather than collapse it. The tool's role shifts based on problem topology: oracle for clarity,
+    mirror for complexity."
+  categories: []
+  tags: []
+  status: established
+  features: []
+- id: prn_cognitive_task_matched_presentation
+  statement: Match information presentation format to the cognitive task it supports—comparison requires parallel 
+    structure, evaluation requires hierarchical structure, exploration requires expandable structure—because format 
+    shapes cognitive efficiency.
+  rationale: "**Evidence from source:** The demoted principle describes formatting for scanability and comparison, suggesting
+    task-specific presentation.\n\n**Why this matters:** The same information presented differently enables or inhibits different
+    cognitive operations. Format is not neutral.\n\n**Structural kinship:** prn_decision_interface_modality_matching, prn_detail_deferral_with_accessibility,
+    prn_visual_state_legibility"
+  categories:
+  - design
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: cognitive-task-to-scaffolding-modality-matching
+    feature_name: Cognitive Task to Scaffolding Modality Matching
+    how_embodied: specializes
+    confidence: 0.8
+  - feature_id: feat_structured_decision_presentation
+    feature_name: Structured Decision Presentation
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+- id: prn_conflict_triage
+  statement: Distinguish routine conflicts (resolvable through aggregation) from substantive tensions (requiring 
+    explicit examination) and route accordingly.
+  rationale: "This principle was discovered through philosophical archaeology of a tool brief.\nIt represents tacit design
+    knowledge that was implicitly operating but not yet formalized.\n\n**Evidence from source:** The commentary asks when
+    to 'handle reconciliation internally vs. delegating to Cross-Advisor,' suggesting conflicts have different characters
+    requiring different handling.\n\n**Structural kinship:** Related to prn_epistemic_friction (conflict as signal) and prn_cross_model_examination
+    (explicit comparison), but specifically about classification and routing of conflicts rather than just acknowledging their
+    value.\n"
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  status: established
+  features:
+  - feature_id: fit-based-evidence-bifurcation
+    feature_name: Fit-Based Evidence Bifurcation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_constraint_as_strategy
+  statement: Constraints should drive strategy rather than merely limit execution—explicit resource boundaries enable 
+    intelligent allocation and prevent waste on low-value paths.
+  rationale: "Discovered through philosophical archaeology. Evidence: The brief emphasizes: \"There are constraints. We can
+    spend only so many days, so  many queries, and so many hundreds of dollars on a research project. So we have to  strategize.\"\
+    \ Also: \"There is a budget for Phase 1, and the objective is to discover  truly novel authors...\" And: \"we might switch,
+    pivot, and go for another strategy—or  just launch another Card with a different strategy, even prematurely.\"\n\nStructural
+    kinship: ['prn_chunking', 'prn_cybernetic_correction']\n"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_budget_front_loading
+    feature_name: Budget Front-Loading
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+  - feature_id: cost-explained-processing-choice
+    feature_name: Cost-Explained Processing Choice
+    how_embodied: Re-linked from deprecated principle during refactoring
+    confidence: 0.8
+- id: prn_constraints_as_crystallization
+  statement: Constraints function as crystallization mechanisms that make visible the difference between theoretical 
+    freedom and practical agency—they don't merely limit but reveal which possibilities were always illusory and which 
+    remain genuinely available.
+  rationale: "**Evidence from source:** Split from prn_constraint_narrowing_as_progre to isolate the epistemic/revelatory
+    function of constraints.\n\n**Why this matters:** Constraints are often viewed negatively as limitations. Reframing them
+    as revelation mechanisms changes how we approach problem-solving.\n\n**Structural kinship:** prn_constraint_as_strategy,
+    prn_epistemic_friction, prn_bounded_rationality"
+  categories:
+  - epistemology
+  - extracted
+  tags: []
+  status: established
+  features: []
+- id: prn_consumer_optimized_representation
+  statement: Design information representations optimized for their primary consumer's cognitive architecture—whether 
+    human visual processing, algorithmic parsing, or hybrid interpretation—rather than assuming universal readability.
+  rationale: "**Evidence from source:** The demoted principle explicitly optimizes for LLM consumption, suggesting a general
+    pattern of consumer-driven design.\n\n**Why this matters:** Different consumers (humans, algorithms, hybrid systems) have
+    fundamentally different processing capabilities and constraints. Optimizing for the wrong consumer creates friction.\n\
+    \n**Structural kinship:** prn_machine_legible_affordances, prn_explicit_capability_declaration, prn_context_driven_generation"
+  categories:
+  - design
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_llm_optimized_data_structures
+    feature_name: LLM-Optimized Data Structures
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+- id: prn_content_based_routing
+  statement: Different types of content should be routed through different processing pathways based on their epistemic 
+    characteristics—match processing intensity and human involvement to content type, with evaluative content requiring 
+    human judgment and factual content enabling automated curation.
+  rationale: ''
+  categories: []
+  tags: []
+  status: established
+  features:
+  - feature_id: fit-based-evidence-bifurcation
+    feature_name: Fit-Based Evidence Bifurcation
+    how_embodied: implements
+    confidence: 0.8
+  - feature_id: source-framework-relationship-classification
+    feature_name: Source-Framework Relationship Classification
+    how_embodied: supports
+    confidence: 0.8
+- id: prn_context_driven_generation
+  statement: When generation costs are low, adapt outputs to specific contexts and data rather than forcing contexts to 
+    fit generic templates—personalization should be the default, not the exception, with systems generating bespoke 
+    artifacts tailored to actual use conditions.
+  rationale: "**Evidence from source:** Merged from prn_generative_personalization (personalization default), prn_context_specific_adaptation
+    (context adaptation), and prn_bespoke_contextual (bespoke artifacts).\n\n**Why this matters:** Generic templates force
+    users to adapt to system constraints. When generation is cheap, systems should adapt to users instead.\n\n**Structural
+    kinship:** prn_late_binding_specialization, prn_user_centered_design, prn_resource_proportionality"
+  categories:
+  - design
+  - extracted
+  tags: []
+  status: established
+  features: []
+- id: prn_contextual_extraction_superiority
+  statement: Extraction performed with knowledge of downstream use-context produces superior results to the same 
+    extraction performed before context is available, even when this requires processing to occur later in the pipeline.
+  rationale: "**Evidence from source:** The explicit contrast: 'contextually enhanced extraction of context at a slightly
+    later stage' is preferable to 'a-contextual extraction of context at an early stage' - naming a-contextual processing
+    as specifically inferior.\n\n**Why this matters:** This principle inverts common engineering intuitions about pre-computation;
+    it suggests that for LLM-based systems, just-in-time processing with full context beats cached/pre-computed processing
+    that lacks context.\n\n**Structural kinship:** prn_late_binding_semantic_labels (defer binding until context available),
+    prn_execution_readiness_criteria (explicit criteria before delegation)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: conversation-guided-extraction-targeting
+    feature_name: Conversation-Guided Extraction Targeting
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: document-collection-staging-without-processing
+    feature_name: Document Collection Staging Without Processing
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_continuous_background_synthesis
+  statement: Run synthesis operations continuously as a background process throughout data collection rather than 
+    deferring synthesis to a distinct final phase, allowing the evolving synthesis state to inform and constrain data 
+    gathering at every step.
+  rationale: "**Evidence from source:** The instruction to 'try to make sense of the weight issue early on and keep refining
+    it throughout the user's answers' treats synthesis not as a terminal operation but as an ongoing parallel process that
+    runs continuously alongside data collection.\n\n**Why this matters:** Deferred synthesis creates a disconnect between
+    data gathering and output generation - systems collect data without knowing whether it will actually resolve synthesis
+    requirements. Continuous synthesis makes collection-synthesis coupling tight enough to detect and correct problems in
+    real-time.\n\n**Structural kinship:** prn_iterative_theory_data_dialectic, prn_serial_global_processing, prn_runtime_strategy_adaptation"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: continuous-background-weight-refinement
+    feature_name: Continuous Background Weight Refinement
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_contrastive_context_enrichment
+  statement: When providing context to LLMs about user choices or system states, include not just what is but what could
+    have been—the rejected alternatives, unchosen paths, and available-but-unused options—because meaning emerges from 
+    contrast.
+  rationale: "**Evidence from source:** The explicit reasoning that knowing \"what we did not choose while choosing what we
+    did choose\" provides \"detail/depth\" for modeling behavior implicitly invokes a contrastive theory of meaning—choices
+    are defined relationally against their alternatives.\n\n**Why this matters:** LLMs interpret user choices more accurately
+    when they understand the choice set, not just the outcome. \"User selected option A\" means something different depending
+    on whether B was also available or whether A was the only option. Contrastive context enables more precise modeling of
+    user preferences and intent.\n\n**Structural kinship:** ['prn_comprehensive_context (both advocate for richer context
+    provision)', 'prn_lens_dependent_extraction (both recognize that framing affects interpretation)', 'prn_possibility_space
+    (both value preserving awareness of alternatives)']"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: explicit-criterion-threading-between-llm-calls
+    feature_name: Explicit Criterion Threading Between LLM Calls
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: hierarchical-sharpen-triggers
+    feature_name: Hierarchical Sharpen Triggers
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: mutual-exclusivity-mapping
+    feature_name: Mutual Exclusivity Mapping
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: decision-context-bundle
+    feature_name: Decision Context Bundle
+    how_embodied: supports
+    confidence: 0.8
+- id: prn_criteria_grounded_advisory
+  statement: "When requesting advisory output from LLMs, explicitly enumerate the criteria by which the decision should be
+    made, giving the model clear grounds for reasoning rather than leaving it to infer what matters.\n"
+  rationale: "**Evidence from source:** The prompt specifies asking \"which would better serve our need for abstraction, modularity,
+    comprehensiveness, etc?\"—naming the specific criteria by which the choice should be evaluated rather than asking for
+    general advice.\n\n\n**Why this matters:** Without explicit criteria, LLMs may advise based on inferred or default criteria
+    that don't match the user's actual decision framework. Explicit criteria focus the advisory reasoning and make the basis
+    for recommendations transparent and contestable.\n\n\n**Structural kinship:** prn_comprehensive_context, prn_theory_grounded_extraction"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: criteria-enumeration-in-advisory-prompts
+    feature_name: Criteria Enumeration in Advisory Prompts
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: choice-architecture-constraint
+    feature_name: Choice Architecture Constraint
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_cross_pollination_as_generativ
+  statement: Generate new understanding by systematically representing interactions between one's current framework and 
+    external source materials
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: theory-answer-multiplication
+    feature_name: Theory-Answer Multiplication
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_cross_slot_synthesis_scanning
+  statement: Systems should include explicit mechanisms ("factories") that scan across different functional categories 
+    to identify potential higher-level connections, rather than relying on ad-hoc or implicit synthesis.
+  rationale: "**Evidence from source:** we should have some kind of a through-line factory which will scan our functional
+    outline as it exists across all of the slots, and it will try to find larger, more abstract connective tissues that are
+    rhetorical and argumentative.\n\n**Why this matters:** Through-lines and meta-patterns don't emerge automatically from
+    local work—they require explicit cross-cutting analysis. Without a dedicated scanning mechanism, connections between distant
+    parts of an argument remain invisible, and the system produces fragmented rather than unified outputs.\n\n**Structural
+    kinship:** prn_controlled_propagation, prn_gap_aware_processing, prn_framework_expansion_reanalysis"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: batch-then-synthesize-pattern
+    feature_name: Batch-Then-Synthesize Pattern
+    how_embodied: enables
+    confidence: 0.8
+  - feature_id: slot-level-synthesis-abstraction
+    feature_name: Slot-Level Synthesis Abstraction
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: through-line-factory-pattern
+    feature_name: Through-line Factory Pattern
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_data_as_program
+  statement: Treat data as executable specification—when data structures are sufficiently rich and systems sufficiently 
+    generic, data can define behavior without explicit programming, collapsing the distinction between configuration and
+    code.
+  rationale: "**Evidence from source:** The demoted principle describes context functioning as configuration, suggesting data-driven
+    behavior.\n\n**Why this matters:** Traditional separation of code and data creates artificial boundaries. Rich data structures
+    can encode behavioral specifications.\n\n**Structural kinship:** prn_machine_legible_affordances, prn_explicit_capability_declaration,
+    prn_late_binding_semantic_labels"
+  categories:
+  - design
+  - proposed
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_context_driven_system_specialization
+    feature_name: Context-Driven System Specialization
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+- id: prn_decision_interface_modality_matching
+  statement: Pre-generated decision support content should be presented through interface affordances (modals, sidebars,
+    collapsibles) that match the cognitive task—comparison requires parallel visibility, exploration requires 
+    expandability.
+  rationale: "**Evidence from source:** The instruction to 'stick it into a modal, sidebar, or something similar' reveals
+    awareness that generated content must be architecturally positioned to support the decision task, not just dumped into
+    the main flow.\n\n**Why this matters:** LLM-generated content for decision support fails when presentation architecture
+    doesn't match decision structure. Recognizing that different decision types require different spatial arrangements improves
+    interface design for AI-assisted choices.\n\n**Structural kinship:** prn_format_for_decision_support, prn_detail_deferral_with_accessibility,
+    prn_visual_state_legibility"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: decision-support-container-matching
+    feature_name: Decision Support Container Matching
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_decision_space_propagation
+  statement: When users make selections through an interface, downstream LLM processing should receive not just the 
+    selections themselves but the full decision space (available options, chosen options, rejected options) to enable 
+    richer modeling of user intent and preferences.
+  rationale: "**Evidence from source:** The user's key insight that 'knowing what we did not choose while choosing what we
+    did choose enhances the LLM's ability to model our behavior/expectations' goes beyond mere capture—it's about propagating
+    the full decision context as input to subsequent LLM operations. The phrasing 'down the chain/path' suggests awareness
+    of a processing pipeline where this information has value.\n\n**Why this matters:** LLMs model user preferences more accurately
+    when they can see what was rejected alongside what was chosen—this mirrors how preference learning works in RLHF. Systems
+    that only pass forward positive selections lose the contrastive signal that helps LLMs calibrate their understanding of
+    what the user actually wants versus what was merely acceptable.\n\n**Structural kinship:** ['prn_negative_selection_capture
+    (specialization for LLM consumption)', 'prn_contrastive_context_enrichment (operational mechanism)', 'prn_comprehensive_context
+    (domain-specific instance)']"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: decision-context-bundle
+    feature_name: Decision Context Bundle
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_default_recommendation_elicitation
+  statement: "When seeking LLM advice on choices between generated options, explicitly request a recommended default rather
+    than neutral analysis, because humans conserve cognitive resources by evaluating recommendations rather than weighing
+    unranked options.\n"
+  rationale: "**Evidence from source:** \"Formulate it in such a way that the LLM would propose a default and we won't have
+    to think about it ourselves\"—the explicit design goal is eliciting a recommendation, not just surfacing considerations.\n\
+    \n\n**Why this matters:** LLMs often default to presenting balanced analysis rather than making recommendations, but humans
+    often need recommendations they can accept or override rather than analyses they must synthesize. Explicitly requesting
+    a default changes the output mode from \"here are considerations\" to \"here is what I'd do.\"\n\n\n**Structural kinship:**
+    prn_cognitive_load_transfer, prn_format_for_decision_support"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: recommendation-mode-request
+    feature_name: Recommendation Mode Request
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_detail_deferral_with_accessibility
+  statement: Pre-generate detailed content (narrative text, full language) but present structural summaries by default 
+    (bulletpoints, logic descriptions, transition names), keeping detail collapsed but accessible, so users can maintain
+    big-picture focus while preserving access to instantiation.
+  rationale: "**Evidence from source:** The prompt requests 'bulletpoint like structure and hide the narrative text but make
+    it easy to unpack/view,' 'focus on big dynamics, not language (even though pre-generate language to give us a feel for
+    it),' and 'include initially collapsed text but focus on the logic of the transition.'\n\n**Why this matters:** Detailed
+    language is necessary for final output but distracting during structural decision-making. This principle enables systems
+    to satisfy both needs: generate detail for completeness but present structure for clarity, letting users control their
+    zoom level.\n\n**Structural kinship:** prn_format_for_decision_support (formatting for evaluation), prn_function_form_phase_separation
+    (separating structure from presentation), prn_intermediary_curation (curating before presenting)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: collapsible-detail-architecture
+    feature_name: Collapsible Detail Architecture
+    how_embodied: Implements collapsed-by-default detail with expand-on-demand access
+    confidence: 0.95
+- id: prn_dialogue_emergent_relevance
+  statement: User-LLM conversation itself generates the targeting criteria for what's relevant in source materials, 
+    making dialogue a discovery mechanism rather than merely an output channel.
+  rationale: "**Evidence from source:** The phrase 'the nature of the convo between user the LLM will help us understand what
+    exactly to look for in those documents' treats conversation as generating relevance criteria that couldn't be specified
+    upfront.\n\n**Why this matters:** Recognizing that conversation produces relevance criteria suggests system architectures
+    where document retrieval/extraction systems listen to dialogue state rather than operating on fixed pre-queries.\n\n**Structural
+    kinship:** prn_staged_adaptive_interrogation (questions emerge from prior answers), prn_dialectical_refinement (understanding
+    emerges through cycles)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: dual-channel-progressive-specialization
+    feature_name: Dual-Channel Progressive Specialization
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: just-in-time-profile-construction
+    feature_name: Just-In-Time Profile Construction
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: conversation-guided-extraction-targeting
+    feature_name: Conversation-Guided Extraction Targeting
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_domain_archetypes
+  statement: Every domain should have categorical templates (archetypes) that provide structure for understanding 
+    individual instances; these templates encode expectations.
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: rhetorical-gap-taxonomy
+    feature_name: Rhetorical Gap Taxonomy
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: genre-indexed-requirement-templates
+    feature_name: Genre-Indexed Requirement Templates
+    how_embodied: supports
+    confidence: 0.8
+- id: prn_domain_transcendent_abstraction
+  statement: Abstract process structures away from any specific domain instantiation so the same operational logic 
+    serves multiple domains (journalism, academia, policy) through different parameterization rather than different 
+    architectures.
+  rationale: "**Evidence from source:** The prompt describes the need to move from 'essay flow tool' to 'generic tool' and
+    lists multiple target domains: 'academic article or writing an essay... news piece... foundation... policy reports, reports
+    from grantees.' It explicitly states 'efforts must transcend that and penetrate other institutions.'\n\n**Why this matters:**
+    When prompts are domain-specific, each new domain requires new prompt engineering. Domain-transcendent design means prompts
+    operate on abstract roles (source material, analytical frame, output format) that get instantiated differently per domain.
+    This dramatically reduces prompt proliferation and enables systematic domain transfer.\n\n**Structural kinship:** prn_abstraction_independence
+    (independent abstraction passes), prn_domain_archetypes (categorical templates per domain)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: domain-agnostic-initial-architecture
+    feature_name: Domain-Agnostic Initial Architecture
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: domain-portable-process-architecture
+    feature_name: Domain-Portable Process Architecture
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_downstream_aware_generation
+  statement: Prompts that generate initial outputs should explicitly encode how those outputs will be processed, 
+    transformed, and synthesized in subsequent stages, because generation optimized for immediate coherence often 
+    produces outputs poorly suited for downstream operations.
+  rationale: "**Evidence from source:** The user states \"we have to incorporate all these future uses into the prompt that
+    generates initial throughlines\" and suggests rewinding to \"regenerate throughlines with these future uses in mind\"\
+    —explicitly arguing that upstream generation must be designed with downstream processing in view.\n\n**Why this matters:**
+    LLM outputs are often well-formed in isolation but structurally incompatible with subsequent processing steps; designing
+    prompts with the full pipeline in mind produces outputs that flow smoothly through multi-stage systems.\n\n**Structural
+    kinship:** prn_capability_addition_cascade_analysis, prn_front_load_decisions"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: stage-contingent-question-calibration
+    feature_name: Stage-Contingent Question Calibration
+    how_embodied: enables
+    confidence: 0.8
+  - feature_id: preemptive-output-structure-anticipation
+    feature_name: Preemptive Output Structure Anticipation
+    how_embodied: implements
+    confidence: 0.8
+  - feature_id: logical-rhetorical-translation-prerequisites
+    feature_name: Logical-Rhetorical Translation Prerequisites
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: stage-bridging-extraction-strategy
+    feature_name: Stage-Bridging Extraction Strategy
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: future-use-injection
+    feature_name: Future-Use Injection
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: throughline-factory-pattern
+    feature_name: Throughline Factory Pattern
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_dual_mode_operation
+  statement: Provide both fully automated and human-supervised modes, allowing progressive delegation as trust in 
+    automated processes increases
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: silent-integration-with-disclosure
+    feature_name: Silent Integration with Disclosure
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: cost-explained-processing-choice
+    feature_name: Cost-Explained Processing Choice
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_dual_outline_constraint
+  statement: Writing requires satisfying both logical validity and rhetorical effectiveness; systems should track both 
+    dimensions and their mutual requirements.
+  rationale: "This principle was discovered through features-first extraction.\n\n**Evidence from brief:** The insistence
+    on 'translation of logical to rhetorical arguments' and that 'materials would be shared across two outlines—serving as
+    evidence, transition, hooks, or rhetorical functions.'\n\n**Structural kinship:** prn_abstraction_independence, prn_logical_coherence\n\
+    \n**Why novel:** "
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  - features-first
+  status: established
+  features:
+  - feature_id: logical-rhetorical-translation-prerequisites
+    feature_name: Logical-Rhetorical Translation Prerequisites
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: logical-rhetorical-linkage-tracking
+    feature_name: Logical-Rhetorical Linkage Tracking
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: genre-archetype-function-mapping
+    feature_name: Genre Archetype Function Mapping
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_dynamic_elicitation_injection
+  statement: When anticipated outputs reveal information gaps, strategically inject targeted questions into the 
+    interaction flow at opportune moments rather than adhering to predetermined question sequences, treating the 
+    question flow itself as dynamically optimizable based on model needs.
+  rationale: "**Evidence from source:** The phrase 'strategically insert a question or two which will help us make sense of
+    the weights EVEN BEFORE we generated the weightlines' explicitly proposes injecting questions that weren't part of the
+    original flow, driven by the needs of anticipated downstream processing.\n\n**Why this matters:** Fixed question sequences
+    cannot anticipate all information needed for novel output configurations. Dynamic injection allows systems to fill specific
+    gaps identified by anticipatory models, converting passive questionnaires into active information-hunting instruments.\n\
+    \n**Structural kinship:** prn_staged_adaptive_interrogation, prn_proactive_insufficiency_signaling, prn_runtime_strategy_adaptation"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: non-predetermined-stage-sequencing
+    feature_name: Non-Predetermined Stage Sequencing
+    how_embodied: extends
+    confidence: 0.8
+  - feature_id: weight-gap-targeted-question-insertion
+    feature_name: Weight-Gap Targeted Question Insertion
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_early_consequential_decisions
+  statement: In systems with path dependencies, elicit the most consequential information first—including resource 
+    budgets, strategic constraints, and critical parameters—because early decisions constrain the entire possibility 
+    space of downstream outcomes.
+  rationale: ''
+  categories: []
+  tags: []
+  status: established
+  features:
+  - feature_id: collaborative-process-design-with-versioning
+    feature_name: Collaborative Process Design with Versioning
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_embodied_decision_substrate
+  statement: Consequential choices require pre-generation of sufficient concrete material that decision-makers can 
+    develop an 'embodied feel' for each option rather than evaluating abstractly described alternatives.
+  rationale: "**Evidence from source:** The phrase 'full embodied feel for what choosing each of the readings would involve'
+    and the request to 'generate enough mock data to make this happen' indicate that abstract description is insufficient—tangible
+    instantiation is required for proper decision-making.\n\n**Why this matters:** LLMs can cheaply generate concrete instantiations,
+    but prompts often ask only for descriptions of options. Recognizing that decisions require experiential substrate rather
+    than propositional summaries shifts how we structure choice-presenting interfaces.\n\n**Structural kinship:** prn_option_impact_preview,
+    prn_abstract_concrete_progressive, prn_practical_discovery_over_theoretical"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: provisional-formulation-as-knowledge-probe
+    feature_name: Provisional Formulation as Knowledge Probe
+    how_embodied: extends
+    confidence: 0.8
+  - feature_id: embodied-decision-substrate-generation
+    feature_name: Embodied Decision Substrate Generation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_emergent_choice
+  statement: Genuine choices are not given at the start but emerge through analytical work; systems should track this 
+    emergence rather than forcing premature selection.
+  rationale: "This principle was discovered through features-first extraction.\n\n**Evidence from brief:** The explicit principle
+    that 'We don't have choices - we create them by analyzing corpora for materials.'\n\n**Structural kinship:** prn_abductive_logic,
+    prn_process_as_data\n\n**Why novel:** "
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  - features-first
+  status: established
+  features:
+  - feature_id: reasoning-chain-display
+    feature_name: Reasoning Chain Display
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: choice-creation-through-analysis-cycles
+    feature_name: Choice Creation Through Analysis Cycles
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: cross-pollination-proposition-generation
+    feature_name: Cross-Pollination Proposition Generation
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_eternal_ephemeral_dimension_se
+  statement: Systems should distinguish between permanent, context-independent elements and project-specific, 
+    version-dependent elements
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features: []
+- id: prn_event_driven_refinement
+  statement: Knowledge structures should evolve in response to events (new data, external changes, scheduled reviews) 
+    rather than only through explicit invocation; systems that can be triggered maintain freshness that imperative-only 
+    systems cannot.
+  rationale: "This principle was discovered through philosophical archaeology of a tool brief.\nIt represents tacit design
+    knowledge that was implicitly operating but not yet formalized.\n\n**Evidence from source:** The brief specifies five
+    distinct trigger points: \"Post-synthesis: After initial schema generation completes. New specimen added: An excellent
+    new example is added to a genre's corpus. Cross-genre trigger: Another genre's schema was refined... Scheduled refinement:
+    Periodic re-engagement to catch drift or staleness. Manual invocation.\" This event-driven architecture pattern reflects
+    a commitment to schemas as living, responsive artifacts.\n\n\n**Structural kinship:** ['prn_cybernetic_correction (events
+    as correction triggers)', 'prn_abductive_logic (new data triggers theory refinement)']\n"
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  status: established
+  features:
+  - feature_id: task-driven-pipeline-composition
+    feature_name: Task-Driven Pipeline Composition
+    how_embodied: relates_to
+    confidence: 0.8
+  - feature_id: stray-element-as-workflow-trigger
+    feature_name: Stray Element as Workflow Trigger
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: eternal-ephemeral-extraction-dichotomy
+    feature_name: Eternal-Ephemeral Extraction Dichotomy
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_execution_readiness_criteria
+  statement: Consequential actions should be preceded by verification stages that complete before commitment, treating 
+    provisional outputs as hypotheses requiring validation rather than facts requiring execution—because the cost of 
+    correction after commitment typically exceeds the cost of verification before commitment.
+  rationale: "**Evidence from source:** Abduced from prn_correction_before_commitment, which mandated 'verification and correction
+    stages that complete before any changes are committed'—a general pattern about sequencing verification before consequence.\n\
+    \n**Why this matters:** This captures the economic logic: verification is cheaper than remediation. It's not specific
+    to LLMs—it applies to any system where actions have consequences and errors are costly to reverse.\n\n**Structural kinship:**
+    Related to prn_human_authority_gate (approval before action), prn_provisional_frameworks (outputs as hypotheses), prn_staged_decomposition
+    (sequential stages)."
+  categories:
+  - process
+  - proposed
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: prn_human_authority_gate
+    feature_name: LLM Verification Gate
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+- id: prn_expansion_constraint_rhythm
+  statement: Progress emerges through rhythmic alternation between expansion and constraint—expand the solution space to
+    exhaustion, then narrow through constraints to reveal what's actually viable, with each cycle illuminating which 
+    possibilities were illusory and which remain tractable.
+  rationale: "**Evidence from source:** Split from prn_constraint_narrowing_as_progre to isolate the rhythmic alternation
+    pattern from the crystallization function.\n\n**Why this matters:** Problem-solving often stalls when stuck in either
+    pure expansion (overwhelm) or pure constraint (premature closure). Explicit rhythm enables sustainable progress.\n\n**Structural
+    kinship:** prn_iterative_theory_data_dialectic, prn_divergent_convergent_cycles, prn_cybernetic_feedback"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features: []
+- id: prn_explicit_capability_declaration
+  statement: Make system capabilities explicitly queryable through structured declarations rather than leaving them 
+    implicit in code, enabling both human and automated agents to discover and compose available actions.
+  rationale: ''
+  categories: []
+  tags: []
+  status: established
+  features: []
+- id: prn_explicit_process_externalization
+  statement: The workflow itself should be an explicit, versioned, user-adjustable data structure that LLMs propose, 
+    humans modify, and all processing stages can query - making process design a first-class collaborative artifact 
+    rather than implicit system architecture.
+  rationale: "**Evidence from source:** Author states 'we would probably generate it early on,' 'have an LLM propose that
+    after some initial questions and the user can adjust/modify,' 'keep track of versioning,' and 'the more we are explicit
+    about this flexible dynamism, the better results we'll get.'\n\n**Why this matters:** When process structure is implicit
+    (hardcoded in system design), users cannot meaningfully participate in process design and LLMs cannot reason about or
+    propose process improvements. Externalizing process as queryable data enables both human agency and LLM-driven optimization
+    of the workflow itself.\n\n**Structural kinship:** prn_data_as_program, prn_refinement_versioning, prn_human_authority_gate"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: collaborative-process-design-with-versioning
+    feature_name: Collaborative Process Design with Versioning
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_extensibility_as_design_criterion
+  statement: When discovering patterns for system design, explicitly optimize for ease of future extension rather than 
+    just current completeness, treating "easy to add X later" as a first-class requirement.
+  rationale: "**Evidence from source:** i want it to be super-easy for us to add things like that once the system is operational
+    so we need to set it up correctly... our overall concern is building a highly modular/configurable system that will be
+    easy to modify/expand in the future\n\n**Why this matters:** This shifts pattern identification from \"what exists\" to
+    \"what structure would make adding new types easy\" - a meta-level concern that should shape how categories are discovered
+    and structured.\n\n**Structural kinship:** prn_provisional_structures, prn_schema_data_co_evolution"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: type-generic-element-processing
+    feature_name: Type-Generic Element Processing
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: schema-introspective-question-generation
+    feature_name: Schema-Introspective Question Generation
+    how_embodied: supports
+    confidence: 0.8
+- id: prn_externalized_imagination_infrastructure
+  statement: AI systems should function as external cognitive infrastructure that enables imagination and conceptual 
+    exploration beyond what working memory and internal visualization can support, making thinkable what cannot be held 
+    'in the head'.
+  rationale: "**Evidence from source:** The prompt explicitly states the goal is 'the most sophisticated cognitive/imagination
+    support possible' and identifies the limitation as 'users have trouble conceptualizing in their head - when they think
+    unabetted - or on paper when they just write'\n\n**Why this matters:** Reframes LLM systems from question-answering tools
+    to imagination prosthetics - this changes what we build from interfaces that capture answers to environments that enable
+    thinking users couldn't otherwise do\n\n**Structural kinship:** prn_interactive_cognition, prn_possibility_space_architecture"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: cognitive-task-to-scaffolding-modality-matching
+    feature_name: Cognitive Task to Scaffolding Modality Matching
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: choice-impact-topology-rendering
+    feature_name: Choice-Impact Topology Rendering
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: provisional-formulation-as-knowledge-probe
+    feature_name: Provisional Formulation as Knowledge Probe
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_extrapolative_inference_request
+  statement: Ask LLMs not only to analyze what patterns exist in data, but to extrapolate what complementary structures 
+    should exist based on discovered patterns - inferring from engines to appropriate media, from problems to solutions.
+  rationale: "**Evidence from source:** ask to extrapolate and get the LLM to think about what kind of media - a textual memo?
+    a table? a blend of the two? a particular ***KIND*** of gemini visualization? - would be useful in rendering the particular
+    slant\n\n**Why this matters:** This leverages LLMs' strength in pattern completion and analogy - moving from discovered
+    analytical structures to appropriate presentation forms that the author hasn't yet imagined.\n\n**Structural kinship:**
+    prn_downstream_aware_generation, prn_domain_archetypes"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: trinity-classification-framework
+    feature_name: Trinity Classification Framework
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_fixed_foundation
+  statement: Not everything should be fluid and customizable—certain elements must remain fixed and stable to provide 
+    reference points, because understanding and navigation require stable ground from which to perceive variation.
+  rationale: "Total flexibility is paralyzing. Without constraints, there's no basis for\nmeaningful variation. A jazz musician
+    improvises within the structure of\nchord changes; without that structure, it's just noise.\n\nFixed elements provide:\n\
+    - Cognitive anchors for users\n- Evaluation criteria for outputs\n- Consistent foundations across variations\n- Limits
+    that force creative solutions\n\nThe key is choosing WHAT to fix. Fix the process structure, not the content.\nFix the
+    evaluation criteria, not the outputs. Fix the interaction patterns,\nnot the specific interfaces.\n"
+  categories:
+  - design
+  - methodology
+  tags:
+  - constraints
+  - flexibility
+  - grounding
+  - architecture
+  status: established
+  features:
+  - feature_id: eternal-ephemeral-extraction-dichotomy
+    feature_name: Eternal-Ephemeral Extraction Dichotomy
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: ai-indispensability-declaration
+    feature_name: AI Indispensability Declaration
+    how_embodied: LLM role declared as fixed architectural constraint
+    confidence: 0.75
+  - feature_id: family-strategies-system
+    feature_name: Family Strategies System
+    how_embodied: Strategies form a stable repertoire of approaches
+    confidence: 0.75
+  - feature_id: effectors-system
+    feature_name: Effectors System
+    how_embodied: Effectors form a fixed registry—stable ground for flexible strategies
+    confidence: 0.75
+  - feature_id: fixed-and-flexible-categories
+    feature_name: Fixed and Flexible Categories
+    how_embodied: Direct manifestation of keeping certain elements rigid while others flex
+    confidence: 0.75
+- id: prn_flexibility_through_stability
+  statement: Stability in some system elements enables flexibility in others—only from firm ground can we understand 
+    what becomes flexible and what becomes personalized, because contrast requires a stable reference frame.
+  rationale: ''
+  categories: []
+  tags: []
+  status: established
+  features: []
+- id: prn_formalization_as_education
+  statement: When systems translate user intentions from plain language to formal specifications, exposing the 
+    translation back to users develops their expertise and expands their conceptual vocabulary.
+  rationale: "**Evidence from source:** The prompt states users 'express it once' in plain language, then the system shows
+    them formal terms 'so that they develop their imagination and their skill.' The explicit goal is 'walking them through
+    the complexity of the process and immersing them in it' to 'expand their imagination to the point where they would be
+    asking completely novel questions.'\n\n**Why this matters:** This reframes system formalization as a pedagogical opportunity
+    rather than just a translation step. LLM systems that expose their interpretive work to users can serve as teaching tools,
+    not just execution tools—users learn the formal vocabulary that makes them more effective prompt engineers and system
+    collaborators.\n\n**Structural kinship:** prn_tacit_to_explicit, prn_emergence_through_iterative_re"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: reasoning-chain-display
+    feature_name: Reasoning Chain Display
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: translation-map-display
+    feature_name: Translation Map Display
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: expert-transparency-mode
+    feature_name: Expert Transparency Mode
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: plain-language-registry-extension-pipeline
+    feature_name: Plain-Language Registry Extension Pipeline
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_forward_staged_data_harvesting
+  statement: At each processing stage, extract not only what that stage requires but also data that will serve 
+    downstream stages, even when users don't recognize its future relevance, packaging future-oriented extraction within
+    current-stage work.
+  rationale: "**Evidence from source:** The author says: 'There are surely things we can extract from the user that the user
+    doesn't even know about that, while packaged as functional skeleton work, would actually help us greatly when it comes
+    to doing the rhetorical outline strategy'\n\n**Why this matters:** Users only understand what's relevant to their current
+    task; systems that harvest information for future stages during current-stage work avoid costly backtracking and redundant
+    questioning\n\n**Structural kinship:** prn_downstream_aware_generation, prn_structured_elicitation, prn_early_consequential_decisions"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: first-input-throughline-projection
+    feature_name: First-Input Throughline Projection
+    how_embodied: extends
+    confidence: 0.8
+  - feature_id: arbitrary-point-content-injection
+    feature_name: Arbitrary-Point Content Injection
+    how_embodied: relates_to
+    confidence: 0.8
+  - feature_id: cascaded-generation-triggers
+    feature_name: Cascaded Generation Triggers
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: stage-bridging-extraction-strategy
+    feature_name: Stage-Bridging Extraction Strategy
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_framework_expansion_reanalysis
+  statement: When categorical frameworks expand, use this as a trigger to re-analyze existing data under the expanded 
+    framework, not just to classify new data.
+  rationale: ''
+  categories: []
+  tags: []
+  status: established
+  features: []
+- id: prn_friction_focused_attention_allocation
+  statement: Direct human cognitive effort preferentially toward items that create structural tension or conflict with 
+    existing frameworks, treating harmonious integrations as background operations that merit notification but not 
+    active attention.
+  rationale: "**Evidence from source:** The phrase 'the core of the action is on dealing with those that cause friction/conflict'
+    explicitly prioritizes human attention toward conflict cases rather than spreading it across all items equally.\n\n**Why
+    this matters:** LLM systems often demand uniform attention across all outputs; this principle enables intelligent attention
+    allocation by making 'structural fit with existing knowledge' the primary routing criterion, allowing humans to invest
+    cognitive effort where it generates maximum value.\n\n**Structural kinship:** prn_cognitive_division_of_labor, prn_conflict_triage,
+    prn_resource_proportionality"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: friction-prioritized-attention-allocation
+    feature_name: Friction-Prioritized Attention Allocation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_function_based_on_demand_retri
+  statement: Extract comprehensively but mobilize selectively based on which function needs to be fulfilled at the 
+    moment of use
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: just-in-time-profile-construction
+    feature_name: Just-In-Time Profile Construction
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: user-question-driven-pattern-discovery
+    feature_name: User-Question-Driven Pattern Discovery
+    how_embodied: supports
+    confidence: 0.8
+- id: prn_gap_aware_processing
+  statement: Systems should identify what is missing relative to benchmarks and direct extraction efforts toward 
+    dimensions that are underrepresented
+  rationale: ''
+  categories: []
+  tags: []
+  status: established
+  features:
+  - feature_id: rhetorical-gap-taxonomy
+    feature_name: Rhetorical Gap Taxonomy
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: through-line-factory-pattern
+    feature_name: Through-line Factory Pattern
+    how_embodied: enables
+    confidence: 0.8
+  - feature_id: slot-saturation-detection
+    feature_name: Slot Saturation Detection
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: stray-element-as-workflow-trigger
+    feature_name: Stray Element as Workflow Trigger
+    how_embodied: supports
+    confidence: 0.8
+- id: prn_generation_evaluation_separation
+  statement: "When LLMs both generate options and advise on selection, these functions should be separated into distinct calls
+    rather than conflated in a single prompt, because generation benefits from expansive creativity while evaluation benefits
+    from constrained comparative reasoning.\n"
+  rationale: "**Evidence from source:** The prompt explicitly specifies \"first API call to generate values; second API call
+    to ask for advice on how to choose between them\"—treating these as fundamentally different cognitive operations requiring
+    different prompting contexts.\n\n\n**Why this matters:** Conflating generation and evaluation in a single call produces
+    outputs that self-censor during generation or fail to seriously evaluate during selection. Separation allows each call
+    to be optimized for its specific epistemic function, improving both option richness and advice quality.\n\n\n**Structural
+    kinship:** prn_function_form_phase_separation, prn_chunking"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: two-stage-generation-advice-pattern
+    feature_name: Two-Stage Generation-Advice Pattern
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_genre_as_scaffold
+  statement: Genre conventions encode successful patterns of argumentation; making them explicit as functional 
+    typologies provides scaffolding for both extraction and composition.
+  rationale: "This principle was discovered through features-first extraction.\n\n**Evidence from brief:** The emphasis on
+    building 'thorough typology of each genre's logical functions—the archetypes logically, not just rhetorically' and using
+    these to guide what's needed.\n\n**Structural kinship:** prn_paradigm_embodiment, prn_fixed_foundation\n\n**Why novel:** "
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  - features-first
+  status: established
+  features:
+  - feature_id: genre-indexed-requirement-templates
+    feature_name: Genre-Indexed Requirement Templates
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: functional-slot-architecture
+    feature_name: Functional Slot Architecture
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: critical-question-prioritization
+    feature_name: Critical Question Prioritization
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: plain-language-direction-with-llm-classification
+    feature_name: Plain Language Direction with LLM Classification
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: logical-rhetorical-linkage-tracking
+    feature_name: Logical-Rhetorical Linkage Tracking
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: genre-archetype-function-mapping
+    feature_name: Genre Archetype Function Mapping
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_graduated_intervention_intensity
+  statement: When seeking to resolve system inconsistencies or gaps, attempt minimal interventions first (no changes) 
+    before escalating to moderate interventions (single-element changes) and finally maximal interventions 
+    (multi-element changes).
+  rationale: "**Evidence from source:** Step 2 seeks 'direct hits/relationships that we can make without any modifications'
+    before Step 3 proposes 'ways of modifying either principles or relationships or both' - a clear graduation from zero-modification
+    to one-element to both-element changes.\n\n**Why this matters:** Prevents over-engineering by LLMs. Without explicit graduation,
+    LLMs tend toward elaborate solutions. This principle ensures simpler connections are discovered before complex reconciliations
+    are attempted.\n\n**Structural kinship:** prn_resource_proportionality, prn_deferred_commitment"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: zero-modification-first-assessment
+    feature_name: Zero-Modification-First Assessment
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_human_authority_gate
+  statement: Consequential modifications to persistent structures require explicit human approval; systems propose, 
+    humans dispose. This is not merely compensation for LLM limits but a design commitment to human authority.
+  rationale: "This principle was discovered through philosophical archaeology of a tool brief.\nIt represents tacit design
+    knowledge that was implicitly operating but not yet formalized.\n\n**Evidence from source:** The brief repeatedly emphasizes
+    human approval as non-negotiable: \"Human review is essential: The tool generates proposals; humans make final decisions.\"\
+    \ This is listed as both an assumption and a scope constraint (\"Fully autonomous schema modification\" is explicitly
+    out of scope). The distinction from prn_compensate_llm_limits is that this isn't about capability compensation—it's about
+    authority allocation. Even a perfect LLM should not autonomously modify schemas.\n\n\n**Structural kinship:** [\"prn_compensate_llm_limits
+    (related but distinct—that's about capability, this is about authority)\", 'prn_cybernetic_correction (human review as
+    a specific correction mechanism)']\n"
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  status: established
+  features:
+  - feature_id: result-triggered-process-restructuring
+    feature_name: Result-Triggered Process Restructuring
+    how_embodied: constrains
+    confidence: 0.8
+  - feature_id: correction-then-commit-gating
+    feature_name: Correction-Then-Commit Gating
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: granular-post-hoc-override-controls
+    feature_name: Granular Post-Hoc Override Controls
+    how_embodied: implements
+    confidence: 0.8
+  - feature_id: streaming-progress-visibility
+    feature_name: Streaming Progress Visibility
+    how_embodied: enables
+    confidence: 0.8
+  - feature_id: recommendation-mode-request
+    feature_name: Recommendation Mode Request
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: ui-llm-complementarity-architecture
+    feature_name: UI-LLM Complementarity Architecture
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: plain-language-registry-extension-pipeline
+    feature_name: Plain-Language Registry Extension Pipeline
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: tiered-material-classification-with-differential-review
+    feature_name: Tiered Material Classification with Differential Review
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_impact_topology_materialization
+  statement: Make visible the full network topology of how conceptual choices propagate through an argument or system - 
+    not just listing impacts but rendering the structure of dependency and implication that users cannot maintain 
+    mentally.
+  rationale: "**Evidence from source:** Specific reference to 'analysis of impact of defining a concept this way rather than
+    that way, with possible impact/implications on the rest of the argument' - emphasis on what users 'have trouble conceptualizing
+    in their head'\n\n**Why this matters:** Arguments and conceptual systems have complex interdependencies; making these
+    visible enables strategic conceptual decisions rather than ad-hoc choices that create unforeseen inconsistencies\n\n**Structural
+    kinship:** prn_option_impact_preview, prn_change_impact_propagation, prn_possibility_as_foreclosure_warning"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: choice-impact-topology-rendering
+    feature_name: Choice-Impact Topology Rendering
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_intellectual_profile
+  statement: Build explicit intellectual profiles—representations of theoretical interests, preferences, and 
+    positions—early in the process, because the stronger this profile, the more effective pattern-matching and 
+    collaboration with LLMs becomes.
+  rationale: "For LLMs to help with pattern matching, they need to know what patterns\nyou're looking for. This requires an
+    explicit representation of your\nintellectual interests, theoretical positions, and aesthetic preferences.\n\nBuilding
+    this profile used to be slow—it emerged implicitly over years of\nwriting. Now, with customized interfaces that cross-pollinate
+    your thinking\nwith others' and solicit explicit review of generated connections, the\nprofile can be built much faster.\n\
+    \nThe richer the profile, the more effectively LLMs can suggest relevant\nconnections, filter irrelevant material, and
+    generate aligned outputs.\n"
+  categories:
+  - methodology
+  - epistemology
+  tags:
+  - profile-building
+  - preferences
+  - collaboration
+  - pattern-matching
+  status: established
+  features:
+  - feature_id: theory-answer-multiplication
+    feature_name: Theory-Answer Multiplication
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: research-mode-pre-selection
+    feature_name: Research Mode Pre-Selection
+    how_embodied: Early mode selection builds the intellectual profile that enables subsequent pattern-matching
+    confidence: 0.75
+  - feature_id: human-in-loop-proposal-review
+    feature_name: Human-in-Loop Proposal Review
+    how_embodied: Feedback learning builds model of reviewer preferences
+    confidence: 0.75
+- id: prn_interactive_cognition
+  statement: Thinking is enhanced by environments that provide immediate, substantive feedback—tools that enable rapid 
+    hypothesis testing and dynamic response accelerate understanding more than static recording tools.
+  rationale: "Writing has historically been coextensive with thinking—we \"think on paper.\"\nBut this romanticizes a particular
+    modality as if it were essential to thought.\nThinking can happen in many contexts.\n\nAI-mediated environments offer
+    new possibilities: interfaces that solicit\nexplicit and implicit feedback, systems that help build and test models of\n\
+    reality, real-time application through simulation. These may actually produce\n*more* opportunities for thinking than
+    sitting in a café with a laptop.\n\n\"We are trying to build a much better thinking environment than Microsoft Word.\"\
+    \n"
+  categories:
+  - design
+  - meta
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_ai_thinking_environments
+    feature_name: AI Thinking Environments
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+  - feature_id: ui-llm-complementarity-architecture
+    feature_name: UI-LLM Complementarity Architecture
+    how_embodied: Re-linked from deprecated principle during refactoring
+    confidence: 0.8
+  - feature_id: plain-language-direction-with-llm-classification
+    feature_name: Plain Language Direction with LLM Classification
+    how_embodied: Re-linked from deprecated principle during refactoring
+    confidence: 0.8
+  - feature_id: user-term-engagement-interface
+    feature_name: User Term Engagement Interface
+    how_embodied: Re-linked from deprecated principle during refactoring
+    confidence: 0.8
+- id: prn_intermediary_curation
+  statement: Interpose processing layers between raw extraction and human attention; curating, clustering, and grouping 
+    should be performed by intermediary agents.
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features: []
+- id: prn_interpretive_cascade_instantiation
+  statement: When interpretive choices cascade through interconnected structures, instantiate the full downstream 
+    revision requirements for each option rather than abstractly describing propagation effects.
+  rationale: "**Evidence from source:** The prompt requests showing 'what kind of revisions to the parts of the throughline
+    would be needed, depending on which of the sub-options for integrating each reading we go with'—not a description of propagation
+    but actual instantiated revisions.\n\n**Why this matters:** Abstract statements like 'this would require updating X' fail
+    to convey the true cost of changes. Actually generating the revised versions makes costs concrete and comparable, enabling
+    informed selection among interpretive options.\n\n**Structural kinship:** prn_bounded_propagation, prn_capability_addition_cascade_analysis,
+    prn_downstream_aware_generation"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: sub-option-dependent-revision-branching
+    feature_name: Sub-Option Dependent Revision Branching
+    how_embodied: extends
+    confidence: 0.8
+  - feature_id: interpretive-choice-cascade-pre-computation
+    feature_name: Interpretive Choice Cascade Pre-Computation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_inter_stage_criterion_propagation
+  statement: When multiple LLM invocations collaborate across a multi-stage process, the variables, criteria, and 
+    constraints that govern each stage's behavior should be explicitly passed as structured data between stages rather 
+    than left implicit or re-derived.
+  rationale: "**Evidence from source:** Author emphasizes 'the passing of variables/criteria among LLMs' and connects explicit
+    process awareness to 'not only ask the right questions but restructure the process accordingly' - suggesting that criteria
+    propagation is the mechanism by which process-awareness operates.\n\n**Why this matters:** Without explicit criterion
+    propagation, each LLM invocation must infer constraints from context or operate with incomplete information. Explicit
+    propagation creates a coordinated 'nervous system' across the pipeline where upstream decisions properly constrain downstream
+    behavior.\n\n**Structural kinship:** prn_provenance_preservation, prn_decision_space_propagation, prn_contrastive_context_enrichment"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: explicit-criterion-threading-between-llm-calls
+    feature_name: Explicit Criterion Threading Between LLM Calls
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_irrelevance_tolerance_instruction
+  statement: When processing noisy data sources, explicitly instruct LLMs that not all input data will be relevant and 
+    that filtering is expected, preventing forced pattern-matching where genuine relevance is absent.
+  rationale: "**Evidence from source:** clarify in the prompt to the api that some of the data it will be accessing won't
+    be relevant to the task at hand at all - this is a registry of my old prompts, i didn't clear it specifically\n\n**Why
+    this matters:** LLMs tend toward finding patterns and relevance even in noise; explicitly licensing irrelevance recognition
+    prevents hallucinated connections and overfitting to random structure.\n\n**Structural kinship:** prn_wildcard_inclusion_for_complet,
+    prn_content_based_routing"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: noise-aware-prompt-framing
+    feature_name: Noise-Aware Prompt Framing
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_late_binding_semantic_labels
+  statement: Establish structural relationships and logical roles early in processing pipelines, but defer binding 
+    semantic labels (names, titles, descriptions) until content is fully assembled and context is maximally available.
+  rationale: "**Evidence from source:** The prompt explicitly states: 'we'll think abstractly in earlier stages - we'll understand
+    that there are logical/structural connections between elements... but we'll name them only at the pre-rendering stage
+    to make sure their names are most adequate to the content.'\n\n**Why this matters:** LLMs generate better labels when
+    they have full context. Early naming forces commitment before understanding is complete, resulting in generic or misaligned
+    labels like 'Level 0: Root Categories' instead of content-appropriate descriptions.\n\n**Structural kinship:** prn_deferred_commitment,
+    prn_abstract_concrete_progressive_"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: abstract-structural-placeholder-pattern
+    feature_name: Abstract Structural Placeholder Pattern
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: concretization-stage
+    feature_name: Concretization Stage
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_logical_coherence
+  statement: System modifications should preserve logical coherence by tracking dependencies and re-evaluating proposals
+    in light of accepted changes.
+  rationale: "This principle was discovered through philosophical archaeology of a tool brief.\nIt represents tacit design
+    knowledge that was implicitly operating but not yet formalized.\n\n**Evidence from source:** The commentary identifies
+    that 'accepting proposal A changes the context for proposal B' and asks how to handle this. This suggests proposals exist
+    in a logical space where coherence matters.\n\n**Structural kinship:** Related to prn_cybernetic_correction (re-evaluation
+    as feedback) but specifically about maintaining structural integrity of the artifact being modified. Also shares concern
+    with prn_chunking about granularity vs. coherence tradeoffs.\n"
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  status: established
+  features:
+  - feature_id: assumption-grounded-question-sequencing
+    feature_name: Assumption-Grounded Question Sequencing
+    how_embodied: enables
+    confidence: 0.8
+  - feature_id: mutual-exclusivity-mapping
+    feature_name: Mutual Exclusivity Mapping
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: edit-impact-tracking
+    feature_name: Edit Impact Tracking
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: versioned-questionnaire-regeneration-pipeline
+    feature_name: Versioned Questionnaire Regeneration Pipeline
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_machine_legible_affordances
+  statement: System capabilities should be discoverable and composable by automated agents, not just 
+    humans—machine-readable declarations of what's possible enable programmatic reasoning about action spaces.
+  rationale: "Discovered through philosophical archaeology. Evidence: The brief describes: \"LLMs can evaluate the results
+    and draw on our repertoire of  actions defined in our Registry of Effectors, our Registry of Family Strategies,  and our
+    Registry of AI Operations.\" Later: \"There must be a much tighter schema for  how these Family Strategies work, how we
+    populate them, and how we expose them to  the LLMs so they can pick which combination to run.\"\n\nStructural kinship:
+    ['prn_llm_first_creative', 'prn_compensate_llm_limits']\n"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_llm_readable_capability_registry
+    feature_name: LLM-Readable Capability Registry
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+  - feature_id: role-based-fact-mobilization-on-demand
+    feature_name: Role-Based Fact Mobilization On-Demand
+    how_embodied: Re-linked from deprecated principle during refactoring
+    confidence: 0.8
+- id: prn_multimodal_cognitive_scaffolding
+  statement: Different cognitive tasks (imagining possibilities, tracing implications, articulating beliefs, comparing 
+    options) require different scaffolding modalities - questions, visualizations, path-diagrams, and interfaces are all
+    tools in a repertoire that must be matched to cognitive task type.
+  rationale: "**Evidence from source:** Explicit statement that 'questions are one way to do it but interfaces, visualizations
+    of paths that can be taken, and the implications thereof, etc - all of that is part and parcel of our repertoire too'
+    - and 'questions are like crutches - but so is the UI/interface'\n\n**Why this matters:** Treating questioning as the
+    only elicitation modality misses that thinking involves spatial reasoning, comparison, path-tracing - modalities that
+    text questions alone cannot scaffold\n\n**Structural kinship:** prn_cognitive_task_matched_presentation, prn_decision_interface_modality_matching"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: cognitive-task-to-scaffolding-modality-matching
+    feature_name: Cognitive Task to Scaffolding Modality Matching
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_negative_selection_capture
+  statement: What users explicitly reject or pass over during selection processes provides informationally rich context 
+    that should be captured and propagated alongside positive selections, because choices are defined as much by what 
+    was not chosen as by what was.
+  rationale: "**Evidence from source:** do we pass on some summary or full info of the clusters we did not select down the
+    chain/path? we should because it's informative knowledge - knowing what we did not choose while choosing what we did choose
+    enhances the LLM's ability to model our behavior/expectations with a bit more detail/depth\n\n**Why this matters:** Most
+    systems only track positive selections, losing the contrastive information that gives choices meaning. When LLMs receive
+    only what was chosen without knowing the alternatives, they lose critical context for understanding user intent. Rejected
+    options reveal the boundary conditions of user preferences—what they explicitly didn't want among viable alternatives.\n\
+    \n**Structural kinship:** ['prn_process_as_data (both treat non-output artifacts as valuable)', 'prn_comprehensive_context
+    (both argue for providing seemingly non-essential information)', 'prn_intellectual_profile (both aim to build richer user
+    models)']"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: hierarchical-sharpen-triggers
+    feature_name: Hierarchical Sharpen Triggers
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: decision-context-bundle
+    feature_name: Decision Context Bundle
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_optimistic_execution
+  statement: When action confidence is high and reversal cost is low, execute optimistically rather than blocking on 
+    approval—bias toward action with easy undo rather than inaction with explicit permission, because interruption cost 
+    exceeds correction cost.
+  rationale: "**Evidence from source:** The demoted principle describes proceeding with action rather than blocking, suggesting
+    an optimistic execution pattern.\n\n**Why this matters:** Constant approval requests create cognitive overhead and interrupt
+    flow. Optimistic execution with undo preserves momentum.\n\n**Structural kinship:** prn_cognitive_division_of_labor, prn_activity_state_gated_automation,
+    prn_human_authority_gate"
+  categories:
+  - design
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_optimistic_automation_with_undo
+    feature_name: Optimistic Automation with Undo
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+- id: prn_option_impact_preview
+  statement: When presenting modification options to users, pre-compute and display their potential impacts on 
+    interconnected system elements, transforming selection from local evaluation to system-aware decision-making.
+  rationale: "**Evidence from source:** The prompt states that 'whatever virtual options are given would need to trigger stress
+    tests of other parts/throughlines' - options should not be evaluated in isolation but with their cascading effects made
+    visible.\n\n**Why this matters:** LLM-generated options often appear locally optimal but have non-obvious system-wide
+    effects. Pre-computing these effects prevents users from accepting changes that create downstream incoherence.\n\n**Structural
+    kinship:** prn_bounded_propagation, prn_capability_addition_cascade_analysis, prn_possibility_as_foreclosure_warning"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: choice-impact-topology-rendering
+    feature_name: Choice-Impact Topology Rendering
+    how_embodied: specializes
+    confidence: 0.8
+  - feature_id: interpretive-choice-cascade-pre-computation
+    feature_name: Interpretive Choice Cascade Pre-Computation
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: propagation-triggered-stress-testing
+    feature_name: Propagation-Triggered Stress Testing
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_particularity_recovery
+  statement: Abstractions derived from compressed representations must be returned to the particular—understanding 
+    advances not by moving from specific to general and stopping, but by using the general as an instrument for 
+    re-encountering the specific with new eyes.
+  rationale: "Every synthesis sacrifices particularity for surveyability; every abstraction purchases scope at the cost of
+    texture. This is not a flaw to avoid but a dialectical necessity to complete. The provisional schema, however crude, accomplishes
+    what unaided attention cannot: it transforms an undifferentiated mass into a structured field of inquiry. Yet the schema
+    remains hollow until it confronts the resistance of individual instances—the friction, exception, and surplus meaning
+    that compression necessarily effaced. Knowledge deepens not through abstraction alone but through the return journey:
+    the general illuminating what the particular contains, the particular revealing what the general overlooked.\n"
+  categories:
+  - epistemology
+  - methodology
+  tags:
+  - dialectics
+  - abstraction
+  - particularity
+  - hermeneutic-circle
+  status: established
+  features:
+  - feature_id: concretization-stage
+    feature_name: Concretization Stage
+    how_embodied: enables
+    confidence: 0.8
+- id: prn_perspective_as_structure
+  statement: Intellectual perspectives can be formalized as structured schemas that encode their assumptions, values, 
+    and reasoning patterns—making implicit worldviews explicit and operationalizable.
+  rationale: "Knowledge production doesn't happen in a vacuum—it occurs in a domain of\ncompeting frameworks. Marxism focuses
+    on class struggle; Foucauldianism\non power-knowledge dynamics; each paradigm has its research questions\nand interpretive
+    lenses.\n\nNormally, theories get tested through social feedback from colleagues.\nBut thinkers may hesitate to share
+    for fear of critique. By embedding\nparadigms as schemas in tools, we can subject developing theories to\nstructured critique
+    from multiple perspectives simultaneously—creating\nproductive intellectual friction without the social costs.\n"
+  categories:
+  - methodology
+  - epistemology
+  tags: []
+  status: established
+  features:
+  - feature_id: feat_paradigm_schema_embodiment
+    feature_name: Paradigm Schema Embodiment
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+  - feature_id: genre-archetype-function-mapping
+    feature_name: Genre Archetype Function Mapping
+    how_embodied: Re-linked from deprecated principle during refactoring
+    confidence: 0.8
+  - feature_id: multi-strategy-research-slicing
+    feature_name: Multi-Strategy Research Slicing
+    how_embodied: Re-linked from deprecated principle during refactoring
+    confidence: 0.8
+- id: prn_possibility_as_foreclosure_warning
+  statement: Present multiple possibilities not merely as options for selection but as warnings about what commitment to
+    any option would foreclose, making the cost of premature commitment visible through the alternatives it eliminates.
+  rationale: "**Evidence from source:** we want to present the user with embodied possibilities of straightjacketing/pigeonholing
+    their argument early on, to precisely avoid not having considered better options\n\n**Why this matters:** Traditional
+    option presentation emphasizes what you get by choosing. This principle emphasizes what you lose. When users see that
+    choosing throughline A eliminates throughlines B and C, they make more informed commitments. The alternatives serve an
+    epistemic function even if never selected.\n\n**Structural kinship:** prn_contrastive_context_enrichment, prn_negative_selection_capture,
+    prn_front_load_decisions"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: choice-impact-topology-rendering
+    feature_name: Choice-Impact Topology Rendering
+    how_embodied: extends
+    confidence: 0.8
+  - feature_id: mutual-exclusivity-mapping
+    feature_name: Mutual Exclusivity Mapping
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_possibility_space_architecture
+  statement: Systems should pre-generate branching possibility spaces at multiple levels of abstraction, transforming 
+    user experience from sequential generation into navigation of pre-populated virtualities that can be selectively 
+    actualized.
+  rationale: "**Evidence from source:** The prompt repeatedly uses 'possibilities spaces,' 'virtualities,' describes wanting
+    to 'create possibilities/virtualities, some of them concrete... some of them concrete/abstract,' and insists on pre-generating
+    options at every level rather than generating on selection.\n\n**Why this matters:** When LLM generation is cheap, the
+    interaction paradigm shifts from 'generate what I ask for' to 'show me the landscape of what's possible.' This enables
+    discovery of options users wouldn't have known to request and makes the decision space tangible rather than abstract.\n\
+    \n**Structural kinship:** prn_pre_curation_with_option_prese (pre-curated alternatives), prn_possibility_as_foreclosure_warning
+    (possibilities as decision context), prn_divergence_as_signal (multiple valid outputs)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: sub-option-dependent-revision-branching
+    feature_name: Sub-Option Dependent Revision Branching
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: cascaded-generation-triggers
+    feature_name: Cascaded Generation Triggers
+    how_embodied: Pre-generates branching possibility spaces for navigation
+    confidence: 0.85
+  - feature_id: in-slot-option-swapping
+    feature_name: In-Slot Option Swapping
+    how_embodied: Allows navigation within pre-populated option spaces
+    confidence: 0.8
+- id: prn_practical_discovery_over_theoretical
+  statement: When facing complex process design questions, generate early-stage outputs to learn from rather than 
+    attempting to theorize the perfect approach, because observing actual system behavior shortens learning cycles more 
+    effectively than abstract reasoning.
+  rationale: "**Evidence from source:** The author explicitly states: 'So instead of solving this question theoretically,
+    we'll actually solve it in practice—that would be the idea, and that would probably shorten the learning cycle and get
+    us where we need to be much faster.'\n\n**Why this matters:** LLM system designers often over-invest in upfront theoretical
+    design when cheap generation allows empirical discovery; recognizing this accelerates development by treating generated
+    outputs as experimental data rather than final products\n\n**Structural kinship:** prn_dialectical_refinement, prn_process_as_data"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: bidirectional-stage-learning-loop
+    feature_name: Bidirectional Stage Learning Loop
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_precision_forcing_interrogation
+  statement: Refinement stages should contain questions specifically designed to force precision on vague or 
+    underdetermined elements, treating imprecision as a targetable property that questioning can address.
+  rationale: "**Evidence from source:** The prompt specifies questions that 'will force us to be a bit more precise about
+    concepts and dialectics' - the questioning is not just exploratory but has the explicit goal of tightening precision on
+    theoretical elements\n\n**Why this matters:** LLM-generated questions often explore broadly; questions explicitly designed
+    to force precision produce tighter, more operationalizable outputs rather than expansive but vague elaborations\n\n**Structural
+    kinship:** prn_staged_adaptive_interrogation, prn_dynamic_elicitation_injection, prn_gap_aware_processing"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: precision-forcing-refinement-questions
+    feature_name: Precision-Forcing Refinement Questions
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_pre_curation_with_option_prese
+  statement: Prepare multiple curated streams aligned with anticipated functions so users can choose among pre-organized
+    alternatives rather than curating everything individually
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: substance-instance-matrices
+    feature_name: Substance × Instance Matrices
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_proactive_insufficiency_signaling
+  statement: LLMs should recognize when they have identified possibilities but lack sufficient data to evaluate or 
+    complete them, explicitly signaling this insufficiency and generating targeted follow-up questions rather than 
+    producing incomplete outputs or hallucinating completeness.
+  rationale: "**Evidence from source:** perhaps the LLM will say: look here I spot some possibilities in terms of throughlines/slots
+    but I don't have enough data... so I have to ask you a bunch of follow-up questions to see if it's feasible\n\n**Why this
+    matters:** LLMs typically generate outputs regardless of input sufficiency, masking gaps with confident-sounding completions.
+    This principle makes data insufficiency a first-class system state that triggers explicit questioning rather than degraded
+    output quality. It transforms the LLM from an oracle into a diagnostic partner.\n\n**Structural kinship:** prn_anthropologist_role,
+    prn_emergence_through_iterative_re, prn_gap_aware_processing"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: weight-gap-targeted-question-insertion
+    feature_name: Weight-Gap Targeted Question Insertion
+    how_embodied: implements
+    confidence: 0.8
+  - feature_id: llm-driven-diagnostic-questioning
+    feature_name: LLM-Driven Diagnostic Questioning
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_process_parameterized_questioning
+  statement: Questions at any processing stage should be explicitly parameterized by the current process plan, with 
+    question types, granularity, and focus determined by which other stages exist or have been removed from the 
+    workflow.
+  rationale: "**Evidence from source:** The author states that if Evidence stage exists, Refinement should ask for 'typologies
+    of examples/event patterns'; if Evidence stage 'has been nuked in flow design,' then Refinement should 'force the user
+    to think of specific examples' - showing that question content is a function of process structure.\n\n**Why this matters:**
+    Without explicit process-awareness, each stage operates with implicit assumptions about what comes before/after, leading
+    to redundant questions, missing information, or inappropriately-scoped inquiries. Making process structure an explicit
+    input to question generation enables truly coordinated multi-stage workflows.\n\n**Structural kinship:** prn_downstream_aware_generation,
+    prn_stage_appropriate_question_types"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: explicit-criterion-threading-between-llm-calls
+    feature_name: Explicit Criterion Threading Between LLM Calls
+    how_embodied: enables
+    confidence: 0.8
+  - feature_id: stage-contingent-question-calibration
+    feature_name: Stage-Contingent Question Calibration
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_productive_incompletion
+  statement: Not all questions should be resolved—some should be deliberately converted to retained "problematiques" 
+    that become structural features of the output, providing narrative tension and marking areas of genuine dialectical 
+    openness.
+  rationale: "**Evidence from source:** we would convert them from questions to problematiques; these will be the kind of
+    elements and areas and domains that we will keep open throughout the essay... it's very important for us to be able to
+    retain that possibility because this will... this is what will provide some kind of narrative tension inside the argument.\n\
+    \n**Why this matters:** LLM systems often treat all gaps as defects to be filled. This principle recognizes that intellectual
+    work sometimes requires preserving uncertainty as a feature rather than a bug—marking genuine dialectics rather than papering
+    over them with false resolution. Outputs become richer and more honest.\n\n**Structural kinship:** prn_optionality_preservation,
+    prn_deferred_commitment, prn_closure_matches_problem"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: question-to-problematique-conversion
+    feature_name: Question-to-Problematique Conversion
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_productive_relationship_filtering
+  statement: Not all possible relationships between new data and existing frameworks merit exploration; systems should 
+    help identify which relationships would be 'productive' to pursue based on current project needs rather than 
+    exhaustively cataloging all connections.
+  rationale: "**Evidence from source:** The prompt asks to 'understand what kinds of relationships are possible and what kinds
+    would be productive for us to experiment and play with' - distinguishing possible from productive, implying a filtering
+    function.\n\n**Why this matters:** LLMs can identify many relationships but not all are worth pursuing. Helping users
+    focus on productive relationships prevents exhausting attention on low-value connections while missing high-value ones.\n\
+    \n**Structural kinship:** prn_resource_proportionality, prn_function_based_on_demand_retri, prn_relevance_latency_tradeoff"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: productivity-filtered-relationship-exploration
+    feature_name: Productivity-Filtered Relationship Exploration
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_provenance_preservation
+  statement: Maintain traceable connections from synthesized outputs back to source materials to enable verification and
+    contextual enrichment
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: input-grounded-field-comparison
+    feature_name: Input-Grounded Field Comparison
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: context-limit-splitting-strategy
+    feature_name: Context-Limit Splitting Strategy
+    how_embodied: enables
+    confidence: 0.8
+  - feature_id: carryover-relationship-annotation
+    feature_name: Carryover Relationship Annotation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_provisional_articulation_as_catalyst
+  statement: System-generated provisional conclusions, formulations, and intermediate articulations serve as catalysts 
+    for extracting tacit user knowledge - the act of seeing an imperfect formulation crystallizes the user's ability to 
+    articulate what they actually think.
+  rationale: "**Evidence from source:** Explicit instruction: 'if you think that outputting some temporary conclusions/answers/formulations
+    for stage 1 will help you extract better answers in stage 2, do not hesitate' - treating provisional outputs as elicitation
+    tools rather than final products\n\n**Why this matters:** Users often know more than they can articulate on demand; seeing
+    provisional framings activates recognition-based knowledge that generation-based questioning cannot reach\n\n**Structural
+    kinship:** prn_embodied_decision_substrate, prn_forward_staged_data_harvesting"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: non-predetermined-stage-sequencing
+    feature_name: Non-Predetermined Stage Sequencing
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: provisional-formulation-as-knowledge-probe
+    feature_name: Provisional Formulation as Knowledge Probe
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_reasoning_resource_maximization
+  statement: For tasks requiring strategic reasoning and dynamic adaptation, allocate maximum available computational 
+    resources (token limits, reasoning modes, context windows) rather than economizing, because reasoning quality scales
+    with resource availability.
+  rationale: "**Evidence from source:** Explicit instruction: 'opus 4.5 64 max tokens, 32k tokens reasoning mode' and 'shouldn't
+    spare any resources to unleash LLM's reasoning power.' This is not proportional allocation but maximum allocation for
+    reasoning-heavy work.\n\n**Why this matters:** Many practitioners default to minimizing token usage for cost efficiency,
+    but this principle recognizes that strategic reasoning tasks have qualitatively different resource requirements where
+    economizing degrades output quality non-linearly.\n\n**Structural kinship:** prn_resource_proportionality (inverts the
+    proportionality logic for certain task types), prn_relevance_latency_tradeoff (accepts costs for quality)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: maximum-resource-allocation-for-strategic-reasonin
+    feature_name: Maximum Resource Allocation for Strategic Reasoning
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_refinement_versioning
+  statement: Track and display version numbers on elements that have been regenerated/sharpened, making the history of 
+    iterative refinement visible and distinguishing fresh generation from progressively improved elements.
+  rationale: "**Evidence from source:** The prompt explicitly requests 'add a little version somewhere to display (e.g. v1,
+    v2) - to flag that we have already sharpened some of these elements in earlier gos.'\n\n**Why this matters:** Without
+    version visibility, users lose track of which elements have been refined and which are still raw generations. This creates
+    confusion about where attention has been invested and where further refinement might be valuable.\n\n**Structural kinship:**
+    prn_process_as_data (process as informative data), prn_provenance_preservation (maintaining traceable connections), prn_visual_state_legibility
+    (encoding state visually)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: collaborative-process-design-with-versioning
+    feature_name: Collaborative Process Design with Versioning
+    how_embodied: applies
+    confidence: 0.8
+  - feature_id: hierarchical-sharpen-triggers
+    feature_name: Hierarchical Sharpen Triggers
+    how_embodied: Tracks version numbers through iterative sharpen cycles
+    confidence: 0.9
+- id: prn_reformulation_before_rejection
+  statement: When elements fail to connect within a knowledge system, explore whether reformulation of one or both 
+    elements enables connection before accepting disconnection as legitimate.
+  rationale: "**Evidence from source:** The prompt explicitly requests 'bridge reformulations that, if only tweaked one or
+    both elements we are trying to match, would result in us establishing a link' - treating disconnection as potentially
+    a formulation problem rather than an ontological fact.\n\n**Why this matters:** LLMs excel at semantic reformulation.
+    This principle transforms apparent knowledge gaps into reformulation opportunities, leveraging LLM paraphrasing capability
+    to increase knowledge graph connectivity.\n\n**Structural kinship:** prn_schema_as_hypothesis, prn_epistemic_friction"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: established
+  features: []
+- id: prn_regeneration_over_retrofitting
+  statement: When foundational assumptions or requirements change, regenerate from earlier pipeline stages rather than 
+    attempting to retrofit new requirements onto existing outputs, because LLM generation is cheap while manual 
+    integration of incompatible structures is expensive.
+  rationale: "**Evidence from source:** The user concludes \"perhaps we should rewind and regenerate throughlines with these
+    future uses in mind\" rather than suggesting modifications to existing throughlines—they prefer clean regeneration over
+    patching.\n\n**Why this matters:** The instinct to preserve existing work often leads to awkward patches and structural
+    compromises; LLM abundance makes regeneration cheap, and clean regeneration typically produces more coherent outputs than
+    retrofitted modifications.\n\n**Structural kinship:** prn_cybernetic_correction, prn_provisional_adaptive_structures"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: hierarchical-sharpen-triggers
+    feature_name: Hierarchical Sharpen Triggers
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_relationship_type_taxonomy
+  statement: When integrating source materials with theoretical frameworks, explicitly categorize the type of 
+    relationship (illustration, nuance-discovery, challenge, extension) because different relationship types require 
+    different processing pathways and have different implications for framework evolution.
+  rationale: "**Evidence from source:** The prompt enumerates distinct relationship types: 'illustration of the main dynamic,'
+    'illustration of the previously undetected nuance/sub-dynamic,' 'challenges to the logic of the argument' - implying these
+    categories matter for how material is processed and used.\n\n**Why this matters:** LLMs can process source material more
+    effectively when given an explicit typology of how material might relate to existing structures, enabling targeted extraction
+    and appropriate handling rather than generic summarization.\n\n**Structural kinship:** prn_content_based_routing, prn_domain_archetypes"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: source-framework-relationship-classification
+    feature_name: Source-Framework Relationship Classification
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_relevance_latency_tradeoff
+  statement: When additional processing time significantly improves output relevance or personalization, accept latency 
+    rather than prioritizing speed—users will wait for responses that demonstrably incorporate their context over 
+    immediate generic responses.
+  rationale: "**Evidence from source:** better to have users waiting for 30 seconds while they expect a new batch of questions
+    but to make questions super-relevant and build off one another/clarified assumptions - than stack 10 questions on top
+    of assumptions we haven't probed\n\n**Why this matters:** Challenges the default engineering assumption that faster is
+    always better. Recognizes that users distinguish between \"waiting because system is slow\" and \"waiting because system
+    is thinking about my specific situation\"—the latter builds trust and delivers value.\n\n**Structural kinship:** prn_resource_proportionality,
+    prn_bespoke_contextual"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features: []
+- id: prn_resource_proportionality
+  statement: Match resource expenditure to task requirements by allocating expensive, high-capability resources to tasks
+    requiring their full capacity while using cheaper, constrained resources for tasks within their capability 
+    envelope—because uniform resource allocation wastes capacity on simple tasks and starves complex tasks.
+  rationale: "**Evidence from source:** Abduced from prn_economic_model_tiering, which described matching model cost/capability
+    to task demands ('cheaper/faster models for constrained tasks', 'expensive models for unconstrained generation').\n\n\
+    **Why this matters:** This is the general principle of capability-cost matching: don't use a sledgehammer to crack a nut,
+    don't use a nutcracker on a boulder. It applies beyond LLMs to any resource allocation problem.\n\n**Structural kinship:**
+    Related to prn_capability_based_allocation (match tasks to capabilities), prn_staged_decomposition (different stages have
+    different requirements), prn_front_load_consequential_decisions (allocate attention to high-consequence items)."
+  categories:
+  - process
+  - proposed
+  tags:
+  - brief-derived
+  status: established
+  features:
+  - feature_id: prn_economic_model_tiering
+    feature_name: LLM Model Tiering
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+  - feature_id: cross-model-economic-verification
+    feature_name: Cross-Model Economic Verification
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: maximum-resource-allocation-for-strategic-reasonin
+    feature_name: Maximum Resource Allocation for Strategic Reasoning
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: friction-prioritized-attention-allocation
+    feature_name: Friction-Prioritized Attention Allocation
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: productivity-filtered-relationship-exploration
+    feature_name: Productivity-Filtered Relationship Exploration
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: zero-modification-first-assessment
+    feature_name: Zero-Modification-First Assessment
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: tiered-material-classification-with-differential-review
+    feature_name: Tiered Material Classification with Differential Review
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_retroactive_schema_refinement
+  statement: Schemas should be living documents that retroactively reshape prior extractions; as understanding improves,
+    historical data should be re-interpreted under the improved framework.
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features: []
+- id: prn_runtime_strategy_adaptation
+  statement: Systems should continuously re-evaluate strategic approach based on accumulated results and emerging 
+    context, rather than committing to fixed execution plans—strategy and execution should be interleaved, not 
+    sequential.
+  rationale: "**Evidence from source:** The demoted principle describes ongoing re-evaluation during execution, suggesting
+    a general pattern beyond LLMs.\n\n**Why this matters:** Pre-planned strategies cannot account for information revealed
+    during execution. Rigid plans waste resources on paths that prove unproductive.\n\n**Structural kinship:** prn_cybernetic_feedback,
+    prn_strategic_nondeterminism, prn_event_driven_refinement"
+  categories:
+  - process
+  - extracted
+  tags: []
+  status: established
+  features:
+  - feature_id: result-triggered-process-restructuring
+    feature_name: Result-Triggered Process Restructuring
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: feat_llm_continuous_strategy_adaptation
+    feature_name: LLM Continuous Strategy Adaptation
+    how_embodied: Created by refactoring engine
+    confidence: 0.8
+- id: prn_schema_data_co_evolution
+  statement: Organizational schemas should evolve as new knowledge is incorporated, and existing data should be 
+    reclassified under improved schemas rather than remaining frozen
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features: []
+- id: prn_schema_reflexive_generation
+  statement: LLM prompts that operate on structured systems should introspect on the current schema to dynamically 
+    generate appropriate processing for each structural element type, rather than hardcoding responses for known 
+    elements.
+  rationale: "**Evidence from source:** The requirement that refinement be 'structure-aware' means the system must inspect
+    what elements exist (concepts, dialectics, propositions, future unknowns) and generate questions accordingly, not rely
+    on predetermined question sets for predetermined elements\n\n**Why this matters:** LLM systems that hardcode prompts for
+    specific structural elements become brittle when schemas evolve; systems that generate prompts by reflecting on current
+    schema remain robust through schema changes without prompt rewriting\n\n**Structural kinship:** prn_process_parameterized_questioning,
+    prn_data_as_program, prn_context_driven_generation"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: schema-introspective-question-generation
+    feature_name: Schema-Introspective Question Generation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_serial_global_processing
+  statement: When processing items sequentially, maintain active global system context and evaluate each item's 
+    potential systemic effects rather than treating each processing unit as isolated, because valuable integration 
+    opportunities and coherence threats only become visible at the system level.
+  rationale: "**Evidence from source:** The prompt describes going through PDFs 'one by one' while simultaneously requiring
+    awareness of 'how a tweak in one throughline will affect the other throughlines' and being 'on the lookout for propagation
+    effects' - serial processing with systemic consciousness.\n\n**Why this matters:** LLMs processing items sequentially
+    often lose global context. Explicitly maintaining system awareness during serial processing prevents locally sensible
+    but globally incoherent integrations.\n\n**Structural kinship:** prn_downstream_aware_generation, prn_context_completeness,
+    prn_shared_scaffold_parallel_streams"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: serial-processing-with-global-throughline-awarenes
+    feature_name: Serial Processing with Global Throughline Awareness
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_shared_scaffold_parallel_streams
+  statement: When multiple independent work streams must eventually merge, they should share a common structural 
+    scaffold that creates natural alignment points, enabling synthesis operations at each scaffold level rather than 
+    requiring post-hoc reconciliation.
+  rationale: "**Evidence from source:** The prompt describes how throughlines share a \"unified slot structure\" with \"slots
+    shared between the overall skeleton of the whole essay AND of the given throughline\"—the same functional slots (IMPLICATIONS,
+    INTERVENTIONS) appear in both individual throughlines and the unified essay structure.\n\n**Why this matters:** Without
+    shared scaffolding, merging independent streams requires expensive structural alignment; shared scaffolds make synthesis
+    a matter of content reconciliation within pre-aligned structures rather than simultaneous structural and content negotiation.\n\
+    \n**Structural kinship:** prn_cross_slot_synthesis_scanning, prn_cascading_virtuality"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: throughline-factory-pattern
+    feature_name: Throughline Factory Pattern
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_stage_appropriate_question_types
+  statement: Different processing stages require qualitatively different types of questions—structural stages need 
+    categorical and logical questions while later stages need flow, narrative, and rhetorical questions—and prompts 
+    should adapt question types to stage characteristics.
+  rationale: "**Evidence from source:** The author distinguishes: 'in the rhetorical outline, we can still do kind of questions
+    with multiple answers, like we did in the functional skeleton, but they would be much more about flow, narrative, argumentation.
+    How is it that we want to make that argument?'\n\n**Why this matters:** Using logical questions at rhetorical stages (or
+    vice versa) produces mismatched outputs; recognizing stage-question alignment improves elicitation effectiveness\n\n**Structural
+    kinship:** prn_staged_processing, prn_function_form_phase_separation"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: stage-contingent-question-calibration
+    feature_name: Stage-Contingent Question Calibration
+    how_embodied: specializes
+    confidence: 0.8
+- id: prn_staged_adaptive_interrogation
+  statement: Complex interrogation should proceed in sequential stages where each stage's questions are generated based 
+    on answers from prior stages, allowing the inquiry to progressively narrow and deepen rather than scattering 
+    attention across unvalidated assumptions.
+  rationale: "**Evidence from source:** first ask a batch of three questions... get users' answers... then we generate a second
+    batch based on those answers and pending strategic items... then we generate the final third batch of questions, incorporating
+    everything from the previous two\n\n**Why this matters:** Prevents the common failure mode of asking all questions upfront,
+    which either overwhelms users or builds on unverified assumptions. Each stage validates foundations before building further,
+    creating a more reliable epistemic structure.\n\n**Structural kinship:** prn_abductive_logic, prn_emergence_through_iterative_re,
+    prn_abstraction_level_sequencing"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: non-predetermined-stage-sequencing
+    feature_name: Non-Predetermined Stage Sequencing
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: precision-forcing-refinement-questions
+    feature_name: Precision-Forcing Refinement Questions
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: dual-channel-progressive-specialization
+    feature_name: Dual-Channel Progressive Specialization
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: progressive-batch-interrogation-pattern
+    feature_name: Progressive Batch Interrogation Pattern
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_staging_processing_separation
+  statement: Distinguish between making resources accessible to a system (staging) and extracting structured content 
+    from them (processing); resources should be staged early for availability but processed late when context clarifies 
+    extraction requirements.
+  rationale: "**Evidence from source:** The prompt describes wanting to 'point the tool to some folders with docs' (staging)
+    while 'build up a profile' should happen in a way that's contextually relevant (processing) - treating these as separable
+    operations with different timing requirements.\n\n**Why this matters:** This principle enables system designs where document
+    corpuses are connected but dormant until activated by specific needs, avoiding both the cost of comprehensive pre-processing
+    and the latency of just-in-time document discovery.\n\n**Structural kinship:** prn_function_based_on_demand_retri (mobilize
+    selectively), prn_arbitrary_insertion_architecture (content introduced when relevant)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: just-in-time-profile-construction
+    feature_name: Just-In-Time Profile Construction
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: document-collection-staging-without-processing
+    feature_name: Document Collection Staging Without Processing
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_strategic_nondeterminism
+  statement: Introduce controlled non-determinism at decision points where creative interpretation or multiple valid 
+    solutions exist, rather than forcing deterministic resolution of inherently ambiguous problems.
+  rationale: ''
+  categories: []
+  tags: []
+  status: established
+  features: []
+- id: prn_structural_fit_assessment_phase
+  statement: Before integrating new content into existing frameworks, explicitly assess the degree of structural fit 
+    between the content and target slots, using fit assessment as a routing decision rather than attempting integration 
+    first.
+  rationale: "**Evidence from source:** The prompt's logic assumes a prior determination of which evidence 'naturally fits
+    into supporting the stuff in the slots' versus which 'causes friction'—implying an explicit fit assessment phase before
+    integration attempts.\n\n**Why this matters:** Without explicit fit assessment, systems either over-consult humans (asking
+    about everything) or create downstream cleanup work (integrating first, then discovering conflicts). Pre-integration fit
+    assessment enables intelligent routing and reduces both consultation fatigue and error correction.\n\n**Structural kinship:**
+    prn_execution_readiness_criteria, prn_conflict_triage, prn_staged_processing"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: fit-based-evidence-bifurcation
+    feature_name: Fit-Based Evidence Bifurcation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_structured_integration
+  statement: Approved insights should flow into persistent structures through defined integration pathways rather than 
+    accumulating as unstructured additions.
+  rationale: "This principle was discovered through features-first extraction.\n\n**Evidence from brief:** The explicit enumeration
+    of integration options: 'folding into existing argument, a higher unit of analysis (claim), or generating entirely new
+    argument.'\n\n**Structural kinship:** prn_controlled_propagation, prn_chunking\n\n**Why novel:** "
+  categories:
+  - methodology
+  - extracted
+  tags:
+  - brief-derived
+  - features-first
+  status: established
+  features:
+  - feature_id: provenance-attached-writing-context
+    feature_name: Provenance-Attached Writing Context
+    how_embodied: ''
+    confidence: 0.8
+  - feature_id: food-for-thought-integration-pathways
+    feature_name: Food for Thought Integration Pathways
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_substance_instance_tiering
+  statement: Separate archetypal types (substances) from their concrete exemplifications (instances) in a two-tier 
+    selection process, requiring users to commit to the abstract category before seeing concrete options, because 
+    premature exposure to instances biases toward surface appeal over structural fit.
+  rationale: "**Evidence from source:** The prompt explicitly separates 'substance' from 'implementation,' requires 'three
+    substances × three instances,' and insists users must 'see substances first and only then choose what instances.' Even
+    openings should have 'archetypal openings - substance - and then fill in the particular examples.'\n\n**Why this matters:**
+    Users often select based on surface linguistic appeal rather than structural appropriateness. Forcing engagement with
+    the abstract archetype first ensures the structural role is understood before concrete instantiation can seduce with attractive
+    but potentially ill-fitted language.\n\n**Structural kinship:** prn_abstract_concrete_progressive_ (dialectic between
+    abstract and concrete), prn_emergent_choice (choices emerge through process), prn_function_form_phase_separation (separating
+    structural from presentational)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: substance-instance-matrices
+    feature_name: Substance × Instance Matrices
+    how_embodied: Direct implementation of two-tier substance/instance selection pattern
+    confidence: 0.95
+- id: prn_synthesis_first_bootstrap
+  statement: Bootstrap schemas and typologies from synthesized materials first, then enrich through systematic 
+    re-engagement with source texts—synthesis provides the provisional scaffold, original data provides the substantive 
+    refinement.
+  rationale: "The cost structure of LLM operations inverts traditional scholarship: generating initial abstractions from summaries
+    is now cheap, allowing us to produce workable ontologies rapidly. These provisional schemas then serve as structured lenses
+    for re-examining original materials, transforming vague intuitions into rigorous typologies through iterative enrichment
+    rather than upfront exhaustive analysis.\n"
+  categories:
+  - methodology
+  - epistemology
+  tags:
+  - bootstrapping
+  - synthesis
+  - iterative-refinement
+  status: established
+  features:
+  - feature_id: genre-archetype-function-mapping
+    feature_name: Genre Archetype Function Mapping
+    how_embodied: ''
+    confidence: 0.8
+- id: prn_synthetic_data_for_best_practi
+  statement: Generate hypothetical examples to establish benchmarks when empirical experimentation is impractical
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: embodied-decision-substrate-generation
+    feature_name: Embodied Decision Substrate Generation
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_theory_grounded_extraction
+  statement: User inputs gain multiplicative generative power when processed through an existing theoretical framework; 
+    the theory enables inference, cross-pollination, and gap-filling that raw inputs alone cannot provide.
+  rationale: "**Evidence from source:** a single answer to a question in the initial questionnaire might not mean much, but
+    once it's operationalized within our broader theoretical project, it becomes much more generative... strategic items that
+    we extract, they would not just be grounded in our answers to the questions, they would also be grounded in our theory.\n\
+    \n**Why this matters:** Many LLM workflows treat each user input in isolation, missing the compounding effects of connecting
+    inputs to persistent theoretical frameworks. A theory base acts as a lens that reveals implications invisible to framework-free
+    processing, turning sparse inputs into rich outputs.\n\n**Structural kinship:** prn_comprehensive_context, prn_intellectual_profile,
+    prn_cross_pollination_as_generativ"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: theory-answer-multiplication
+    feature_name: Theory-Answer Multiplication
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_trajectory_over_identity
+  statement: Prioritize direction and trajectory over specific instances; the role something plays matters more than its
+    individual identity.
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: functional-slot-architecture
+    feature_name: Functional Slot Architecture
+    how_embodied: supports
+    confidence: 0.8
+- id: prn_trigger_based_schema_revision
+  statement: New inputs should trigger evaluation of whether existing organizational structures need abstraction, 
+    merging, or expansion
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features: []
+- id: prn_type_polymorphic_processing
+  statement: Design LLM processing mechanisms to operate on structural element categories (types) rather than specific 
+    instances, enabling automatic inclusion of new instances within existing types without mechanism modification.
+  rationale: "**Evidence from source:** The prompt distinguishes between the current specific elements ('propositions, concepts,
+    dialectics') and the general principle that 'different structural elements' may be added, requiring the refinement to
+    work at the type level not the instance level\n\n**Why this matters:** When LLM prompts enumerate specific items rather
+    than operating on item types, every schema addition requires prompt updates; type-level operations scale automatically
+    with schema growth\n\n**Structural kinship:** prn_domain_transcendent_abstraction, prn_substance_instance_tiering, prn_extensibility_as_design_criterion"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: type-generic-element-processing
+    feature_name: Type-Generic Element Processing
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_upstream_regeneration_from_downstream
+  statement: When users make refinements at lower/later/more-concrete levels of a hierarchy, they should be able to 
+    regenerate upstream/earlier/more-abstract elements to make them more bespoke to those downstream choices, enabling 
+    bidirectional influence rather than purely top-down determination.
+  rationale: "**Evidence from source:** The prompt explicitly describes going back to 'regenerate those elements to make them
+    more precise/bespoke based on the choices/refinements we made further down below' and 'regenerate transitions upward'
+    after choosing implementation details - this is not just forward propagation but backward regeneration.\n\n**Why this
+    matters:** Most LLM workflows are purely top-down: generate abstract → refine to concrete → output. This principle recognizes
+    that concrete choices reveal what the abstract SHOULD have been, and cheap regeneration enables iterative coherence that
+    manual editing cannot achieve.\n\n**Structural kinship:** prn_bounded_propagation (bounded change propagation), prn_regeneration_over_retrofitting
+    (regeneration approach), prn_dialectical_refinement (iterative framework-data interaction)"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: hierarchical-sharpen-triggers
+    feature_name: Hierarchical Sharpen Triggers
+    how_embodied: Enables downstream refinements to trigger upstream regeneration
+    confidence: 0.95
+- id: prn_user_archetype_grounding
+  statement: Frame system design analysis around a specific user archetype and their characteristic questions, providing
+    a north star that distinguishes relevant patterns from interesting-but-irrelevant ones.
+  rationale: "**Evidence from source:** our guiding question is this: we are targeting researchers who want to make quick
+    sense of the collections of articles without having to read individual pieces. so we need to find ways to make this helpful
+    for them\n\n**Why this matters:** Without an explicit user archetype, pattern identification drifts toward what's structurally
+    interesting rather than what's functionally useful. The user question provides evaluative grounding.\n\n**Structural kinship:**
+    prn_function_based_on_demand_retri, prn_context_completeness"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: user-question-driven-pattern-discovery
+    feature_name: User-Question-Driven Pattern Discovery
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_verification_easier_than_generation
+  statement: LLMs are more reliable at verifying whether outputs match inputs than at generating correct outputs 
+    initially, because verification is a constrained comparison task while generation requires unconstrained production.
+  rationale: "**Evidence from source:** The proposal assumes a second LLM checking fields against inputs will catch errors
+    the generating model made, implying verification is a fundamentally more tractable task than generation for LLMs.\n\n\
+    **Why this matters:** This principle justifies architectural patterns where cheap verification layers can dramatically
+    improve reliability of expensive generation steps, changing cost-benefit calculations for LLM pipeline design.\n\n**Structural
+    kinship:** prn_generation_evaluation_separation, prn_adversarial_multi_perspective_refinement"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: input-grounded-field-comparison
+    feature_name: Input-Grounded Field Comparison
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: secondary-llm-verification-layer
+    feature_name: Secondary LLM Verification Layer
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_visual_state_legibility
+  statement: Interactive interfaces must encode system states (active/inactive, selected/unselected, 
+    available/unavailable) through sufficient visual contrast that state is immediately perceivable without cognitive 
+    effort.
+  rationale: "**Evidence from source:** The user's complaint that 'Questions tabs are too pale - the inactive ones are barely
+    visible' diagnoses a failure of visual state encoding. The issue isn't aesthetic preference but functional: users cannot
+    perceive the decision landscape when visual differentiation is insufficient.\n\n**Why this matters:** When users interact
+    with systems to provide input for LLM processing, unclear visual state creates cognitive overhead that degrades decision
+    quality. Users making selections under conditions of visual ambiguity provide noisier signals than those working with
+    clear interfaces.\n\n**Structural kinship:** ['prn_bespoke_contextual (interface design dimension)', 'prn_formalization_as_education
+    (making system state explicit)']"
+  categories:
+  - methodology
+  - extracted
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: granular-post-hoc-override-controls
+    feature_name: Granular Post-Hoc Override Controls
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: in-slot-option-swapping
+    feature_name: In-Slot Option Swapping
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: streaming-progress-visibility
+    feature_name: Streaming Progress Visibility
+    how_embodied: embodies
+    confidence: 0.8
+  - feature_id: multi-level-possibility-mapping-interface
+    feature_name: Multi-Level Possibility Mapping Interface
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: state-contrast-audit
+    feature_name: State Contrast Audit
+    how_embodied: embodies
+    confidence: 0.8
+- id: prn_wildcard_inclusion_for_complet
+  statement: Include open-ended, unscripted queries alongside structured ones to capture insights that fall outside 
+    predefined categories
+  rationale: ''
+  categories: []
+  tags: []
+  status: hypothesis
+  features:
+  - feature_id: noise-aware-prompt-framing
+    feature_name: Noise-Aware Prompt Framing
+    how_embodied: supports
+    confidence: 0.8
+  - feature_id: multiple-choice-with-escape-valve-pattern
+    feature_name: Multiple-Choice with Escape Valve Pattern
+    how_embodied: embodies
+    confidence: 0.8
