@@ -150,6 +150,167 @@ function generateImpactTopology(question, selectedOptions, options) {
   return impacts.length > 0 ? impacts : null
 }
 
+// =============================================================================
+// TRANSFORMATION MODES (Sharpen/Generalize/Radicalize/Historicize/Deepen)
+// =============================================================================
+const TRANSFORM_MODES = [
+  { id: 'sharpen', icon: '🎯', label: 'Sharpen', description: 'Make more specific and precise' },
+  { id: 'generalize', icon: '🔭', label: 'Generalize', description: 'Make broader and more abstract' },
+  { id: 'radicalize', icon: '🔥', label: 'Radicalize', description: 'Push to more provocative position' },
+  { id: 'historicize', icon: '📜', label: 'Historicize', description: 'Ground in historical process' },
+  { id: 'deepen', icon: '🔬', label: 'Deepen', description: 'Dig into underlying mechanisms' }
+]
+
+/**
+ * RefineDropdown - Transformation mode selector (like essay-flow)
+ */
+function RefineDropdown({ card, cardType, onTransform, isTransforming }) {
+  const [open, setOpen] = useState(false)
+  const [selectedMode, setSelectedMode] = useState('sharpen')
+  const [guidance, setGuidance] = useState('')
+
+  const handleTransform = () => {
+    onTransform(card.id, cardType, selectedMode, guidance)
+    setOpen(false)
+    setGuidance('')
+  }
+
+  return (
+    <div className="refine-dropdown">
+      <button
+        className="refine-dropdown-trigger"
+        onClick={() => setOpen(!open)}
+        disabled={isTransforming}
+      >
+        {isTransforming ? 'Transforming...' : 'Refine ▾'}
+      </button>
+      {open && (
+        <div className="refine-dropdown-content">
+          <div className="refine-modes">
+            {TRANSFORM_MODES.map(mode => (
+              <span
+                key={mode.id}
+                className={`refine-option ${selectedMode === mode.id ? 'selected' : ''}`}
+                onClick={() => setSelectedMode(mode.id)}
+                title={mode.description}
+              >
+                {mode.icon} {mode.label}
+              </span>
+            ))}
+          </div>
+          <div className="refine-input-row">
+            <input
+              type="text"
+              placeholder="Optional guidance..."
+              value={guidance}
+              onChange={(e) => setGuidance(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleTransform()}
+            />
+            <button onClick={handleTransform} className="refine-submit">
+              →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * HypothesisCard - Card for displaying and interacting with hypothesis/genealogy/differentiation cards
+ */
+function HypothesisCard({ card, cardType, onApprove, onReject, onTransform, isTransforming }) {
+  // Get display content based on card type
+  const getContent = () => {
+    switch (cardType) {
+      case 'hypothesis':
+        return card.content
+      case 'genealogy':
+        return `${card.thinker}: ${card.connection}`
+      case 'differentiation':
+        return `NOT ${card.contrasted_with}: ${card.difference}`
+      default:
+        return card.content
+    }
+  }
+
+  const getTypeLabel = () => {
+    switch (cardType) {
+      case 'hypothesis':
+        return card.type || 'thesis'
+      case 'genealogy':
+        return card.tradition || 'influence'
+      case 'differentiation':
+        return 'differentiation'
+      default:
+        return 'claim'
+    }
+  }
+
+  const statusClass = card.status === 'approved' ? 'approved' : card.status === 'rejected' ? 'rejected' : ''
+
+  return (
+    <div className={`hypothesis-card ${statusClass}`}>
+      <div className="card-header">
+        <span className={`card-type ${card.type || ''}`}>{getTypeLabel()}</span>
+        <span className={`card-confidence ${card.confidence || 'medium'}`}>
+          {card.confidence === 'high' ? '●●●' : card.confidence === 'low' ? '●○○' : '●●○'}
+        </span>
+      </div>
+
+      <div className="card-content">
+        {getContent()}
+      </div>
+
+      {card.rationale && (
+        <div className="card-rationale">
+          <strong>Why:</strong> {card.rationale}
+        </div>
+      )}
+
+      {card.source_excerpts && card.source_excerpts.length > 0 && (
+        <div className="card-excerpts">
+          <strong>From your notes:</strong>
+          {card.source_excerpts.slice(0, 2).map((excerpt, i) => (
+            <blockquote key={i}>"{excerpt}"</blockquote>
+          ))}
+        </div>
+      )}
+
+      {card.transformation_history && card.transformation_history.length > 0 && (
+        <div className="card-history">
+          <small>
+            Transformed {card.transformation_history.length}x (last: {card.transformation_history[card.transformation_history.length - 1].mode})
+          </small>
+        </div>
+      )}
+
+      <div className="card-actions">
+        <button
+          className={`card-action approve ${card.status === 'approved' ? 'active' : ''}`}
+          onClick={() => onApprove(card.id, cardType)}
+          disabled={isTransforming}
+        >
+          ✓
+        </button>
+        <button
+          className={`card-action reject ${card.status === 'rejected' ? 'active' : ''}`}
+          onClick={() => onReject(card.id, cardType)}
+          disabled={isTransforming}
+        >
+          ✗
+        </button>
+        <RefineDropdown
+          card={card}
+          cardType={cardType}
+          onTransform={onTransform}
+          isTransforming={isTransforming}
+        />
+      </div>
+    </div>
+  )
+}
+
 export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   // Wizard state
   const [stage, setStage] = useState(STAGES.NOTES)
@@ -258,6 +419,14 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [deepCommitmentAnswers, setDeepCommitmentAnswers] = useState({})  // {question_id: {selected, comment}}
   const [currentCommitmentIndex, setCurrentCommitmentIndex] = useState(0)
   const [isGeneratingCommitments, setIsGeneratingCommitments] = useState(false)
+
+  // Card-based review state (new flow: hypothesis, genealogy, differentiation cards)
+  const [hypothesisCards, setHypothesisCards] = useState([])  // From notes analysis
+  const [genealogyCards, setGenealogyCards] = useState([])
+  const [differentiationCards, setDifferentiationCards] = useState([])
+  const [dimensionalSignals, setDimensionalSignals] = useState({})  // 9-dim signals from notes
+  const [isTransformingCard, setIsTransformingCard] = useState(null)  // card_id being transformed
+  const [cardReviewStage, setCardReviewStage] = useState('hypothesis')  // hypothesis, genealogy, differentiation
 
   // Refs
   const thinkingRef = useRef(null)
@@ -508,6 +677,18 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
               ...data.dimensional_signals,
               source: 'notes_preprocessing'
             }))
+            setDimensionalSignals(data.dimensional_signals)
+          }
+
+          // Store new card-based data from notes analysis
+          if (data.hypothesis_cards && data.hypothesis_cards.length > 0) {
+            setHypothesisCards(data.hypothesis_cards)
+          }
+          if (data.genealogy_cards && data.genealogy_cards.length > 0) {
+            setGenealogyCards(data.genealogy_cards)
+          }
+          if (data.differentiation_cards && data.differentiation_cards.length > 0) {
+            setDifferentiationCards(data.differentiation_cards)
           }
 
           // Go to understanding validation instead of directly to Stage 1
@@ -991,6 +1172,127 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         }
       }
     )
+  }
+
+  // ==========================================================================
+  // CARD TRANSFORMATION FUNCTIONS (Sharpen/Generalize/Radicalize/Historicize/Deepen)
+  // ==========================================================================
+
+  /**
+   * Transform a card using one of the 5 transformation modes
+   */
+  const transformCard = async (cardId, cardType, mode, guidance = '') => {
+    // Find the card to transform
+    let card, setCards
+    switch (cardType) {
+      case 'hypothesis':
+        card = hypothesisCards.find(c => c.id === cardId)
+        setCards = setHypothesisCards
+        break
+      case 'genealogy':
+        card = genealogyCards.find(c => c.id === cardId)
+        setCards = setGenealogyCards
+        break
+      case 'differentiation':
+        card = differentiationCards.find(c => c.id === cardId)
+        setCards = setDifferentiationCards
+        break
+      default:
+        console.error('Unknown card type:', cardType)
+        return
+    }
+
+    if (!card) {
+      console.error('Card not found:', cardId)
+      return
+    }
+
+    setIsTransformingCard(cardId)
+    setThinking('')
+
+    await streamWizardRequest(
+      '/concepts/wizard/transform-card',
+      {
+        card_id: cardId,
+        card_type: cardType,
+        card_content: card.content || card.connection || card.difference,
+        mode: mode,
+        guidance: guidance,
+        notes_context: notes.slice(0, 2000),  // Truncate for context
+        concept_name: conceptName
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          // Update the card with transformed content
+          setCards(prevCards => prevCards.map(c => {
+            if (c.id === cardId) {
+              const historyEntry = {
+                mode,
+                guidance,
+                original: c.content || c.connection || c.difference,
+                result: data.transformed_content,
+                timestamp: new Date().toISOString()
+              }
+              return {
+                ...c,
+                content: data.transformed_content,
+                connection: cardType === 'genealogy' ? data.transformed_content : c.connection,
+                difference: cardType === 'differentiation' ? data.transformed_content : c.difference,
+                transformation_history: [...(c.transformation_history || []), historyEntry]
+              }
+            }
+            return c
+          }))
+          setIsTransformingCard(null)
+          setThinking('')
+        }
+      }
+    )
+  }
+
+  /**
+   * Approve a card (mark as approved)
+   */
+  const approveCard = (cardId, cardType) => {
+    const updateCardStatus = (prevCards) => prevCards.map(c =>
+      c.id === cardId ? { ...c, status: 'approved' } : c
+    )
+
+    switch (cardType) {
+      case 'hypothesis':
+        setHypothesisCards(updateCardStatus)
+        break
+      case 'genealogy':
+        setGenealogyCards(updateCardStatus)
+        break
+      case 'differentiation':
+        setDifferentiationCards(updateCardStatus)
+        break
+    }
+  }
+
+  /**
+   * Reject a card (mark as rejected)
+   */
+  const rejectCard = (cardId, cardType) => {
+    const updateCardStatus = (prevCards) => prevCards.map(c =>
+      c.id === cardId ? { ...c, status: 'rejected' } : c
+    )
+
+    switch (cardType) {
+      case 'hypothesis':
+        setHypothesisCards(updateCardStatus)
+        break
+      case 'genealogy':
+        setGenealogyCards(updateCardStatus)
+        break
+      case 'differentiation':
+        setDifferentiationCards(updateCardStatus)
+        break
+    }
   }
 
   /**
@@ -2514,6 +2816,119 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   />
                 </div>
               </div>
+
+              {/* =========================================================== */}
+              {/* HYPOTHESIS CARDS REVIEW SECTION (New Card-Based Flow)       */}
+              {/* =========================================================== */}
+              {(hypothesisCards.length > 0 || genealogyCards.length > 0 || differentiationCards.length > 0) && (
+                <div className="cards-review-section">
+                  <div className="cards-review-header">
+                    <h3>Review Generated Claims</h3>
+                    <p>These claims were extracted from your notes. Approve, reject, or transform each card.</p>
+
+                    {/* Card stage tabs */}
+                    <div className="card-stage-tabs">
+                      <button
+                        className={`card-stage-tab ${cardReviewStage === 'hypothesis' ? 'active' : ''}`}
+                        onClick={() => setCardReviewStage('hypothesis')}
+                      >
+                        Hypotheses ({hypothesisCards.length})
+                        {hypothesisCards.filter(c => c.status === 'approved').length > 0 && (
+                          <span className="approved-count">
+                            ✓{hypothesisCards.filter(c => c.status === 'approved').length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        className={`card-stage-tab ${cardReviewStage === 'genealogy' ? 'active' : ''}`}
+                        onClick={() => setCardReviewStage('genealogy')}
+                      >
+                        Genealogy ({genealogyCards.length})
+                        {genealogyCards.filter(c => c.status === 'approved').length > 0 && (
+                          <span className="approved-count">
+                            ✓{genealogyCards.filter(c => c.status === 'approved').length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        className={`card-stage-tab ${cardReviewStage === 'differentiation' ? 'active' : ''}`}
+                        onClick={() => setCardReviewStage('differentiation')}
+                      >
+                        Differentiations ({differentiationCards.length})
+                        {differentiationCards.filter(c => c.status === 'approved').length > 0 && (
+                          <span className="approved-count">
+                            ✓{differentiationCards.filter(c => c.status === 'approved').length}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Hypothesis Cards */}
+                  {cardReviewStage === 'hypothesis' && hypothesisCards.length > 0 && (
+                    <div className="card-grid">
+                      {hypothesisCards.map(card => (
+                        <HypothesisCard
+                          key={card.id}
+                          card={card}
+                          cardType="hypothesis"
+                          onApprove={approveCard}
+                          onReject={rejectCard}
+                          onTransform={transformCard}
+                          isTransforming={isTransformingCard === card.id}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Genealogy Cards */}
+                  {cardReviewStage === 'genealogy' && genealogyCards.length > 0 && (
+                    <div className="card-grid">
+                      {genealogyCards.map(card => (
+                        <HypothesisCard
+                          key={card.id}
+                          card={card}
+                          cardType="genealogy"
+                          onApprove={approveCard}
+                          onReject={rejectCard}
+                          onTransform={transformCard}
+                          isTransforming={isTransformingCard === card.id}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Differentiation Cards */}
+                  {cardReviewStage === 'differentiation' && differentiationCards.length > 0 && (
+                    <div className="card-grid">
+                      {differentiationCards.map(card => (
+                        <HypothesisCard
+                          key={card.id}
+                          card={card}
+                          cardType="differentiation"
+                          onApprove={approveCard}
+                          onReject={rejectCard}
+                          onTransform={transformCard}
+                          isTransforming={isTransformingCard === card.id}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Summary of reviewed cards */}
+                  <div className="cards-review-summary">
+                    <span>
+                      Approved: {[...hypothesisCards, ...genealogyCards, ...differentiationCards].filter(c => c.status === 'approved').length}
+                    </span>
+                    <span>
+                      Rejected: {[...hypothesisCards, ...genealogyCards, ...differentiationCards].filter(c => c.status === 'rejected').length}
+                    </span>
+                    <span>
+                      Pending: {[...hypothesisCards, ...genealogyCards, ...differentiationCards].filter(c => c.status === 'pending').length}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="wizard-actions">
                 <button className="btn btn-secondary" onClick={onCancel}>

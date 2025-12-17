@@ -180,6 +180,17 @@ class DocumentAnalysisRequest(BaseModel):
     existing_context: Optional[Dict[str, Any]] = None  # Notes analysis so far
 
 
+class TransformCardRequest(BaseModel):
+    """Request to transform a hypothesis/genealogy/differentiation card."""
+    card_id: str
+    card_type: str  # hypothesis, genealogy, differentiation, commitment
+    card_content: str  # Current content of the card
+    mode: str  # sharpen, generalize, radicalize, historicize, deepen
+    guidance: Optional[str] = None  # Optional user guidance for transformation
+    notes_context: Optional[str] = None  # Original notes for grounding
+    concept_name: Optional[str] = None
+
+
 # =============================================================================
 # STAGE 1 QUESTIONS: Genesis & Problem Space
 # =============================================================================
@@ -714,6 +725,41 @@ Analyze the notes and produce a JSON response:
     "questions_to_prioritize": ["question_ids that need user clarification because notes were unclear"],
     "potential_tensions": ["Any contradictions or tensions detected in the notes that could be productive dialectics"],
 
+    "hypothesis_cards": [
+        {{
+            "id": "hyp_001",
+            "content": "A specific thesis/claim you detect in the notes - stated as a concrete proposition, not a question",
+            "type": "thesis|assumption|tension|methodological|normative",
+            "source_excerpts": ["Direct quotes from notes that support this inference"],
+            "confidence": "high|medium|low",
+            "rationale": "Why you think this is a central claim (1-2 sentences)"
+        }}
+    ],
+
+    "genealogy_cards": [
+        {{
+            "id": "gen_001",
+            "thinker": "Specific Thinker Name (e.g., Karl Polanyi, not 'political economists')",
+            "tradition": "Specific tradition this thinker belongs to",
+            "connection": "Your concept [X] resembles/extends/builds on [thinker's] idea of [specific concept] because [specific reason]",
+            "source_excerpts": ["Quote from notes if explicitly mentioned, or null if inferred"],
+            "confidence": "high|medium|low",
+            "why_relevant": "Why this genealogical connection matters for the user's project"
+        }}
+    ],
+
+    "differentiation_cards": [
+        {{
+            "id": "diff_001",
+            "your_concept": "The user's concept name",
+            "contrasted_with": "Specific adjacent concept/framework to differentiate from",
+            "thinker_associated": "Who is most associated with the adjacent concept",
+            "difference": "Your concept is NOT [X] because [specific difference in mechanism, scope, or approach]",
+            "source_excerpts": ["Quote from notes that supports this differentiation"],
+            "confidence": "high|medium|low"
+        }}
+    ],
+
     "dimensional_signals": {{
         "quinean": {{
             "inferences_detected": ["Any 'if X then Y' patterns in notes"],
@@ -794,7 +840,32 @@ GENEALOGY CRITICAL INSTRUCTIONS:
    - Each option should be a real thinker, tradition, or framework relevant to this specific concept
 3. Only include ONE open_ended_question if absolutely necessary - and explain why it can't be MC
 4. If notes are rich enough, open_ended_question can be null
-5. The goal: user validates/corrects your hypotheses rather than generating from scratch"""
+5. The goal: user validates/corrects your hypotheses rather than generating from scratch
+
+## CARD GENERATION INSTRUCTIONS (CRITICAL - THIS IS THE CORE OUTPUT):
+
+### HYPOTHESIS CARDS (Generate 5-8):
+These are CLAIMS/THESES you detect in the notes. NOT questions. Concrete propositions the user can approve/reject.
+- Each card is a specific claim stated as an assertion
+- Pull source_excerpts directly from the notes
+- Types: thesis (core argument), assumption (implicit premise), tension (internal conflict), methodological (how to study), normative (what should be)
+- Example: "Your concept argues that platform-mediated capitalism exercises planning and control while maintaining market appearances"
+
+### GENEALOGY CARDS (Generate 3-5):
+These identify SPECIFIC thinkers/frameworks the concept builds on. NOT traditions - PEOPLE with NAMES.
+- Each card names a specific thinker and their specific contribution
+- Example: NOT "critical theory" but "Theodor Adorno's concept of the culture industry"
+- The connection field should explain the SPECIFIC link: "Your concept of X resembles/extends/inverts Y's idea of Z"
+- If notes explicitly mention a thinker, quote it. If inferring, explain your reasoning.
+
+### DIFFERENTIATION CARDS (Generate 4-6):
+These show what the concept is NOT. Help user clarify by contrast.
+- Identify adjacent concepts that might be confused with the user's concept
+- Name the thinker most associated with that adjacent concept
+- State the key difference: scope, mechanism, focus, politics, etc.
+- Example: "Your concept is NOT surveillance capitalism (Zuboff) because you emphasize production/planning while Zuboff emphasizes extraction/prediction"
+
+REMEMBER: Cards are for user to APPROVE/REJECT/TRANSFORM - not questions to answer. Generate claims the user can validate."""
 
 
 INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
@@ -2737,7 +2808,26 @@ async def get_stage1_questions(request: StartWizardRequest):
             questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
             potential_tensions = analysis_data.get("potential_tensions", [])
 
-            # Build questions with pre-filled values
+            # Extract new card types for card-based review flow
+            hypothesis_cards = analysis_data.get("hypothesis_cards", [])
+            genealogy_cards = analysis_data.get("genealogy_cards", [])
+            differentiation_cards = analysis_data.get("differentiation_cards", [])
+            dimensional_signals = analysis_data.get("dimensional_signals", {})
+
+            # Ensure cards have proper status for UI
+            for card in hypothesis_cards:
+                card["status"] = "pending"
+                card["transformation_history"] = []
+
+            for card in genealogy_cards:
+                card["status"] = "pending"
+                card["transformation_history"] = []
+
+            for card in differentiation_cards:
+                card["status"] = "pending"
+                card["transformation_history"] = []
+
+            # Build questions with pre-filled values (legacy - keeping for backward compatibility)
             questions = []
             for q in STAGE1_QUESTIONS:
                 q_dict = q.model_dump()
@@ -2759,17 +2849,25 @@ async def get_stage1_questions(request: StartWizardRequest):
 
                 questions.append(q_dict)
 
-            # Return complete response with analysis and questions
+            # Return complete response with analysis, cards, and questions
             complete_data = {
                 'type': 'complete',
                 'data': {
-                    'status': 'stage1_ready',
+                    'status': 'cards_ready',  # New status for card-based flow
                     'concept_name': request.concept_name,
                     'stage': 1,
-                    'stage_title': 'Genesis & Problem Space',
-                    'stage_description': "Let's verify and refine what we extracted from your notes.",
+                    'stage_title': 'Review Generated Hypotheses',
+                    'stage_description': "We've extracted these claims from your notes. Approve, reject, or transform each card.",
                     'notes_analysis': notes_analysis,
                     'potential_tensions': potential_tensions,
+
+                    # New card-based data
+                    'hypothesis_cards': hypothesis_cards,
+                    'genealogy_cards': genealogy_cards,
+                    'differentiation_cards': differentiation_cards,
+                    'dimensional_signals': dimensional_signals,
+
+                    # Legacy questions (for fallback)
                     'questions': questions
                 }
             }
@@ -3746,5 +3844,147 @@ async def generate_deep_commitments(request: DeepCommitmentsRequest):
 
     return StreamingResponse(
         stream_deep_commitments(),
+        media_type="text/event-stream"
+    )
+
+
+# =============================================================================
+# CARD TRANSFORMATION - Sharpen/Generalize/Radicalize/Historicize/Deepen
+# =============================================================================
+
+TRANSFORM_CARD_PROMPT = """You are an expert in conceptual analysis helping refine a hypothesis card.
+
+## Transformation Mode: {mode}
+
+{mode_instructions}
+
+## Card to Transform
+Type: {card_type}
+Current Content: {card_content}
+
+{notes_context_section}
+
+{guidance_section}
+
+## Instructions
+Transform the card content according to the mode above.
+Maintain the same general subject matter but apply the transformation.
+Output ONLY the transformed content as a single paragraph or sentence - no JSON, no explanation, just the new card content.
+The result should be a direct replacement for the original card content."""
+
+MODE_INSTRUCTIONS = {
+    'sharpen': """Make the claim MORE SPECIFIC and PRECISE:
+- Add concrete details and specifics
+- Narrow to a clearer, more pointed claim
+- Replace vague or abstract terms with precise ones
+- Name specific mechanisms, actors, or processes
+- If referencing the user's notes, pull in specific quotes or examples""",
+
+    'generalize': """Make the claim MORE GENERAL and ABSTRACT:
+- Broaden to a wider pattern, principle, or phenomenon
+- Remove overly specific details that limit applicability
+- Connect to larger theoretical frameworks or traditions
+- Identify the underlying logic that could apply to other cases
+- Move from specific instance to general category""",
+
+    'radicalize': """Push the claim to a MORE PROVOCATIVE position:
+- Strengthen to its logical extreme
+- Challenge implicit assumptions or unstated premises
+- Make the stakes clearer and higher
+- Remove hedging language and qualifications
+- State the most challenging version of the claim""",
+
+    'historicize': """Ground the claim in HISTORICAL PROCESS and CONTINGENCY:
+- Situate in longer historical trajectory
+- Identify conditions of emergence (when/why did this become thinkable?)
+- Show contingency rather than naturalness
+- Connect to specific historical developments or transformations
+- Denaturalize what might seem obvious or inevitable""",
+
+    'deepen': """Dig into UNDERLYING MECHANISMS and EXPLANATIONS:
+- Identify the actual mechanisms at play
+- Expose transmission channels and causal pathways
+- Move from description/observation to explanation
+- Ask "how does this actually work?"
+- Uncover the infrastructure behind the phenomenon"""
+}
+
+
+@router.post("/transform-card")
+async def transform_card(request: TransformCardRequest):
+    """
+    Transform a hypothesis/genealogy/differentiation/commitment card
+    using one of five modes: sharpen, generalize, radicalize, historicize, deepen.
+
+    This replicates the essay-flow transformation pattern for conceptual work.
+    """
+    async def stream_transformation():
+        try:
+            client = get_claude_client()
+
+            # Validate mode
+            if request.mode not in MODE_INSTRUCTIONS:
+                yield f"data: {json.dumps({'type': 'error', 'message': f'Invalid mode: {request.mode}. Must be one of: sharpen, generalize, radicalize, historicize, deepen'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            yield f"data: {json.dumps({'type': 'status', 'message': f'Applying {request.mode} transformation...'})}\n\n"
+
+            # Build context sections
+            notes_context_section = ""
+            if request.notes_context:
+                notes_context_section = f"""## Relevant Context from Notes
+{request.notes_context[:2000]}  # Truncate to avoid context overflow
+"""
+
+            guidance_section = ""
+            if request.guidance:
+                guidance_section = f"""## User Guidance
+{request.guidance}
+"""
+
+            prompt = TRANSFORM_CARD_PROMPT.format(
+                mode=request.mode.upper(),
+                mode_instructions=MODE_INSTRUCTIONS[request.mode],
+                card_type=request.card_type,
+                card_content=request.card_content,
+                notes_context_section=notes_context_section,
+                guidance_section=guidance_section
+            )
+
+            # Use Sonnet for faster transformation (doesn't need extended thinking)
+            with client.messages.stream(
+                model=SONNET_MODEL,
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                transformed_content = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'text'):
+                            transformed_content += event.delta.text
+                            yield f"data: {json.dumps({'type': 'text', 'content': event.delta.text})}\n\n"
+
+            # Clean up the response
+            transformed_content = transformed_content.strip()
+
+            result = {
+                "card_id": request.card_id,
+                "original_content": request.card_content,
+                "transformed_content": transformed_content,
+                "mode": request.mode,
+                "guidance_used": request.guidance
+            }
+
+            yield f"data: {json.dumps({'type': 'complete', 'data': result})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error transforming card: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_transformation(),
         media_type="text/event-stream"
     )

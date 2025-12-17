@@ -5600,3 +5600,358 @@ textarea {
 .commitment-comment textarea::placeholder {
   color: #6e7681;
 }
+
+/* =============================================================================
+   CARD-BASED REVIEW SYSTEM (Hypothesis/Genealogy/Differentiation Cards)
+   ============================================================================= */
+
+/* Cards Review Section Container */
+.cards-review-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+  border: 1px solid #30363d;
+  border-radius: 12px;
+}
+
+.cards-review-header {
+  margin-bottom: 1.5rem;
+}
+
+.cards-review-header h3 {
+  color: #58a6ff;
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.cards-review-header p {
+  color: #8b949e;
+  font-size: 0.95rem;
+}
+
+/* Card Stage Tabs */
+.card-stage-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.card-stage-tab {
+  padding: 0.6rem 1rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #8b949e;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-stage-tab:hover {
+  background: #30363d;
+  color: #c9d1d9;
+}
+
+.card-stage-tab.active {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #ffffff;
+}
+
+.card-stage-tab .approved-count {
+  background: #238636;
+  color: white;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Card Grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* Hypothesis Card */
+.hypothesis-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.hypothesis-card:hover {
+  border-color: #58a6ff;
+  box-shadow: 0 0 15px rgba(88, 166, 255, 0.1);
+}
+
+.hypothesis-card.approved {
+  border-color: #238636;
+  background: linear-gradient(135deg, #161b22 0%, rgba(35, 134, 54, 0.1) 100%);
+}
+
+.hypothesis-card.rejected {
+  border-color: #da3633;
+  background: linear-gradient(135deg, #161b22 0%, rgba(218, 54, 51, 0.1) 100%);
+  opacity: 0.7;
+}
+
+.hypothesis-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.hypothesis-card .card-type {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: #21262d;
+  color: #8b949e;
+}
+
+.hypothesis-card .card-type.thesis {
+  background: rgba(31, 111, 235, 0.2);
+  color: #58a6ff;
+}
+
+.hypothesis-card .card-type.assumption {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.hypothesis-card .card-type.tension {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+}
+
+.hypothesis-card .card-type.methodological {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.hypothesis-card .card-type.normative {
+  background: rgba(236, 72, 153, 0.2);
+  color: #ec4899;
+}
+
+.hypothesis-card .card-confidence {
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.hypothesis-card .card-confidence.high {
+  color: #22c55e;
+}
+
+.hypothesis-card .card-confidence.low {
+  color: #6e7681;
+}
+
+.hypothesis-card .card-content {
+  color: #c9d1d9;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.hypothesis-card .card-rationale {
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin-bottom: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid #30363d;
+}
+
+.hypothesis-card .card-excerpts {
+  font-size: 0.85rem;
+  color: #6e7681;
+  margin-bottom: 0.5rem;
+}
+
+.hypothesis-card .card-excerpts blockquote {
+  font-style: italic;
+  margin: 0.25rem 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid #484f58;
+}
+
+.hypothesis-card .card-history {
+  font-size: 0.75rem;
+  color: #6e7681;
+  margin-bottom: 0.75rem;
+}
+
+/* Card Actions */
+.hypothesis-card .card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid #21262d;
+}
+
+.hypothesis-card .card-action {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #21262d;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.hypothesis-card .card-action:hover {
+  background: #30363d;
+}
+
+.hypothesis-card .card-action.approve:hover,
+.hypothesis-card .card-action.approve.active {
+  background: rgba(35, 134, 54, 0.3);
+  border-color: #238636;
+  color: #3fb950;
+}
+
+.hypothesis-card .card-action.reject:hover,
+.hypothesis-card .card-action.reject.active {
+  background: rgba(218, 54, 51, 0.3);
+  border-color: #da3633;
+  color: #f85149;
+}
+
+.hypothesis-card .card-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Refine Dropdown */
+.refine-dropdown {
+  position: relative;
+  margin-left: auto;
+}
+
+.refine-dropdown-trigger {
+  padding: 0.5rem 0.75rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.refine-dropdown-trigger:hover {
+  background: #30363d;
+  color: #c9d1d9;
+}
+
+.refine-dropdown-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refine-dropdown-content {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 0.5rem;
+  width: 280px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.refine-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.refine-option {
+  padding: 0.4rem 0.6rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refine-option:hover {
+  background: #30363d;
+  color: #c9d1d9;
+}
+
+.refine-option.selected {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #ffffff;
+}
+
+.refine-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.refine-input-row input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 0.9rem;
+}
+
+.refine-input-row input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.refine-input-row input::placeholder {
+  color: #6e7681;
+}
+
+.refine-submit {
+  padding: 0.5rem 0.75rem;
+  background: #238636;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.refine-submit:hover {
+  background: #2ea043;
+}
+
+/* Cards Review Summary */
+.cards-review-summary {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #30363d;
+  color: #8b949e;
+  font-size: 0.9rem;
+}
