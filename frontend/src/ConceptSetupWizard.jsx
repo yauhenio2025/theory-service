@@ -489,6 +489,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
               emergence_context: {},
               needs_probing: []
             },
+            // 9-dimensional signals extracted from notes
+            dimensionalSignals: data.dimensional_signals || null,
             prefilledCount: prefilledAnswers.length,
             totalQuestions: (data.questions || []).length,
             confidenceLevels: prefilledAnswers.reduce((acc, p) => {
@@ -498,6 +500,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             }, {})
           }
           setNotesUnderstanding(understanding)
+
+          // Store dimensional signals in dimensional extraction state
+          if (data.dimensional_signals) {
+            setDimensionalExtraction(prev => ({
+              ...prev,
+              ...data.dimensional_signals,
+              source: 'notes_preprocessing'
+            }))
+          }
 
           // Go to understanding validation instead of directly to Stage 1
           setProgress({ stage: 2, total: 9, label: 'Validate my understanding' })

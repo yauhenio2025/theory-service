@@ -712,11 +712,80 @@ Analyze the notes and produce a JSON response:
         }}
     ],
     "questions_to_prioritize": ["question_ids that need user clarification because notes were unclear"],
-    "potential_tensions": ["Any contradictions or tensions detected in the notes that could be productive dialectics"]
+    "potential_tensions": ["Any contradictions or tensions detected in the notes that could be productive dialectics"],
+
+    "dimensional_signals": {{
+        "quinean": {{
+            "inferences_detected": ["Any 'if X then Y' patterns in notes"],
+            "centrality_hint": "core|intermediate|peripheral|unknown",
+            "confidence": "high|medium|low"
+        }},
+        "sellarsian": {{
+            "givenness_markers": ["Phrases like 'obviously', 'naturally', 'clearly' that suggest treating as given"],
+            "hidden_assumptions": ["Assumptions not argued for"],
+            "confidence": "high|medium|low"
+        }},
+        "brandomian": {{
+            "implicit_commitments": ["What using this concept commits one to"],
+            "implicit_entitlements": ["What claims the concept enables"],
+            "confidence": "high|medium|low"
+        }},
+        "deleuzian": {{
+            "problem_addressed": "Core tension/problem the concept navigates",
+            "tension_poles": ["Pole A", "Pole B"],
+            "becomings_enabled": ["Transformations the concept enables"],
+            "becomings_blocked": ["Transformations foreclosed"],
+            "confidence": "high|medium|low"
+        }},
+        "bachelardian": {{
+            "breaking_from": "What framework/concept is being ruptured",
+            "why_inadequate": "What's wrong with the old way",
+            "obstacle_risk": "Could this concept become an obstacle itself?",
+            "confidence": "high|medium|low"
+        }},
+        "canguilhem": {{
+            "values_embedded": ["Values implicit in the concept"],
+            "whose_interests": "Who benefits from this concept",
+            "what_excluded": "What gets marked as abnormal",
+            "confidence": "high|medium|low"
+        }},
+        "davidson": {{
+            "reasoning_style": "quantitative|historical|structural|phenomenological|dialectical|mixed",
+            "makes_visible": ["What this lens reveals"],
+            "makes_invisible": ["What it might obscure"],
+            "confidence": "high|medium|low"
+        }},
+        "blumenberg": {{
+            "root_metaphor": "Any underlying metaphor detected",
+            "source_domain": "Where the metaphor comes from",
+            "metaphor_work": "Conceptual work being done",
+            "confidence": "high|medium|low"
+        }},
+        "carey": {{
+            "component_concepts": ["Simpler concepts this is built from"],
+            "combination_type": "aggregation|interaction|emergence|unknown",
+            "what_emerges": "What's new beyond the components",
+            "confidence": "high|medium|low"
+        }}
+    }}
 }}
 
 Be conservative with pre-fills: only suggest values when you have clear evidence from the notes.
 If the notes don't provide enough information for a question, set suggested_value to null.
+
+## 9-DIMENSIONAL EXTRACTION INSTRUCTIONS:
+Extract preliminary signals for ALL 9 philosophical dimensions. Even if notes are sparse:
+- QUINEAN: Look for logical implications ("if X then Y", "X implies Y")
+- SELLARSIAN: Spot "givenness" language (obviously, naturally, clearly, of course)
+- BRANDOMIAN: What does using this concept commit you to? What does it entitle you to claim?
+- DELEUZIAN: What problem/tension does this navigate? What transformations enabled/blocked?
+- BACHELARDIAN: What is this BREAKING FROM? What's wrong with the old way?
+- CANGUILHEM: What values are embedded? Whose interests served? What excluded?
+- DAVIDSON: What reasoning style does this require? What becomes visible/invisible?
+- BLUMENBERG: Is there a root metaphor underlying the concept?
+- CAREY: What simpler concepts is this built from?
+
+Set confidence to "low" if you're inferring without explicit evidence.
 
 GENEALOGY CRITICAL INSTRUCTIONS:
 1. HYPOTHESIZE influences aggressively using your knowledge - the user may not know their own intellectual lineage
@@ -886,6 +955,9 @@ class FinalizeRequest(BaseModel):
     validated_cases: Optional[List[Dict[str, Any]]] = None  # Cases user approved
     validated_markers: Optional[List[Dict[str, Any]]] = None  # Markers user approved
     approved_tensions: Optional[List[Dict[str, Any]]] = None  # Tensions from understanding validation
+    # Deep Commitments from 9-dimensional probing (Stage 4)
+    deep_commitments: Optional[Dict[str, Any]] = None  # Answers to deep philosophical questions
+    dimensional_extraction: Optional[Dict[str, Any]] = None  # 9-dim data from documents/notes
     source_id: Optional[int] = None
 
 
@@ -3171,13 +3243,47 @@ async def finalize_concept(request: FinalizeRequest):
             for t in request.approved_tensions
         ])
 
+    # Format deep commitment answers (9-dimensional probing)
+    deep_commitments_str = ""
+    if request.deep_commitments:
+        sections = []
+        for question_id, answer_data in request.deep_commitments.items():
+            if isinstance(answer_data, dict):
+                dimension = answer_data.get('dimension', 'unknown')
+                selected = answer_data.get('selected_option', {})
+                comment = answer_data.get('comment', '')
+                q_text = answer_data.get('question_text', question_id)
+
+                section = f"### {dimension.upper()} Dimension\n"
+                section += f"Q: {q_text}\n"
+                if selected:
+                    section += f"A: {selected.get('label', str(selected))}\n"
+                    if selected.get('description'):
+                        section += f"   (Meaning: {selected['description']})\n"
+                if comment:
+                    section += f"   User Comment: {comment}\n"
+                sections.append(section)
+        deep_commitments_str = "\n".join(sections)
+
+    # Format dimensional extraction from document analysis
+    dimensional_extraction_str = ""
+    if request.dimensional_extraction:
+        dim_sections = []
+        for dim_name, dim_data in request.dimensional_extraction.items():
+            if dim_data and isinstance(dim_data, dict):
+                dim_sections.append(f"### {dim_name.upper()}")
+                for key, value in dim_data.items():
+                    if value:
+                        dim_sections.append(f"  {key}: {value}")
+        dimensional_extraction_str = "\n".join(dim_sections)
+
     async def stream_final_synthesis():
         try:
             client = get_claude_client()
 
             yield f"data: {json.dumps({'type': 'phase', 'phase': 'final_synthesis'})}\n\n"
 
-            synthesis_prompt = f"""Synthesize all the user's answers into a comprehensive concept definition for "{request.concept_name}".
+            synthesis_prompt = f"""Synthesize all the user's answers into a comprehensive 9-DIMENSIONAL concept definition for "{request.concept_name}".
 
 ## User's Initial Notes:
 {request.notes or "(No initial notes provided)"}
@@ -3200,45 +3306,211 @@ async def finalize_concept(request: FinalizeRequest):
 ## Additional Dialectics/Tensions Marked During Questions:
 {json.dumps([d.model_dump() for d in request.dialectics], indent=2)}
 
-Create a complete concept definition following the Genesis Dimension schema.
+## Deep Philosophical Commitments (9-Dimensional Probing):
+{deep_commitments_str or "(No deep commitment answers provided)"}
+
+## Dimensional Extraction from Documents/Analysis:
+{dimensional_extraction_str or "(No dimensional extraction available)"}
+
+Create a complete 9-DIMENSIONAL concept definition following the philosophical frameworks:
+1. QUINEAN - Web of belief, inferential connections, centrality
+2. SELLARSIAN - Givenness analysis, what's treated as foundational
+3. BRANDOMIAN - Commitments, entitlements, incompatibilities
+4. DELEUZIAN - Problems, tensions, becomings, plane assumptions
+5. BACHELARDIAN - Obstacles, ruptures, what blocks understanding
+6. CANGUILHEM - Life history, evolution, health status, normative dimensions
+7. DAVIDSON - Reasoning styles, what becomes visible/invisible
+8. BLUMENBERG - Root metaphors, conceptual work being done
+9. CAREY - Bootstrapping hierarchy, what primitives it's built from
 
 IMPORTANT:
-- For paradigmatic_cases: USE the user-validated cases above if provided. These are cases the user has explicitly approved as good examples of this concept.
-- For recognition_markers: USE the user-validated markers above if provided.
-- For dialectics: COMBINE both the approved tensions from understanding validation AND the tensions marked during questions. These are productive tensions the user wants to preserve.
-- For falsification_conditions: Generate clear conditions under which this concept would be proven false or inapplicable.
+- USE the user-validated cases, markers, and tensions provided above
+- INTEGRATE the deep philosophical commitments into the appropriate dimension sections
+- POPULATE ALL 9 dimensions based on available data
 
-Include ALL of the following in your JSON output:
+Output a complete JSON with ALL dimensions:
 
 {{
   "concept": {{
     "name": "Concept name",
     "definition": "Full 2-3 paragraph definition",
+
     "genesis": {{
-      "type": "genesis type",
-      "lineage": "theoretical traditions",
-      "break_from": "what it breaks from"
+      "type": "theoretical_innovation|empirical_discovery|synthetic_unification|paradigm_shift",
+      "lineage": "theoretical traditions it builds on",
+      "break_from": "what it breaks from (Bachelardian rupture)",
+      "break_rationale": "why it breaks from that",
+      "originator_type": "individual|collective|institutional|emergent",
+      "novelty_type": "terminological|conceptual|paradigmatic|methodological"
     }},
+
     "problem_space": {{
-      "gap": "the gap this fills",
-      "failed_alternatives": "concepts that failed"
+      "gap_type": "descriptive|explanatory|normative|practical|methodological",
+      "gap_description": "the gap this concept fills",
+      "failed_alternatives": ["concepts that failed", "and why"],
+      "problem_domains": "where this gap is felt",
+      "urgency_rationale": "why we need this concept now"
     }},
+
     "differentiations": [
-      {{ "confused_with": "Other Concept", "difference": "Key distinction" }}
+      {{
+        "confused_with": "Other Concept",
+        "confusion_type": "synonym_collapse|subset_reduction|superset_expansion|false_opposition",
+        "differentiation_axis": "the axis along which they differ",
+        "this_concept_position": "where this concept sits on that axis",
+        "other_concept_position": "where the other concept sits",
+        "what_would_be_lost": "what we lose if we collapse them",
+        "surface_similarity": "why they seem similar",
+        "deep_difference": "why they're fundamentally different"
+      }}
     ],
+
     "paradigmatic_cases": [
-      {{ "title": "Case name", "description": "Description", "relevance": "Why paradigmatic" }}
+      {{
+        "title": "Case name",
+        "case_type": "historical|contemporary|hypothetical|composite",
+        "description": "Full description",
+        "why_paradigmatic": "why this exemplifies the concept",
+        "features_exhibited": ["list of concept features this shows"],
+        "features_absent": "limitations of this case"
+      }}
     ],
+
     "recognition_markers": [
-      {{ "description": "Pattern to look for", "context": "Where to look" }}
+      {{
+        "marker_type": "linguistic|structural|behavioral|situational|argumentative",
+        "description": "Pattern to look for",
+        "positive_indicator": "what confirms this is the concept",
+        "negative_indicator": "what rules it out",
+        "false_positive_risk": "what might be confused for this"
+      }}
     ],
+
+    "quinean": {{
+      "centrality": "core|intermediate|peripheral",
+      "web_coherence_impact": "how changing this affects other concepts",
+      "forward_inferences": ["if this concept, then X"],
+      "backward_inferences": ["this concept because Y"],
+      "lateral_connections": ["related to Z via..."],
+      "contradictions": ["contradicts W because..."]
+    }},
+
+    "sellarsian": {{
+      "is_myth_of_given": true|false,
+      "givenness_markers": ["phrases that treat this as foundational"],
+      "should_be_inferred_from": "what evidence should support it",
+      "theoretical_commitments_embedded": ["hidden assumptions"],
+      "what_givenness_enables": "what treating as given allows",
+      "what_givenness_blocks": "what questions become unaskable"
+    }},
+
+    "brandomian": {{
+      "commitments": [
+        {{ "statement": "what using this concept commits you to", "is_honored": true|false }}
+      ],
+      "entitlements": [
+        {{ "statement": "what using this concept entitles you to claim" }}
+      ],
+      "incompatibilities": ["claims incompatible with this concept"]
+    }},
+
+    "deleuzian": {{
+      "problems_addressed": [
+        {{
+          "problem": "tension or problem this navigates",
+          "pole_a": "one pole of the tension",
+          "pole_b": "other pole"
+        }}
+      ],
+      "becomings_enabled": ["transformations this concept enables"],
+      "becomings_blocked": ["transformations this concept prevents"],
+      "plane_assumptions": [
+        {{
+          "assumption": "unquestioned background assumption",
+          "makes_possible": ["what this enables"],
+          "makes_impossible": ["what this forecloses"]
+        }}
+      ]
+    }},
+
+    "bachelardian": {{
+      "is_obstacle": true|false,
+      "obstacle_type": "experience|verbal|pragmatic|quantitative|substantialist",
+      "what_it_blocks": ["understanding it prevents"],
+      "evidence_of_inadequacy": ["empirical challenges"],
+      "why_persists": "ideological function",
+      "rupture_would_enable": "what becomes thinkable after rupture",
+      "rupture_trigger": "what would force abandonment"
+    }},
+
+    "canguilhem": {{
+      "health_status": "healthy|strained|dying|being_born",
+      "birth_period": "when concept emerged",
+      "birth_problem": "what problem it was created to solve",
+      "evolution": [
+        {{
+          "period": "time period",
+          "transformation": "what changed",
+          "problem_driving": "what drove the change"
+        }}
+      ],
+      "normative_dimensions": [
+        {{
+          "value_embedded": "what value is embedded",
+          "whose_values": "whose interests this serves",
+          "what_excluded": "what's marked as abnormal"
+        }}
+      ]
+    }},
+
+    "davidson": {{
+      "style_required": "financial|geopolitical|technical|etc",
+      "what_visible": ["what this reasoning style makes visible"],
+      "what_invisible": ["what's systematically hidden"],
+      "evidence_types_privileged": ["what counts as evidence"],
+      "inference_patterns": ["characteristic reasoning moves"]
+    }},
+
+    "blumenberg": {{
+      "root_metaphors": [
+        {{
+          "metaphor": "e.g. 'market as organism'",
+          "source_domain": "where metaphor comes from",
+          "what_enables": ["thinking it makes possible"],
+          "what_hides": ["what it obscures"],
+          "resists_conceptualization": true|false,
+          "why_resists": "why it can't be made precise"
+        }}
+      ],
+      "conceptual_work_in_progress": {{
+        "original_meaning": "what concept meant originally",
+        "current_work": "what transformation is being attempted",
+        "who_doing_work": "intellectual tradition doing this work",
+        "work_status": "succeeding|failing|ongoing"
+      }}
+    }},
+
+    "carey": {{
+      "hierarchy_level": 0|1|2|3,
+      "bootstrap_status": "successful|partial|failed|attempted",
+      "built_from": ["primitive concepts this is built from"],
+      "combination_type": "simple_aggregation|interactive|qualitative_leap",
+      "transparency": "high|medium|low",
+      "bootstrap_failure_reason": "if failed, why",
+      "what_would_fix": "what would make bootstrap succeed"
+    }},
+
     "core_claims": {{
       "ontological": "What this concept says exists or is real",
-      "causal": "What causal relationships it asserts"
+      "causal": "What causal relationships it asserts",
+      "normative": "What values or norms it implies",
+      "methodological": "What methods it validates or requires"
     }},
+
     "falsification_conditions": [
       "Condition under which this concept would be proven false"
     ],
+
     "dialectics": [
       {{ "description": "Tension description", "pole_a": "One pole", "pole_b": "Other pole" }}
     ]
@@ -3246,10 +3518,11 @@ Include ALL of the following in your JSON output:
 }}
 
 CRITICAL:
-- paradigmatic_cases MUST be an array with title/description for each case. USE the user-validated cases provided above.
-- recognition_markers MUST be an array with description field for each marker. USE the user-validated markers provided above.
-- dialectics MUST be an array combining approved tensions AND marked tensions.
-- falsification_conditions MUST be an array of strings."""
+- ALL dimensional sections are REQUIRED - populate based on available data
+- paradigmatic_cases, recognition_markers, dialectics MUST be arrays
+- USE user-validated data where provided
+- INTEGRATE deep philosophical commitments into the relevant dimensional sections
+- For missing data, make reasonable inferences based on the concept definition"""
 
             with client.messages.stream(
                 model=MODEL,
