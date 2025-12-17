@@ -6499,6 +6499,28 @@ textarea {
   margin-bottom: 0.5rem;
 }
 
+/* Rated items notice (for Stage 3 when cases/markers are rated) */
+.rated-items-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.rated-items-notice .notice-check {
+  color: #10b981;
+  font-size: 1.1rem;
+}
+
+.rated-items-notice span:not(.notice-check) {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
 /* ====== GENEALOGY WIZARD STAGE ====== */
 .genealogy-stage {
   max-width: 900px;

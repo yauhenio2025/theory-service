@@ -2563,6 +2563,36 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
    * Build AnswerWithMeta object from current answer state
    */
   const buildAnswerMeta = (questionId) => {
+    // For case/marker questions, include the rated items
+    let validatedCasesData = null
+    let validatedMarkersData = null
+
+    if (questionId === 'paradigmatic_case' || questionId?.includes('case')) {
+      const rated = generatedCases.filter(c =>
+        caseRatings[c.id] === 'good' || caseRatings[c.id] === 'partial'
+      )
+      if (rated.length > 0) {
+        validatedCasesData = rated.map(c => ({
+          ...c,
+          rating: caseRatings[c.id],
+          comment: caseComments[c.id] || null
+        }))
+      }
+    }
+
+    if (questionId === 'recognition_markers' || questionId?.includes('marker') || questionId?.includes('recognition')) {
+      const rated = generatedMarkers.filter(m =>
+        markerRatings[m.id] === 'good' || markerRatings[m.id] === 'partial'
+      )
+      if (rated.length > 0) {
+        validatedMarkersData = rated.map(m => ({
+          ...m,
+          rating: markerRatings[m.id],
+          comment: markerComments[m.id] || null
+        }))
+      }
+    }
+
     return {
       question_id: questionId,
       selected_options: currentAnswer.selectedOptions.length > 0 ? currentAnswer.selectedOptions : null,
@@ -2573,7 +2603,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       dialectic_pole_a: currentAnswer.dialecticPoleA || null,
       dialectic_pole_b: currentAnswer.dialecticPoleB || null,
       dialectic_note: currentAnswer.dialecticNote || null,
-      option_comments: Object.keys(currentAnswer.optionComments).length > 0 ? currentAnswer.optionComments : null
+      option_comments: Object.keys(currentAnswer.optionComments).length > 0 ? currentAnswer.optionComments : null,
+      // Include validated cases/markers for Stage 3 questions
+      validated_cases: validatedCasesData,
+      validated_markers: validatedMarkersData
     }
   }
 
@@ -2610,13 +2643,20 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     // Build the answer
     const answerMeta = buildAnswerMeta(currentQ.id)
 
-    // Validate - need at least selected options OR text answer OR custom response
+    // Validate - need at least one of:
+    // - selected options
+    // - text answer
+    // - custom response
+    // - validated cases (for case questions)
+    // - validated markers (for marker questions)
     const hasAnswer = (answerMeta.selected_options?.length > 0) ||
                       answerMeta.text_answer ||
-                      answerMeta.custom_response
+                      answerMeta.custom_response ||
+                      answerMeta.validated_cases?.length > 0 ||
+                      answerMeta.validated_markers?.length > 0
 
     if (!hasAnswer && currentQ.required !== false) {
-      setError('Please provide an answer')
+      setError('Please provide an answer (select options, rate generated items, or type your answer)')
       return
     }
 
@@ -4175,8 +4215,29 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 )}
 
                 {/* Open-ended answer with Auto-Generated Options (Multi-Select) */}
+                {/* For Stage 3 case/marker questions, only show if no cases/markers are rated */}
                 {currentQuestion.type === QUESTION_TYPES.OPEN && (
                   <div className="answer-input open-ended-enhanced">
+                    {/* For Stage 3 case/marker questions - show "optional" note if rated items exist */}
+                    {stage === STAGES.STAGE3 && (
+                      (currentQuestion.id === 'paradigmatic_case' || currentQuestion.id?.includes('case')) &&
+                      generatedCases.some(c => caseRatings[c.id] === 'good' || caseRatings[c.id] === 'partial')
+                    ) && (
+                      <div className="rated-items-notice">
+                        <span className="notice-check">✓</span>
+                        <span>You've rated case studies above. The text field below is optional.</span>
+                      </div>
+                    )}
+                    {stage === STAGES.STAGE3 && (
+                      (currentQuestion.id === 'recognition_markers' || currentQuestion.id?.includes('marker') || currentQuestion.id?.includes('recognition')) &&
+                      generatedMarkers.some(m => markerRatings[m.id] === 'good' || markerRatings[m.id] === 'partial')
+                    ) && (
+                      <div className="rated-items-notice">
+                        <span className="notice-check">✓</span>
+                        <span>You've rated recognition markers above. The text field below is optional.</span>
+                      </div>
+                    )}
+
                     {/* Loading state - shown prominently during auto-generation */}
                     {isGeneratingOptions && (
                       <div className="generating-options-loading prominent">
