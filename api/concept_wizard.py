@@ -16,10 +16,11 @@ import os
 import json
 import asyncio
 import logging
+import tempfile
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -29,6 +30,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from anthropic import Anthropic
 
 from .database import get_db
+
+# PDF extraction (optional - graceful fallback)
+try:
+    import PyPDF2
+    HAS_PDF_SUPPORT = True
+except ImportError:
+    HAS_PDF_SUPPORT = False
+    logger.warning("PyPDF2 not installed - PDF upload will extract text only")
 
 router = APIRouter(prefix="/concepts/wizard", tags=["concept-wizard"])
 
@@ -49,6 +58,10 @@ def get_claude_client():
 MODEL = "claude-opus-4-5-20251101"  # Correct model ID for Opus 4.5
 THINKING_BUDGET = 32000
 MAX_OUTPUT = 64000  # Must be > THINKING_BUDGET
+
+# Sonnet 4.5 for document analysis (1M token context)
+SONNET_MODEL = "claude-sonnet-4-5-20250929"
+SONNET_MAX_OUTPUT = 64000
 
 
 # =============================================================================
@@ -148,6 +161,23 @@ class AnswerWithMeta(BaseModel):
     dialectic_pole_a: Optional[str] = None
     dialectic_pole_b: Optional[str] = None
     dialectic_note: Optional[str] = None
+
+
+class DeepCommitmentsRequest(BaseModel):
+    """Request to generate deep philosophical commitment questions."""
+    concept_name: str
+    notes_summary: str
+    genealogy: Dict[str, Any]
+    stage1_answers: Dict[str, Any]
+    stage2_answers: Optional[Dict[str, Any]] = None
+    dimensional_extraction: Optional[Dict[str, Any]] = None  # From documents/notes
+    source_id: Optional[int] = None
+
+
+class DocumentAnalysisRequest(BaseModel):
+    """Request to analyze an uploaded document."""
+    concept_name: str
+    existing_context: Optional[Dict[str, Any]] = None  # Notes analysis so far
 
 
 # =============================================================================
@@ -1306,6 +1336,381 @@ Return as JSON:
 }}
 
 Generate a tension that reflects the user's feedback while maintaining theoretical rigor."""
+
+
+# =============================================================================
+# DOCUMENT ANALYSIS - Full 9-Dimensional Extraction (Uses Sonnet 4.5 1M)
+# =============================================================================
+
+DOCUMENT_ANALYSIS_PROMPT = """You are Claude analyzing materials about a novel concept called "{concept_name}".
+
+Your task is to extract EVERYTHING we can populate in our 9-dimensional concept schema.
+Use your extensive knowledge of intellectual history, philosophy, and social sciences to INFER beyond what's explicit.
+
+## Document Content:
+{document_content}
+
+## Existing Context (if any):
+{existing_context}
+
+## EXTRACTION TARGETS - ALL 9 PHILOSOPHICAL DIMENSIONS:
+
+### 1. QUINEAN (Inferential Web)
+- What can be inferred FROM this concept? ("If X, then...")
+- What can be inferred TO this concept? ("If Y, then X")
+- What would CONTRADICT this concept?
+- How CENTRAL is it to the author's framework? (core/intermediate/peripheral)
+
+### 2. SELLARSIAN (Givenness Analysis)
+- Is this concept treated as "obvious" or self-evident?
+- What phrases suggest givenness? ("obviously", "naturally", "of course")
+- What SHOULD this concept be inferred from (but isn't justified)?
+- What ASSUMPTIONS are embedded without argument?
+
+### 3. BRANDOMIAN (Commitments & Entitlements)
+- What claims does using this concept COMMIT you to?
+- What claims is the concept-user ENTITLED to make?
+- What is INCOMPATIBLE with this concept?
+- Are any commitments violated in the materials?
+
+### 4. DELEUZIAN (Problems, Plane & Becomings)
+- What PROBLEM or tension does this concept address?
+- What are the POLES of this tension?
+- What transformations (becomings) does the concept ENABLE?
+- What transformations does it BLOCK or foreclose?
+- What UNQUESTIONED ASSUMPTIONS form the "plane" (background conditions)?
+- What becomes THINKABLE with this concept?
+- What becomes UNTHINKABLE?
+
+### 5. BACHELARDIAN (Rupture & Obstacles)
+- What existing framework is this concept BREAKING FROM?
+- WHY is the old framework inadequate?
+- Could this concept itself become an OBSTACLE to future understanding?
+- What questions might become UNASKABLE if we adopt this concept?
+- What would TRIGGER abandonment of this concept?
+
+### 6. CANGUILHEM (Life History & Normative Stakes)
+- How has this concept (or precursors) EVOLVED historically?
+- What PROBLEMS drove changes in its meaning?
+- What VALUES are embedded in this concept?
+- Whose INTERESTS does this concept serve?
+- What/who gets marked as "abnormal" or EXCLUDED?
+
+### 7. DAVIDSON (Reasoning Style)
+- What REASONING STYLE does this concept require?
+- What becomes VISIBLE with this lens?
+- What becomes INVISIBLE or systematically hidden?
+- What kinds of EVIDENCE does this concept privilege?
+- What INFERENCE PATTERNS are characteristic?
+
+### 8. BLUMENBERG (Metaphorology)
+- What ROOT METAPHOR underlies this concept?
+- What DOMAIN does the metaphor come from?
+- What does the metaphor ENABLE thinking about?
+- What does it OBSCURE or hide?
+- Is there conceptual WORK being done to transform the concept?
+
+### 9. CAREY (Bootstrapping Hierarchy)
+- What SIMPLER CONCEPTS is this built from?
+- How do they COMBINE? (aggregation, interaction, emergence)
+- What EMERGES that wasn't in the parts?
+- How TRANSPARENT is the construction?
+
+Return as JSON with confidence levels (high/medium/low/speculative):
+{{
+  "document_summary": "Brief summary of the document's relevance to the concept",
+  "key_excerpts": ["Relevant quotes from the document"],
+
+  "quinean": {{
+    "forward_inferences": [{{"statement": "If {concept_name} then...", "confidence": "medium"}}],
+    "backward_inferences": [{{"statement": "If X then {concept_name}...", "confidence": "medium"}}],
+    "contradictions": [{{"statement": "...", "confidence": "low"}}],
+    "centrality": "core|intermediate|peripheral",
+    "web_coherence_note": "How this fits the broader conceptual web"
+  }},
+
+  "sellarsian": {{
+    "treated_as_given": true,
+    "givenness_markers": ["obviously", "naturally"],
+    "should_be_inferred_from": "What justification is missing",
+    "hidden_assumptions": ["Assumption 1", "Assumption 2"],
+    "what_givenness_enables": "What treating as given allows",
+    "what_givenness_blocks": "What questions become unaskable"
+  }},
+
+  "brandomian": {{
+    "commitments": [{{"claim": "...", "type": "ontological|causal|normative", "confidence": "high"}}],
+    "entitlements": [{{"claim": "...", "confidence": "medium"}}],
+    "incompatibilities": [{{"claim": "...", "confidence": "medium"}}],
+    "violations_found": null
+  }},
+
+  "deleuzian": {{
+    "problem_addressed": "The core tension/problem",
+    "tension_poles": ["Pole A", "Pole B"],
+    "becomings_enabled": ["Transformation 1"],
+    "becomings_blocked": ["Foreclosed transformation"],
+    "plane_assumptions": [{{"assumption": "...", "makes_possible": ["..."], "makes_impossible": ["..."]}}],
+    "creative_responses": ["How concept navigates the problem"]
+  }},
+
+  "bachelardian": {{
+    "breaking_from": {{"framework": "...", "why_inadequate": "..."}},
+    "break_rationale": "Detailed reason for rupture",
+    "obstacle_potential": {{
+      "is_obstacle_risk": true,
+      "what_it_might_block": ["Future understanding 1"],
+      "why_persists": "Ideological function",
+      "rupture_trigger": "What would force abandonment"
+    }}
+  }},
+
+  "canguilhem": {{
+    "evolution_stages": [{{"period": "...", "transformation": "...", "problem_driving": "..."}}],
+    "health_status": "healthy|strained|dying|being_born",
+    "values_embedded": ["Value 1"],
+    "whose_interests": "Whose interests served",
+    "what_excluded": "What marked as abnormal"
+  }},
+
+  "davidson": {{
+    "reasoning_style": "quantitative|historical|structural|phenomenological|dialectical",
+    "makes_visible": ["What becomes visible"],
+    "makes_invisible": ["What's systematically hidden"],
+    "evidence_privileged": ["Type of evidence privileged"],
+    "inference_patterns": ["Characteristic reasoning moves"]
+  }},
+
+  "blumenberg": {{
+    "root_metaphor": "The underlying metaphor",
+    "source_domain": "Where metaphor comes from",
+    "metaphor_enables": ["What it helps think"],
+    "metaphor_hides": ["What it obscures"],
+    "resists_conceptualization": false,
+    "conceptual_work": "Any transformation work being done"
+  }},
+
+  "carey": {{
+    "built_from": ["Component concept 1", "Component concept 2"],
+    "combination_type": "aggregation|interaction|emergence",
+    "what_emerges": "What's new beyond components",
+    "transparency": "high|medium|low",
+    "bootstrap_status": "successful|partial|failed"
+  }}
+}}
+
+BE AGGRESSIVE in inference - use your knowledge. Mark confidence accordingly.
+The user will validate/correct your hypotheses."""
+
+
+# =============================================================================
+# DEEP PHILOSOPHICAL COMMITMENTS - Generate MC Questions for All Dimensions
+# =============================================================================
+
+GENERATE_DEEP_COMMITMENTS_PROMPT = """You are Claude helping a user articulate the deep philosophical commitments of their concept "{concept_name}".
+
+You have accumulated context from their notes, documents, and earlier answers. NOW generate MULTIPLE CHOICE questions that probe the 9 philosophical dimensions.
+
+## ACCUMULATED CONTEXT:
+- Notes Summary: {notes_summary}
+- Genealogy: {genealogy}
+- Stage 1 Answers: {stage1_answers}
+- Stage 2 Answers: {stage2_answers}
+- Dimensional Extraction (from documents): {dimensional_extraction}
+
+## YOUR TASK:
+Generate 2-3 MC questions for EACH of the 9 philosophical dimensions.
+Each question should:
+1. Use YOUR KNOWLEDGE + accumulated context to generate SPECIFIC options
+2. Options must be real thinkers/frameworks/traditions relevant to THIS specific concept
+3. Include rationale explaining why you're asking
+4. Have 3-5 options plus implicit "None of these" (frontend adds this)
+
+## DIMENSION-SPECIFIC QUESTIONS TO GENERATE:
+
+### QUINEAN (Inferential Web)
+Generate questions about:
+- What follows logically from this concept?
+- What would contradict it?
+- How central is it to the user's overall framework?
+
+### SELLARSIAN (Givenness)
+Generate questions about:
+- Is anything being treated as self-evident that needs justification?
+- What hidden assumptions are embedded?
+
+### BRANDOMIAN (Commitments)
+Generate questions about:
+- What other claims must you accept if you adopt this concept?
+- What claims are incompatible with this concept?
+
+### DELEUZIAN (Problems & Becomings)
+Generate questions about:
+- What transformations does this concept enable?
+- What transformations does it foreclose?
+- What unquestioned assumptions underlie it?
+
+### BACHELARDIAN (Rupture & Obstacles)
+Generate questions about:
+- What existing framework is this replacing?
+- What's wrong with the old way of thinking?
+- Could this concept become an obstacle?
+
+### CANGUILHEM (Normative Stakes)
+Generate questions about:
+- Whose interests does this concept serve?
+- What values are embedded?
+- What gets excluded or marked as abnormal?
+
+### DAVIDSON (Reasoning Style)
+Generate questions about:
+- What kind of reasoning does this concept require?
+- What does it make visible?
+- What might it obscure?
+
+### BLUMENBERG (Metaphorology)
+Generate questions about:
+- What's the root metaphor?
+- What does the metaphor reveal vs hide?
+
+### CAREY (Bootstrapping)
+Generate questions about:
+- What simpler concepts is this built from?
+- What emerges from the combination?
+
+Return as JSON:
+{{
+  "deep_commitment_questions": [
+    {{
+      "id": "quinean_inferences",
+      "dimension": "quinean",
+      "question": "If {concept_name} is valid, which of these claims would also follow?",
+      "options": [
+        {{"value": "inference_1", "label": "Specific claim A", "description": "Why this follows"}},
+        {{"value": "inference_2", "label": "Specific claim B", "description": "Why this follows"}},
+        {{"value": "inference_3", "label": "Specific claim C", "description": "Why this follows"}}
+      ],
+      "rationale": "Understanding what follows helps clarify the concept's implications",
+      "allow_multiple": false
+    }},
+    {{
+      "id": "quinean_contradictions",
+      "dimension": "quinean",
+      "question": "What would CONTRADICT {concept_name}?",
+      "options": [
+        {{"value": "contra_1", "label": "Contradiction A", "description": "Why this contradicts"}},
+        {{"value": "contra_2", "label": "Contradiction B", "description": "Why this contradicts"}}
+      ],
+      "rationale": "Knowing what contradicts helps define boundaries",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "brandomian_commitments",
+      "dimension": "brandomian",
+      "question": "If you adopt {concept_name}, you must ALSO accept:",
+      "options": [
+        {{"value": "commit_1", "label": "Commitment A", "description": "Why this is required"}},
+        {{"value": "commit_2", "label": "Commitment B", "description": "Why this is required"}}
+      ],
+      "rationale": "Concepts carry hidden commitments",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "deleuzian_enables",
+      "dimension": "deleuzian",
+      "question": "What transformation does {concept_name} ENABLE that was previously blocked?",
+      "options": [
+        {{"value": "becoming_1", "label": "Transformation A", "description": "How this becomes possible"}},
+        {{"value": "becoming_2", "label": "Transformation B", "description": "How this becomes possible"}}
+      ],
+      "rationale": "Concepts are tools for change",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "deleuzian_blocks",
+      "dimension": "deleuzian",
+      "question": "What might {concept_name} FORECLOSE or make harder to think?",
+      "options": [
+        {{"value": "block_1", "label": "Foreclosure A", "description": "Why this becomes unthinkable"}},
+        {{"value": "block_2", "label": "Foreclosure B", "description": "Why this becomes unthinkable"}}
+      ],
+      "rationale": "Every lens has blind spots",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "bachelardian_rupture",
+      "dimension": "bachelardian",
+      "question": "What existing framework is {concept_name} BREAKING FROM?",
+      "options": [
+        {{"value": "rupture_1", "label": "Framework A", "description": "What's wrong with it"}},
+        {{"value": "rupture_2", "label": "Framework B", "description": "What's wrong with it"}}
+      ],
+      "rationale": "New concepts replace old ways of thinking",
+      "allow_multiple": false
+    }},
+    {{
+      "id": "canguilhem_interests",
+      "dimension": "canguilhem",
+      "question": "Whose INTERESTS does {concept_name} primarily serve?",
+      "options": [
+        {{"value": "interest_1", "label": "Stakeholder A", "description": "How they benefit"}},
+        {{"value": "interest_2", "label": "Stakeholder B", "description": "How they benefit"}},
+        {{"value": "neutral", "label": "Genuinely neutral", "description": "Serves no particular interest"}}
+      ],
+      "rationale": "Concepts are never politically innocent",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "davidson_visibility",
+      "dimension": "davidson",
+      "question": "What does {concept_name} make VISIBLE that was hidden before?",
+      "options": [
+        {{"value": "visible_1", "label": "Visibility A", "description": "What becomes apparent"}},
+        {{"value": "visible_2", "label": "Visibility B", "description": "What becomes apparent"}}
+      ],
+      "rationale": "Every concept is a lens",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "davidson_invisibility",
+      "dimension": "davidson",
+      "question": "What might {concept_name} make INVISIBLE or harder to see?",
+      "options": [
+        {{"value": "invisible_1", "label": "Hidden A", "description": "Why it's obscured"}},
+        {{"value": "invisible_2", "label": "Hidden B", "description": "Why it's obscured"}}
+      ],
+      "rationale": "Lenses have blind spots",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "blumenberg_metaphor",
+      "dimension": "blumenberg",
+      "question": "What ROOT METAPHOR underlies {concept_name}?",
+      "options": [
+        {{"value": "metaphor_1", "label": "Metaphor A", "description": "From domain X"}},
+        {{"value": "metaphor_2", "label": "Metaphor B", "description": "From domain Y"}}
+      ],
+      "rationale": "Concepts carry hidden metaphorical baggage",
+      "allow_multiple": false
+    }},
+    {{
+      "id": "carey_components",
+      "dimension": "carey",
+      "question": "What simpler concepts COMBINE to make {concept_name}?",
+      "options": [
+        {{"value": "component_1", "label": "Component A + B", "description": "How they combine"}},
+        {{"value": "component_2", "label": "Component C + D", "description": "How they combine"}}
+      ],
+      "rationale": "Complex concepts are bootstrapped from simpler ones",
+      "allow_multiple": false
+    }}
+  ],
+  "generation_note": "Brief note about what dimensions had strongest signal from context"
+}}
+
+CRITICAL: Generate SPECIFIC options based on THIS concept and accumulated context.
+Do NOT use generic placeholders. Each option should be a real, specific claim/framework/thinker.
+The goal: USER VALIDATES your hypotheses, not generates from scratch."""
 
 
 REFINE_WITH_FEEDBACK_PROMPT = """You are an expert in conceptual analysis helping refine understanding based on user validation feedback.
@@ -2891,5 +3296,183 @@ CRITICAL:
 
     return StreamingResponse(
         stream_final_synthesis(),
+        media_type="text/event-stream"
+    )
+
+
+# =============================================================================
+# DOCUMENT UPLOAD & ANALYSIS - Sonnet 4.5 with 1M Token Context
+# =============================================================================
+
+@router.post("/analyze-document")
+async def analyze_document(
+    file: UploadFile = File(...),
+    concept_name: str = Form(...),
+    existing_context: str = Form(None)  # JSON string of existing context
+):
+    """
+    Analyze an uploaded document using Claude Sonnet 4.5 with 1M token context.
+    Extracts ALL 9 philosophical dimensions from the document.
+    """
+    # Read file content
+    content = await file.read()
+    filename = file.filename or "document"
+
+    # Extract text based on file type
+    if filename.lower().endswith('.pdf'):
+        if not HAS_PDF_SUPPORT:
+            raise HTTPException(
+                status_code=400,
+                detail="PDF support not available. Please install PyPDF2."
+            )
+        try:
+            import io
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+            document_text = ""
+            for page in pdf_reader.pages:
+                document_text += page.extract_text() + "\n\n"
+        except Exception as e:
+            logger.error(f"Error reading PDF: {e}")
+            raise HTTPException(status_code=400, detail=f"Error reading PDF: {str(e)}")
+    elif filename.lower().endswith(('.txt', '.md', '.markdown')):
+        document_text = content.decode('utf-8')
+    else:
+        # Try to decode as text
+        try:
+            document_text = content.decode('utf-8')
+        except UnicodeDecodeError:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file format. Please upload PDF, TXT, or Markdown."
+            )
+
+    # Parse existing context if provided
+    existing_ctx = {}
+    if existing_context:
+        try:
+            existing_ctx = json.loads(existing_context)
+        except json.JSONDecodeError:
+            existing_ctx = {"raw": existing_context}
+
+    # Truncate document if too long (though 1M should handle most docs)
+    MAX_CHARS = 3_500_000  # ~1M tokens worth
+    if len(document_text) > MAX_CHARS:
+        document_text = document_text[:MAX_CHARS] + "\n\n[DOCUMENT TRUNCATED]"
+
+    async def stream_document_analysis():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'document_analysis', 'filename': filename})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'message': f'Analyzing document ({len(document_text)} characters)...'})}\n\n"
+
+            prompt = DOCUMENT_ANALYSIS_PROMPT.format(
+                concept_name=concept_name,
+                document_content=document_text,
+                existing_context=json.dumps(existing_ctx, indent=2) if existing_ctx else "(No existing context)"
+            )
+
+            # Use Sonnet 4.5 with 1M context beta
+            with client.messages.stream(
+                model=SONNET_MODEL,
+                max_tokens=SONNET_MAX_OUTPUT,
+                extra_headers={
+                    "anthropic-beta": "max-tokens-3-5-sonnet-2024-07-15"  # 1M context beta
+                },
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                full_text = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'text'):
+                            full_text += event.delta.text
+                            yield f"data: {json.dumps({'type': 'text', 'content': event.delta.text})}\n\n"
+
+            # Parse the JSON response
+            extraction = parse_wizard_response(full_text)
+
+            yield f"data: {json.dumps({'type': 'complete', 'data': extraction})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error analyzing document: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_document_analysis(),
+        media_type="text/event-stream"
+    )
+
+
+# =============================================================================
+# DEEP PHILOSOPHICAL COMMITMENTS - Generate MC Questions for All 9 Dimensions
+# =============================================================================
+
+@router.post("/generate-deep-commitments")
+async def generate_deep_commitments(request: DeepCommitmentsRequest):
+    """
+    Generate MC questions probing all 9 philosophical dimensions.
+    Uses accumulated context to generate SPECIFIC, informed options.
+    This should be called LATE in the wizard after context has accumulated.
+    """
+    async def stream_deep_commitments():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'deep_commitments'})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Generating philosophical dimension questions...'})}\n\n"
+
+            prompt = GENERATE_DEEP_COMMITMENTS_PROMPT.format(
+                concept_name=request.concept_name,
+                notes_summary=request.notes_summary or "(No notes)",
+                genealogy=json.dumps(request.genealogy, indent=2),
+                stage1_answers=json.dumps(request.stage1_answers, indent=2),
+                stage2_answers=json.dumps(request.stage2_answers, indent=2) if request.stage2_answers else "(Not yet answered)",
+                dimensional_extraction=json.dumps(request.dimensional_extraction, indent=2) if request.dimensional_extraction else "(No document analysis yet)"
+            )
+
+            # Use Opus with extended thinking for sophisticated question generation
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                full_text = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                        elif hasattr(event.delta, 'text'):
+                            full_text += event.delta.text
+                            yield f"data: {json.dumps({'type': 'text', 'content': event.delta.text})}\n\n"
+
+            # Parse the questions
+            questions_data = parse_wizard_response(full_text)
+
+            # Structure the output
+            result = {
+                "deep_commitment_questions": questions_data.get("deep_commitment_questions", []),
+                "generation_note": questions_data.get("generation_note", ""),
+                "dimensions_covered": list(set([
+                    q.get("dimension") for q in questions_data.get("deep_commitment_questions", [])
+                    if q.get("dimension")
+                ]))
+            }
+
+            yield f"data: {json.dumps({'type': 'complete', 'data': result})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error generating deep commitments: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_deep_commitments(),
         media_type="text/event-stream"
     )

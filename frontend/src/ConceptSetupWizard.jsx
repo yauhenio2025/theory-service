@@ -25,6 +25,8 @@ const STAGES = {
   NOTES: 'notes',
   ANALYZING_NOTES: 'analyzing_notes',
   UNDERSTANDING_VALIDATION: 'understanding_validation',  // New: validate LLM's understanding
+  DOCUMENT_UPLOAD: 'document_upload',  // Optional: upload supporting documents
+  ANALYZING_DOCUMENT: 'analyzing_document',  // Analyzing uploaded document
   STAGE1: 'stage1',
   ANALYZING_STAGE1: 'analyzing_stage1',
   INTERIM_ANALYSIS: 'interim_analysis',
@@ -32,6 +34,8 @@ const STAGES = {
   ANALYZING_STAGE2: 'analyzing_stage2',
   IMPLICATIONS_PREVIEW: 'implications_preview',
   STAGE3: 'stage3',
+  DEEP_COMMITMENTS: 'deep_commitments',  // All 9 philosophical dimensions MC questions
+  ANALYZING_COMMITMENTS: 'analyzing_commitments',  // Generating deep commitment questions
   PROCESSING: 'processing',
   COMPLETE: 'complete'
 }
@@ -241,6 +245,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [editingSection, setEditingSection] = useState(null)
   const [sectionFeedback, setSectionFeedback] = useState({})
   const [isRegeneratingSections, setIsRegeneratingSections] = useState({})
+
+  // Document upload state
+  const [uploadedDocuments, setUploadedDocuments] = useState([])  // [{name, size, analysis}]
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false)
+  const [documentAnalysisProgress, setDocumentAnalysisProgress] = useState(null)
+  const [dimensionalExtraction, setDimensionalExtraction] = useState(null)  // Combined 9-dim data from docs
+
+  // Deep Commitments state (9 philosophical dimensions)
+  const [deepCommitmentQuestions, setDeepCommitmentQuestions] = useState([])
+  const [deepCommitmentAnswers, setDeepCommitmentAnswers] = useState({})  // {question_id: {selected, comment}}
+  const [currentCommitmentIndex, setCurrentCommitmentIndex] = useState(0)
+  const [isGeneratingCommitments, setIsGeneratingCommitments] = useState(false)
 
   // Refs
   const thinkingRef = useRef(null)
@@ -966,6 +983,360 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   }
 
   /**
+   * Handle document file selection
+   */
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0]
+    if (file) {
+      // Validate file type
+      const validTypes = ['application/pdf', 'text/plain', 'text/markdown']
+      const validExtensions = ['.pdf', '.txt', '.md', '.markdown']
+      const hasValidExt = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+
+      if (!validTypes.includes(file.type) && !hasValidExt) {
+        setError('Please upload a PDF, TXT, or Markdown file')
+        return
+      }
+
+      // Validate file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        setError('File too large. Maximum size is 50MB.')
+        return
+      }
+
+      setSelectedFile(file)
+      setError(null)
+    }
+  }
+
+  /**
+   * Upload and analyze a document using Sonnet 4.5 with 1M token context
+   */
+  const uploadAndAnalyzeDocument = async () => {
+    if (!selectedFile) {
+      setError('Please select a file first')
+      return
+    }
+
+    setIsUploadingDocument(true)
+    setError(null)
+    setThinking('')
+    setDocumentAnalysisProgress('Starting analysis...')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('concept_name', conceptName)
+      formData.append('existing_context', JSON.stringify({
+        notes_summary: notesUnderstanding?.summary || notes,
+        genealogy: notesUnderstanding?.genealogy || {},
+        preliminary_definition: notesUnderstanding?.preliminaryDefinition || '',
+        previous_extractions: dimensionalExtraction
+      }))
+
+      const response = await fetch(`${API_URL}/concepts/wizard/analyze-document`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`)
+      }
+
+      // Handle SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let fullText = ''
+      let extractedData = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.type === 'status') {
+                setDocumentAnalysisProgress(parsed.message)
+              } else if (parsed.type === 'text') {
+                fullText += parsed.content
+                setThinking(prev => prev + parsed.content)
+              } else if (parsed.type === 'complete') {
+                extractedData = parsed.data
+              } else if (parsed.type === 'error') {
+                throw new Error(parsed.message)
+              }
+            } catch (e) {
+              if (e.message.includes('Upload failed')) throw e
+            }
+          }
+        }
+      }
+
+      // Store the extracted dimensional data
+      if (extractedData) {
+        // Merge with existing extractions
+        setDimensionalExtraction(prev => {
+          if (!prev) return extractedData
+          // Merge arrays, prefer newer data
+          return {
+            quinean: { ...prev.quinean, ...extractedData.quinean },
+            sellarsian: { ...prev.sellarsian, ...extractedData.sellarsian },
+            brandomian: { ...prev.brandomian, ...extractedData.brandomian },
+            deleuzian: { ...prev.deleuzian, ...extractedData.deleuzian },
+            bachelardian: { ...prev.bachelardian, ...extractedData.bachelardian },
+            canguilhem: { ...prev.canguilhem, ...extractedData.canguilhem },
+            davidson: { ...prev.davidson, ...extractedData.davidson },
+            blumenberg: { ...prev.blumenberg, ...extractedData.blumenberg },
+            carey: { ...prev.carey, ...extractedData.carey },
+            document_summary: extractedData.document_summary,
+            key_excerpts: [...(prev.key_excerpts || []), ...(extractedData.key_excerpts || [])]
+          }
+        })
+
+        // Record the uploaded document
+        setUploadedDocuments(prev => [...prev, {
+          name: selectedFile.name,
+          size: selectedFile.size,
+          uploadedAt: new Date().toISOString(),
+          summary: extractedData.document_summary || 'Analysis complete'
+        }])
+      }
+
+      setSelectedFile(null)
+      setDocumentAnalysisProgress(null)
+      setThinking('')
+
+    } catch (error) {
+      setError(error.message)
+    } finally {
+      setIsUploadingDocument(false)
+    }
+  }
+
+  /**
+   * Skip document upload and continue to Stage 1
+   */
+  const skipDocumentUpload = () => {
+    setProgress({ stage: 3, total: 11, label: 'Stage 1: Genesis & Problem Space' })
+    setStage(STAGES.STAGE1)
+    setCurrentQuestionIndex(0)
+  }
+
+  /**
+   * Continue from document upload to Stage 1
+   */
+  const continueFromDocumentUpload = () => {
+    setProgress({ stage: 3, total: 11, label: 'Stage 1: Genesis & Problem Space' })
+    setStage(STAGES.STAGE1)
+    setCurrentQuestionIndex(0)
+  }
+
+  /**
+   * Generate Deep Commitment questions (all 9 philosophical dimensions)
+   * Called after Stage 3 when enough context has accumulated
+   */
+  const generateDeepCommitments = async () => {
+    setIsGeneratingCommitments(true)
+    setStage(STAGES.ANALYZING_COMMITMENTS)
+    setProgress({ stage: 9, total: 11, label: 'Generating philosophical dimension questions...' })
+    setThinking('')
+    setError(null)
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-deep-commitments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_name: conceptName,
+          notes_summary: notesUnderstanding?.summary || notes,
+          genealogy: notesUnderstanding?.genealogy || {},
+          stage1_answers: stageData.stage1?.answers || [],
+          stage2_answers: stageData.stage2?.answers || [],
+          dimensional_extraction: dimensionalExtraction
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.statusText}`)
+      }
+
+      // Handle SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let questionsData = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.type === 'thinking') {
+                setThinking(prev => prev + parsed.content)
+              } else if (parsed.type === 'text') {
+                setThinking(prev => prev + parsed.content)
+              } else if (parsed.type === 'complete') {
+                questionsData = parsed.data
+              } else if (parsed.type === 'error') {
+                throw new Error(parsed.message)
+              }
+            } catch (e) {
+              if (e.message.includes('Request failed')) throw e
+            }
+          }
+        }
+      }
+
+      if (questionsData?.deep_commitment_questions) {
+        setDeepCommitmentQuestions(questionsData.deep_commitment_questions)
+        setCurrentCommitmentIndex(0)
+        setProgress({ stage: 9, total: 11, label: 'Deep Commitments: Philosophical Dimensions' })
+        setStage(STAGES.DEEP_COMMITMENTS)
+      } else {
+        // No questions generated, skip to finalization
+        setProgress({ stage: 10, total: 11, label: 'Final synthesis...' })
+        setStage(STAGES.PROCESSING)
+      }
+
+    } catch (error) {
+      setError(error.message)
+      setStage(STAGES.STAGE3)  // Go back to Stage 3 on error
+    } finally {
+      setIsGeneratingCommitments(false)
+      setThinking('')
+    }
+  }
+
+  /**
+   * Answer a deep commitment question
+   */
+  const answerCommitmentQuestion = (questionId, selected, comment = '') => {
+    setDeepCommitmentAnswers(prev => ({
+      ...prev,
+      [questionId]: { selected, comment }
+    }))
+  }
+
+  /**
+   * Move to next commitment question or finish
+   */
+  const nextCommitmentQuestion = () => {
+    if (currentCommitmentIndex < deepCommitmentQuestions.length - 1) {
+      setCurrentCommitmentIndex(prev => prev + 1)
+    } else {
+      // Done with all commitment questions - proceed to finalization
+      finalizeWithCommitments()
+    }
+  }
+
+  /**
+   * Move to previous commitment question
+   */
+  const prevCommitmentQuestion = () => {
+    if (currentCommitmentIndex > 0) {
+      setCurrentCommitmentIndex(prev => prev - 1)
+    }
+  }
+
+  /**
+   * Finalize concept including deep commitment answers
+   */
+  const finalizeWithCommitments = async () => {
+    setStage(STAGES.PROCESSING)
+    setProgress({ stage: 10, total: 11, label: 'Final synthesis with all dimensions...' })
+    // Pass Stage 3 answers and deep commitment answers to finalization
+    await finalizeConceptWorkflowWithCommitments(stageData.stage3?.answers || [])
+  }
+
+  /**
+   * Final synthesis with deep commitment answers included
+   */
+  const finalizeConceptWorkflowWithCommitments = async (stage3Answers) => {
+    // Build validated cases from user ratings
+    const validatedCases = generatedCases
+      .filter(c => caseRatings[c.id] === 'good' || caseRatings[c.id] === 'partial')
+      .map(c => ({
+        ...c,
+        rating: caseRatings[c.id],
+        comment: caseComments[c.id] || ''
+      }))
+
+    // Build validated markers from user ratings
+    const validatedMarkers = generatedMarkers
+      .filter(m => markerRatings[m.id] === 'good' || markerRatings[m.id] === 'partial')
+      .map(m => ({
+        ...m,
+        rating: markerRatings[m.id],
+        comment: markerComments[m.id] || ''
+      }))
+
+    // Build approved tensions from understanding validation
+    const approvedTensions = (notesUnderstanding?.potentialTensions || [])
+      .filter((_, i) => {
+        const feedback = tensionFeedback[i]
+        return feedback?.status === 'approved' || feedback?.status === 'approved_with_comment'
+      })
+      .map((tension, i) => {
+        const feedback = tensionFeedback[i] || {}
+        const tensionObj = typeof tension === 'string' ? { description: tension } : tension
+        return {
+          ...tensionObj,
+          comment: feedback.comment || ''
+        }
+      })
+
+    await streamWizardRequest(
+      '/concepts/wizard/finalize',
+      {
+        concept_name: conceptName,
+        notes: notes.trim() || null,
+        all_answers: {
+          stage1: stageData.stage1.answers,
+          stage2: stageData.stage2.answers,
+          stage3: stage3Answers,
+          deep_commitments: deepCommitmentAnswers  // Include deep commitment answers
+        },
+        interim_analysis: interimAnalysis,
+        dialectics: dialectics,
+        validated_cases: validatedCases.length > 0 ? validatedCases : null,
+        validated_markers: validatedMarkers.length > 0 ? validatedMarkers : null,
+        approved_tensions: approvedTensions.length > 0 ? approvedTensions : null,
+        dimensional_extraction: dimensionalExtraction,  // Include document extraction data
+        source_id: sourceId
+      },
+      {
+        onComplete: (data) => {
+          setConceptData(data.concept)
+          // Populate editable draft from concept data, including validated data
+          populateEditableDraft(data.concept, validatedCases, validatedMarkers, approvedTensions)
+          setProgress({ stage: 11, total: 11, label: 'Complete!' })
+          setStage(STAGES.COMPLETE)
+        }
+      }
+    )
+  }
+
+  /**
    * Build AnswerWithMeta object from current answer state
    */
   const buildAnswerMeta = (questionId) => {
@@ -1071,7 +1442,13 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       } else if (stage === STAGES.STAGE2) {
         await analyzeStage2(answers)
       } else if (stage === STAGES.STAGE3) {
-        await finalizeConceptWorkflow(answers)
+        // Store Stage 3 answers, then go to Deep Commitments
+        setStageData(prev => ({
+          ...prev,
+          stage3: { ...prev.stage3, answers: answers }
+        }))
+        // Generate deep commitment questions based on accumulated context
+        await generateDeepCommitments()
       }
     }
   }
@@ -1623,7 +2000,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           )}
 
           {/* STAGE: Analyzing (any analysis stage) */}
-          {(stage === STAGES.ANALYZING_NOTES || stage === STAGES.ANALYZING_STAGE1 || stage === STAGES.ANALYZING_STAGE2 || stage === STAGES.PROCESSING) && (
+          {(stage === STAGES.ANALYZING_NOTES || stage === STAGES.ANALYZING_STAGE1 || stage === STAGES.ANALYZING_STAGE2 || stage === STAGES.ANALYZING_DOCUMENT || stage === STAGES.ANALYZING_COMMITMENTS || stage === STAGES.PROCESSING) && (
             <div className="wizard-stage">
               <div className="stage-header">
                 <h3>
@@ -2140,10 +2517,169 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 </button>
                 <button
                   className="btn btn-primary"
-                  onClick={acceptUnderstandingAndContinue}
+                  onClick={() => {
+                    // Go to document upload stage (optional)
+                    setProgress({ stage: 3, total: 11, label: 'Upload Supporting Documents (Optional)' })
+                    setStage(STAGES.DOCUMENT_UPLOAD)
+                  }}
                 >
-                  Accept & Continue to Stage 1
+                  Accept & Continue →
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Document Upload (Optional) */}
+          {stage === STAGES.DOCUMENT_UPLOAD && (
+            <div className="wizard-stage">
+              <div className="stage-header">
+                <h3>📄 Upload Supporting Documents (Optional)</h3>
+                <p>
+                  Have longer documents (papers, drafts, notes) about your concept?
+                  Upload them for deep analysis using Claude's 1M token context.
+                </p>
+              </div>
+
+              <div className="document-upload-panel">
+                {/* Already uploaded documents */}
+                {uploadedDocuments.length > 0 && (
+                  <div className="uploaded-docs-section">
+                    <h4>✓ Analyzed Documents</h4>
+                    <div className="uploaded-docs-list">
+                      {uploadedDocuments.map((doc, i) => (
+                        <div key={i} className="uploaded-doc-card">
+                          <div className="doc-icon">📄</div>
+                          <div className="doc-info">
+                            <span className="doc-name">{doc.name}</span>
+                            <span className="doc-size">{(doc.size / 1024).toFixed(1)} KB</span>
+                          </div>
+                          <div className="doc-summary">{doc.summary}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload new document */}
+                <div className="upload-section">
+                  <h4>📤 Upload Document</h4>
+                  <p className="upload-help">
+                    Supported: PDF, TXT, Markdown (max 50MB)
+                  </p>
+
+                  <div className="file-input-wrapper">
+                    <input
+                      type="file"
+                      accept=".pdf,.txt,.md,.markdown"
+                      onChange={handleFileSelect}
+                      className="file-input"
+                      id="doc-upload"
+                    />
+                    <label htmlFor="doc-upload" className="file-input-label">
+                      {selectedFile ? selectedFile.name : 'Choose file...'}
+                    </label>
+                  </div>
+
+                  {selectedFile && (
+                    <div className="selected-file-info">
+                      <span>Selected: {selectedFile.name}</span>
+                      <span className="file-size">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                  )}
+
+                  <button
+                    className="btn btn-secondary"
+                    onClick={uploadAndAnalyzeDocument}
+                    disabled={!selectedFile || isUploadingDocument}
+                  >
+                    {isUploadingDocument ? 'Analyzing...' : 'Upload & Analyze'}
+                  </button>
+
+                  {isUploadingDocument && documentAnalysisProgress && (
+                    <div className="upload-progress">
+                      <span className="pulse"></span>
+                      {documentAnalysisProgress}
+                    </div>
+                  )}
+                </div>
+
+                {/* Dimensional extraction preview */}
+                {dimensionalExtraction && (
+                  <div className="extraction-preview">
+                    <h4>🔍 Extracted Dimensions</h4>
+                    <div className="dimension-badges">
+                      {dimensionalExtraction.quinean && <span className="dim-badge quinean">Quinean</span>}
+                      {dimensionalExtraction.sellarsian && <span className="dim-badge sellarsian">Sellarsian</span>}
+                      {dimensionalExtraction.brandomian && <span className="dim-badge brandomian">Brandomian</span>}
+                      {dimensionalExtraction.deleuzian && <span className="dim-badge deleuzian">Deleuzian</span>}
+                      {dimensionalExtraction.bachelardian && <span className="dim-badge bachelardian">Bachelardian</span>}
+                      {dimensionalExtraction.canguilhem && <span className="dim-badge canguilhem">Canguilhem</span>}
+                      {dimensionalExtraction.davidson && <span className="dim-badge davidson">Davidson</span>}
+                      {dimensionalExtraction.blumenberg && <span className="dim-badge blumenberg">Blumenberg</span>}
+                      {dimensionalExtraction.carey && <span className="dim-badge carey">Carey</span>}
+                    </div>
+                    <p className="extraction-note">
+                      This context will inform the questions we ask later.
+                    </p>
+                  </div>
+                )}
+
+                {/* Thinking panel during analysis */}
+                {isUploadingDocument && thinking && (
+                  <div className="thinking-panel">
+                    <div className="thinking-header">
+                      <span className="thinking-indicator">
+                        <span className="pulse"></span>
+                        Analyzing document...
+                      </span>
+                    </div>
+                    <div className="thinking-content" ref={thinkingRef}>
+                      {thinking}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="wizard-actions">
+                <button className="btn btn-secondary" onClick={onCancel}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={skipDocumentUpload}
+                >
+                  Skip Documents
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={continueFromDocumentUpload}
+                  disabled={isUploadingDocument}
+                >
+                  Continue to Stage 1 →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Analyzing Document */}
+          {stage === STAGES.ANALYZING_DOCUMENT && (
+            <div className="wizard-stage">
+              <div className="stage-header">
+                <h3>Analyzing Document...</h3>
+                <p>Extracting 9 philosophical dimensions from your document.</p>
+              </div>
+              <div className="thinking-panel">
+                <div className="thinking-header">
+                  <span className="thinking-indicator">
+                    <span className="pulse"></span>
+                    {documentAnalysisProgress || 'Processing...'}
+                  </span>
+                </div>
+                {thinking && (
+                  <div className="thinking-content" ref={thinkingRef}>
+                    {thinking}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2789,6 +3325,155 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             <div className="wizard-stage">
               <div className="wizard-error">
                 No questions loaded for this stage. Questions: {questions.length}, Index: {currentQuestionIndex}
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Analyzing Commitments */}
+          {stage === STAGES.ANALYZING_COMMITMENTS && (
+            <div className="wizard-stage">
+              <div className="stage-header">
+                <h3>Generating Philosophical Dimension Questions...</h3>
+                <p>Preparing questions about all 9 philosophical dimensions based on your context.</p>
+              </div>
+              <div className="thinking-panel">
+                <div className="thinking-header">
+                  <span className="thinking-indicator">
+                    <span className="pulse"></span>
+                    Generating questions...
+                  </span>
+                </div>
+                {thinking && (
+                  <div className="thinking-content" ref={thinkingRef}>
+                    {thinking}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Deep Commitments - 9 Philosophical Dimensions MC Questions */}
+          {stage === STAGES.DEEP_COMMITMENTS && deepCommitmentQuestions.length > 0 && (
+            <div className="wizard-stage deep-commitments-stage">
+              <div className="stage-header">
+                <h3>🔬 Deep Philosophical Commitments</h3>
+                <p>
+                  These questions probe the 9 philosophical dimensions of your concept.
+                  Based on your context, I've generated specific options for each.
+                </p>
+              </div>
+
+              <div className="commitment-progress">
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${((currentCommitmentIndex + 1) / deepCommitmentQuestions.length) * 100}%` }}
+                  />
+                </div>
+                <span className="progress-text">
+                  Question {currentCommitmentIndex + 1} of {deepCommitmentQuestions.length}
+                </span>
+              </div>
+
+              {(() => {
+                const currentQ = deepCommitmentQuestions[currentCommitmentIndex]
+                if (!currentQ) return null
+
+                const currentAnswer = deepCommitmentAnswers[currentQ.id] || {}
+
+                return (
+                  <div className="commitment-question-card">
+                    <div className="question-dimension-badge" data-dimension={currentQ.dimension}>
+                      {currentQ.dimension?.charAt(0).toUpperCase() + currentQ.dimension?.slice(1) || 'Dimension'}
+                    </div>
+
+                    <h4 className="commitment-question-text">{currentQ.question}</h4>
+
+                    {currentQ.rationale && (
+                      <p className="commitment-rationale">{currentQ.rationale}</p>
+                    )}
+
+                    <div className="commitment-options">
+                      {currentQ.options?.map((opt, i) => (
+                        <label
+                          key={opt.value || i}
+                          className={`commitment-option ${currentAnswer.selected === opt.value || (currentAnswer.selected?.includes?.(opt.value)) ? 'selected' : ''}`}
+                        >
+                          <input
+                            type={currentQ.allow_multiple ? 'checkbox' : 'radio'}
+                            name={`commitment_${currentQ.id}`}
+                            value={opt.value}
+                            checked={
+                              currentQ.allow_multiple
+                                ? currentAnswer.selected?.includes?.(opt.value)
+                                : currentAnswer.selected === opt.value
+                            }
+                            onChange={(e) => {
+                              if (currentQ.allow_multiple) {
+                                const newSelected = currentAnswer.selected || []
+                                if (e.target.checked) {
+                                  answerCommitmentQuestion(currentQ.id, [...newSelected, opt.value], currentAnswer.comment)
+                                } else {
+                                  answerCommitmentQuestion(currentQ.id, newSelected.filter(v => v !== opt.value), currentAnswer.comment)
+                                }
+                              } else {
+                                answerCommitmentQuestion(currentQ.id, opt.value, currentAnswer.comment)
+                              }
+                            }}
+                          />
+                          <span className="option-content">
+                            <span className="option-label">{opt.label}</span>
+                            {opt.description && <span className="option-desc">{opt.description}</span>}
+                          </span>
+                        </label>
+                      ))}
+
+                      {/* None of the above option */}
+                      <label
+                        className={`commitment-option none-option ${currentAnswer.selected === 'none' ? 'selected' : ''}`}
+                      >
+                        <input
+                          type={currentQ.allow_multiple ? 'checkbox' : 'radio'}
+                          name={`commitment_${currentQ.id}`}
+                          value="none"
+                          checked={currentAnswer.selected === 'none'}
+                          onChange={() => answerCommitmentQuestion(currentQ.id, 'none', currentAnswer.comment)}
+                        />
+                        <span className="option-content">
+                          <span className="option-label">None of these / Other</span>
+                          <span className="option-desc">I'll add a comment below</span>
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Comment field */}
+                    <div className="commitment-comment">
+                      <label>Add a comment (optional)</label>
+                      <textarea
+                        placeholder="Elaborate, qualify, or provide an alternative..."
+                        value={currentAnswer.comment || ''}
+                        onChange={(e) => answerCommitmentQuestion(currentQ.id, currentAnswer.selected, e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
+
+              <div className="wizard-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={prevCommitmentQuestion}
+                  disabled={currentCommitmentIndex === 0}
+                >
+                  ← Previous
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={nextCommitmentQuestion}
+                >
+                  {currentCommitmentIndex < deepCommitmentQuestions.length - 1 ? 'Next →' : 'Finish & Create Concept'}
+                </button>
               </div>
             </div>
           )}
