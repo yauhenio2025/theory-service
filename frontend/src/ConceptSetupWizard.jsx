@@ -462,6 +462,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [isTransformingCard, setIsTransformingCard] = useState(null)  // card_id being transformed
   const [cardReviewStage, setCardReviewStage] = useState('hypothesis')  // hypothesis, genealogy, differentiation
 
+  // Generated options state (for open-ended questions)
+  const [generatedOptions, setGeneratedOptions] = useState([])  // Options generated from notes/context
+  const [selectedGeneratedOption, setSelectedGeneratedOption] = useState(null)  // Currently selected option
+  const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
+  const [transformingOptionId, setTransformingOptionId] = useState(null)  // Option being transformed
+
   // Session persistence state
   const [hasSavedSession, setHasSavedSession] = useState(false)
   const [savedSessionInfo, setSavedSessionInfo] = useState(null)
@@ -1484,6 +1490,193 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         break
     }
   }
+
+  // ==========================================================================
+  // GENERATE OPTIONS FOR OPEN-ENDED QUESTIONS
+  // ==========================================================================
+
+  /**
+   * Generate answer options for an open-ended question based on notes and context
+   */
+  const generateOptionsForQuestion = async (question) => {
+    setIsGeneratingOptions(true)
+    setGeneratedOptions([])
+    setSelectedGeneratedOption(null)
+
+    // Collect previous answers for context
+    const previousAnswers = []
+    for (const stage of ['stage1', 'stage2', 'stage3']) {
+      if (stageData[stage]?.answers) {
+        for (const ans of stageData[stage].answers) {
+          previousAnswers.push({
+            question_id: ans.question_id,
+            question: ans.question || ans.question_id,
+            answer: ans.text_answer || ans.selected_options?.join(', ') || ''
+          })
+        }
+      }
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_name: conceptName,
+          question_id: question.id,
+          question_text: question.text,
+          notes: notes,
+          hypothesis_cards: hypothesisCards,
+          differentiation_cards: differentiationCards,
+          previous_answers: previousAnswers,
+          notes_understanding: notesUnderstanding
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate options')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const event = JSON.parse(data)
+              if (event.type === 'options') {
+                setGeneratedOptions(event.data || [])
+              } else if (event.type === 'error') {
+                setError(event.message)
+              }
+            } catch (e) {
+              // Ignore parse errors for partial data
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error generating options:', e)
+      setError('Failed to generate options: ' + e.message)
+    } finally {
+      setIsGeneratingOptions(false)
+    }
+  }
+
+  /**
+   * Select a generated option (sets it as the text answer)
+   */
+  const selectGeneratedOption = (option) => {
+    setSelectedGeneratedOption(option.id)
+    setCurrentAnswer(prev => ({
+      ...prev,
+      textAnswer: option.content
+    }))
+  }
+
+  /**
+   * Transform a generated option using one of the 5 modes
+   */
+  const transformGeneratedOption = async (optionId, mode, guidance = '') => {
+    const option = generatedOptions.find(o => o.id === optionId)
+    if (!option) return
+
+    setTransformingOptionId(optionId)
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/transform-card`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          card_id: optionId,
+          card_type: 'option',
+          card_content: option.content,
+          mode: mode,
+          guidance: guidance,
+          notes_context: notes?.slice(0, 2000),
+          concept_name: conceptName
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to transform option')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let transformedContent = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const event = JSON.parse(data)
+              if (event.type === 'text') {
+                transformedContent += event.content
+              } else if (event.type === 'complete') {
+                transformedContent = event.data.transformed_content
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+
+      // Update the option with transformed content
+      if (transformedContent) {
+        setGeneratedOptions(prev => prev.map(o => {
+          if (o.id === optionId) {
+            return {
+              ...o,
+              content: transformedContent,
+              transformation_history: [...(o.transformation_history || []), { mode, original: option.content }]
+            }
+          }
+          return o
+        }))
+
+        // Update text answer if this option was selected
+        if (selectedGeneratedOption === optionId) {
+          setCurrentAnswer(prev => ({ ...prev, textAnswer: transformedContent }))
+        }
+      }
+    } catch (e) {
+      console.error('Error transforming option:', e)
+      setError('Failed to transform option: ' + e.message)
+    } finally {
+      setTransformingOptionId(null)
+    }
+  }
+
+  // Clear generated options when moving to a new question
+  useEffect(() => {
+    setGeneratedOptions([])
+    setSelectedGeneratedOption(null)
+  }, [currentQuestionIndex])
 
   /**
    * Handle document file selection
@@ -3497,13 +3690,104 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {/* Open-ended answer */}
+                {/* Open-ended answer with Generate Options */}
                 {currentQuestion.type === QUESTION_TYPES.OPEN && (
-                  <div className="answer-input">
+                  <div className="answer-input open-ended-enhanced">
+                    {/* Generate Options Button */}
+                    <div className="generate-options-header">
+                      <button
+                        type="button"
+                        className="btn btn-generate-options"
+                        onClick={() => generateOptionsForQuestion(currentQuestion)}
+                        disabled={isGeneratingOptions}
+                      >
+                        {isGeneratingOptions ? '⏳ Generating...' : '✨ Generate Answer Options'}
+                      </button>
+                      <span className="generate-options-hint">
+                        Based on your notes and earlier responses
+                      </span>
+                    </div>
+
+                    {/* Generated Options */}
+                    {generatedOptions.length > 0 && (
+                      <div className="generated-options-list">
+                        {generatedOptions.map((opt, idx) => {
+                          const isSelected = selectedGeneratedOption === opt.id
+                          const isTransforming = transformingOptionId === opt.id
+
+                          return (
+                            <div
+                              key={opt.id || idx}
+                              className={`generated-option-card ${isSelected ? 'selected' : ''}`}
+                            >
+                              <div
+                                className="option-selector"
+                                onClick={() => selectGeneratedOption(opt)}
+                              >
+                                {isSelected ? '●' : '○'}
+                              </div>
+                              <div className="option-content" onClick={() => selectGeneratedOption(opt)}>
+                                <div className="option-text">{opt.content}</div>
+                                {opt.rationale && (
+                                  <div className="option-rationale">
+                                    <em>Why: {opt.rationale}</em>
+                                  </div>
+                                )}
+                                {opt.transformation_history?.length > 0 && (
+                                  <div className="option-transformed-badge">
+                                    Transformed {opt.transformation_history.length}x
+                                  </div>
+                                )}
+                              </div>
+                              {/* Transform dropdown for this option */}
+                              <div className="option-transform">
+                                <RefineDropdown
+                                  card={{ id: opt.id, content: opt.content }}
+                                  cardType="option"
+                                  onTransform={(cardId, cardType, mode, guidance) =>
+                                    transformGeneratedOption(opt.id, mode, guidance)
+                                  }
+                                  isTransforming={isTransforming}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Loading state */}
+                    {isGeneratingOptions && (
+                      <div className="generating-options-loading">
+                        <span className="loading-spinner" />
+                        Analyzing your notes to generate relevant options...
+                      </div>
+                    )}
+
+                    {/* Divider */}
+                    {generatedOptions.length > 0 && (
+                      <div className="options-divider">
+                        <span>or write your own answer below</span>
+                      </div>
+                    )}
+
+                    {/* Textarea for custom answer */}
                     <textarea
                       value={currentAnswer.textAnswer}
-                      onChange={e => setCurrentAnswer(prev => ({ ...prev, textAnswer: e.target.value }))}
-                      placeholder={currentQuestion.placeholder || 'Type your answer...'}
+                      onChange={e => {
+                        setCurrentAnswer(prev => ({ ...prev, textAnswer: e.target.value }))
+                        // Clear selection if user types something different
+                        if (selectedGeneratedOption) {
+                          const selectedOpt = generatedOptions.find(o => o.id === selectedGeneratedOption)
+                          if (selectedOpt && e.target.value !== selectedOpt.content) {
+                            setSelectedGeneratedOption(null)
+                          }
+                        }
+                      }}
+                      placeholder={generatedOptions.length > 0
+                        ? 'Or type your own answer...'
+                        : (currentQuestion.placeholder || 'Type your answer...')
+                      }
                       rows={currentQuestion.rows || 4}
                       className="wizard-textarea"
                     />

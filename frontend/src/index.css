@@ -6156,3 +6156,162 @@ textarea {
   border-color: rgba(255, 255, 255, 0.25);
   color: #ffffff;
 }
+
+/* =========================================================================
+   GENERATE OPTIONS FOR OPEN-ENDED QUESTIONS
+   ========================================================================= */
+.open-ended-enhanced {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.generate-options-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-generate-options {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-generate-options:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9, #9333ea);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.btn-generate-options:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.generate-options-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+}
+
+.generated-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.generated-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.generated-option-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.generated-option-card.selected {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.5);
+}
+
+.generated-option-card .option-selector {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+
+.generated-option-card.selected .option-selector {
+  color: #a855f7;
+}
+
+.generated-option-card .option-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.generated-option-card .option-text {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
+.generated-option-card .option-rationale {
+  margin-top: 0.5rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+}
+
+.generated-option-card .option-transformed-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(74, 222, 128, 0.15);
+  border-radius: 4px;
+  color: #4ade80;
+  font-size: 0.75rem;
+}
+
+.generated-option-card .option-transform {
+  flex-shrink: 0;
+}
+
+.generating-options-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+.generating-options-loading .loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.options-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.options-divider::before,
+.options-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.options-divider span {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}

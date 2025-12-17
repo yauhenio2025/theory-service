@@ -191,6 +191,18 @@ class TransformCardRequest(BaseModel):
     concept_name: Optional[str] = None
 
 
+class GenerateOptionsRequest(BaseModel):
+    """Request to generate answer options for an open-ended question."""
+    concept_name: str
+    question_id: str
+    question_text: str
+    notes: Optional[str] = None  # User's original notes
+    hypothesis_cards: Optional[List[Dict[str, Any]]] = None  # Validated hypothesis cards
+    differentiation_cards: Optional[List[Dict[str, Any]]] = None  # Differentiation cards
+    previous_answers: Optional[List[Dict[str, Any]]] = None  # Answers to earlier questions
+    notes_understanding: Optional[Dict[str, Any]] = None  # LLM's understanding of notes
+
+
 # =============================================================================
 # STAGE 1 QUESTIONS: Genesis & Problem Space
 # =============================================================================
@@ -3986,5 +3998,156 @@ async def transform_card(request: TransformCardRequest):
 
     return StreamingResponse(
         stream_transformation(),
+        media_type="text/event-stream"
+    )
+
+
+# =============================================================================
+# GENERATE OPTIONS FOR OPEN-ENDED QUESTIONS
+# =============================================================================
+
+GENERATE_OPTIONS_PROMPT = """You are helping a user develop a novel concept called "{concept_name}".
+
+They are now answering this question:
+## Question
+{question_text}
+
+Based on their notes and earlier responses, generate 4-5 SPECIFIC answer options they can choose from.
+
+## Context from User's Notes
+{notes_context}
+
+## Validated Hypothesis Cards (things they've confirmed about their concept)
+{hypothesis_context}
+
+## Differentiation Cards (how their concept differs from others)
+{differentiation_context}
+
+## Previous Answers
+{previous_answers_context}
+
+## Your Task
+Generate 4-5 distinct answer options that:
+1. Are SPECIFIC to their concept (not generic answers that could apply to any concept)
+2. Draw directly from their notes and validated cards
+3. Represent meaningfully different positions/approaches
+4. Are written as complete, articulate answers (not just labels)
+5. Include a brief rationale for each option
+
+Output JSON:
+{{
+  "options": [
+    {{
+      "id": "opt_1",
+      "content": "The specific answer text that addresses the question based on their notes...",
+      "rationale": "Why this option makes sense given their notes and validated cards...",
+      "confidence": "high" | "medium" | "low"
+    }}
+  ]
+}}
+
+Be specific. Use their exact terminology from the notes. Reference concrete ideas they've already articulated."""
+
+
+@router.post("/generate-options")
+async def generate_options(request: GenerateOptionsRequest):
+    """
+    Generate multiple choice options for an open-ended question based on
+    the user's notes, validated cards, and previous answers.
+
+    This allows users to select from AI-generated options rather than
+    writing everything from scratch.
+    """
+    async def stream_options():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing your notes and responses...'})}\n\n"
+
+            # Build context sections
+            notes_context = "No notes provided."
+            if request.notes:
+                # Truncate to reasonable size
+                notes_context = request.notes[:8000]
+
+            hypothesis_context = "No hypothesis cards validated yet."
+            if request.hypothesis_cards:
+                approved = [c for c in request.hypothesis_cards if c.get('status') == 'approved']
+                if approved:
+                    hypothesis_context = "\n".join([
+                        f"- {c.get('content', c.get('text', ''))}"
+                        for c in approved[:10]
+                    ])
+
+            differentiation_context = "No differentiation cards validated yet."
+            if request.differentiation_cards:
+                approved = [c for c in request.differentiation_cards if c.get('status') == 'approved']
+                if approved:
+                    differentiation_context = "\n".join([
+                        f"- NOT {c.get('contrasted_with', '')}: {c.get('difference', c.get('content', ''))}"
+                        for c in approved[:10]
+                    ])
+
+            previous_answers_context = "No previous answers."
+            if request.previous_answers:
+                prev = []
+                for ans in request.previous_answers[:10]:
+                    q = ans.get('question', ans.get('question_id', 'Unknown'))
+                    a = ans.get('answer', ans.get('text_answer', ans.get('selected_options', '')))
+                    if a:
+                        prev.append(f"Q: {q}\nA: {a}")
+                if prev:
+                    previous_answers_context = "\n\n".join(prev)
+
+            prompt = GENERATE_OPTIONS_PROMPT.format(
+                concept_name=request.concept_name,
+                question_text=request.question_text,
+                notes_context=notes_context,
+                hypothesis_context=hypothesis_context,
+                differentiation_context=differentiation_context,
+                previous_answers_context=previous_answers_context
+            )
+
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Generating answer options...'})}\n\n"
+
+            # Use Sonnet for fast option generation
+            with client.messages.stream(
+                model=SONNET_MODEL,
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'text'):
+                            response_text += event.delta.text
+
+            # Parse the JSON response
+            try:
+                # Extract JSON from response (handle markdown code blocks)
+                json_text = response_text
+                if "```json" in json_text:
+                    json_text = json_text.split("```json")[1].split("```")[0]
+                elif "```" in json_text:
+                    json_text = json_text.split("```")[1].split("```")[0]
+
+                result = json.loads(json_text.strip())
+                options = result.get("options", [])
+
+                yield f"data: {json.dumps({'type': 'options', 'data': options})}\n\n"
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse options JSON: {e}")
+                logger.error(f"Raw response: {response_text[:500]}")
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to parse generated options'})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error generating options: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_options(),
         media_type="text/event-stream"
     )
