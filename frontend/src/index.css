@@ -6003,3 +6003,155 @@ textarea {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
 }
+
+/* =========================================================================
+   STAGE NAVIGATION BREADCRUMB
+   ========================================================================= */
+.stage-nav-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  overflow-x: auto;
+  flex-wrap: wrap;
+}
+
+.nav-item-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-connector {
+  color: #484f58;
+  font-size: 0.9rem;
+  margin: 0 0.25rem;
+}
+
+.nav-stage-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #8b949e;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.nav-stage-btn:hover:not(.disabled):not(.current) {
+  background: #21262d;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+
+.nav-stage-btn.current {
+  background: linear-gradient(135deg, #1f6feb, #388bfd);
+  border-color: #388bfd;
+  color: #ffffff;
+  font-weight: 500;
+  cursor: default;
+}
+
+.nav-stage-btn.completed {
+  color: #7ee787;
+  cursor: pointer;
+}
+
+.nav-stage-btn.completed:hover {
+  background: rgba(126, 231, 135, 0.1);
+  border-color: rgba(126, 231, 135, 0.3);
+}
+
+.nav-stage-btn.disabled {
+  color: #484f58;
+  cursor: not-allowed;
+}
+
+.nav-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 50%;
+  background: #30363d;
+}
+
+.nav-stage-btn.current .nav-num {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-stage-btn.completed .nav-num {
+  background: rgba(126, 231, 135, 0.2);
+}
+
+.nav-label {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .nav-label {
+    display: inline;
+  }
+}
+
+/* Save Checkpoint Button */
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-bar-container .progress-bar {
+  flex: 1;
+}
+
+.save-checkpoint-btn {
+  padding: 0.4rem 0.6rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.15s;
+}
+
+.save-checkpoint-btn:hover {
+  background: #30363d;
+  border-color: #8b949e;
+}
+
+.save-checkpoint-btn:active {
+  transform: scale(0.95);
+}
+
+/* Back Button */
+.wizard-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wizard-back-btn:hover {
+  background: #21262d;
+  border-color: #8b949e;
+  color: #c9d1d9;
+}

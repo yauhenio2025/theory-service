@@ -40,6 +40,43 @@ const STAGES = {
   COMPLETE: 'complete'
 }
 
+// Stage navigation - defines the order and labels for breadcrumb navigation
+// Only "checkpoint" stages are navigable (not analyzing/processing stages)
+const STAGE_NAV = [
+  { id: STAGES.NOTES, label: 'Start', shortLabel: '1', navigable: true },
+  { id: STAGES.UNDERSTANDING_VALIDATION, label: 'Validate Understanding', shortLabel: '2', navigable: true },
+  { id: STAGES.DOCUMENT_UPLOAD, label: 'Documents', shortLabel: '3', navigable: true },
+  { id: STAGES.INTERIM_ANALYSIS, label: 'Interim Review', shortLabel: '4', navigable: true },
+  { id: STAGES.STAGE2, label: 'Differentiation', shortLabel: '5', navigable: true },
+  { id: STAGES.IMPLICATIONS_PREVIEW, label: 'Implications', shortLabel: '6', navigable: true },
+  { id: STAGES.STAGE3, label: 'Methodology', shortLabel: '7', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS, label: 'Philosophical Dimensions', shortLabel: '8', navigable: true },
+  { id: STAGES.COMPLETE, label: 'Complete', shortLabel: '9', navigable: true }
+]
+
+// Map any stage to its nearest navigable checkpoint
+const getNavCheckpoint = (stage) => {
+  const checkpointMap = {
+    [STAGES.NOTES]: STAGES.NOTES,
+    [STAGES.ANALYZING_NOTES]: STAGES.NOTES,
+    [STAGES.UNDERSTANDING_VALIDATION]: STAGES.UNDERSTANDING_VALIDATION,
+    [STAGES.DOCUMENT_UPLOAD]: STAGES.DOCUMENT_UPLOAD,
+    [STAGES.ANALYZING_DOCUMENT]: STAGES.DOCUMENT_UPLOAD,
+    [STAGES.STAGE1]: STAGES.DOCUMENT_UPLOAD,  // Stage 1 is now skipped, so map to doc upload
+    [STAGES.ANALYZING_STAGE1]: STAGES.DOCUMENT_UPLOAD,
+    [STAGES.INTERIM_ANALYSIS]: STAGES.INTERIM_ANALYSIS,
+    [STAGES.STAGE2]: STAGES.STAGE2,
+    [STAGES.ANALYZING_STAGE2]: STAGES.STAGE2,
+    [STAGES.IMPLICATIONS_PREVIEW]: STAGES.IMPLICATIONS_PREVIEW,
+    [STAGES.STAGE3]: STAGES.STAGE3,
+    [STAGES.DEEP_COMMITMENTS]: STAGES.DEEP_COMMITMENTS,
+    [STAGES.ANALYZING_COMMITMENTS]: STAGES.DEEP_COMMITMENTS,
+    [STAGES.PROCESSING]: STAGES.DEEP_COMMITMENTS,
+    [STAGES.COMPLETE]: STAGES.COMPLETE
+  }
+  return checkpointMap[stage] || stage
+}
+
 // Question types
 const QUESTION_TYPES = {
   OPEN: 'open_ended',
@@ -520,6 +557,68 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       setSavedSessionInfo(null)
     } catch (e) {
       console.error('Error clearing session:', e)
+    }
+  }
+
+  // Manual save checkpoint
+  const saveCheckpoint = () => {
+    if (!conceptName || stage === STAGES.NOTES) return
+
+    try {
+      const sessionData = {
+        stage,
+        conceptName,
+        notes,
+        stageData,
+        notesUnderstanding,
+        hypothesisCards,
+        differentiationCards,
+        tensionFeedback,
+        uploadedDocuments,
+        dimensionalExtraction,
+        questions,
+        currentQuestionIndex,
+        savedAt: new Date().toISOString(),
+        isManualCheckpoint: true
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData))
+      // Show brief confirmation
+      const originalLabel = progress.label
+      setProgress(prev => ({ ...prev, label: '✓ Checkpoint saved!' }))
+      setTimeout(() => setProgress(prev => ({ ...prev, label: originalLabel })), 2000)
+    } catch (e) {
+      console.error('Error saving checkpoint:', e)
+    }
+  }
+
+  // Navigate to a specific stage
+  const navigateToStage = (targetStage) => {
+    // Don't allow navigation to analyzing/processing stages
+    const navItem = STAGE_NAV.find(n => n.id === targetStage)
+    if (!navItem || !navItem.navigable) return
+
+    // Don't navigate if already at this stage
+    if (getNavCheckpoint(stage) === targetStage) return
+
+    // Allow navigation
+    setStage(targetStage)
+    setError(null)
+    setThinking('')
+  }
+
+  // Get the previous navigable stage for back button
+  const getPreviousStage = () => {
+    const currentCheckpoint = getNavCheckpoint(stage)
+    const currentIndex = STAGE_NAV.findIndex(n => n.id === currentCheckpoint)
+    if (currentIndex <= 0) return null
+    return STAGE_NAV[currentIndex - 1].id
+  }
+
+  // Go back to previous stage
+  const goBack = () => {
+    const prevStage = getPreviousStage()
+    if (prevStage) {
+      navigateToStage(prevStage)
     }
   }
 
@@ -2385,37 +2484,64 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           <button className="wizard-close" onClick={onCancel}>&times;</button>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar with save checkpoint */}
         <div className="wizard-progress">
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${(progress.stage / progress.total) * 100}%` }}
-            />
+          <div className="progress-bar-container">
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{ width: `${(progress.stage / progress.total) * 100}%` }}
+              />
+            </div>
+            {stage !== STAGES.NOTES && conceptName && (
+              <button
+                className="save-checkpoint-btn"
+                onClick={saveCheckpoint}
+                title="Save checkpoint for later"
+              >
+                💾
+              </button>
+            )}
           </div>
           <div className="progress-label">{progress.label}</div>
         </div>
 
-        {/* Stage indicators */}
-        <div className="stage-indicators">
-          <div className={`stage-indicator ${getStageNumber() >= 1 ? 'active' : ''} ${getStageNumber() > 1 ? 'complete' : ''}`}>
-            <span className="indicator-num">1</span>
-            <span className="indicator-label">Genesis</span>
-          </div>
-          <div className="stage-connector" />
-          <div className={`stage-indicator ${getStageNumber() >= 2 ? 'active' : ''} ${getStageNumber() > 2 ? 'complete' : ''}`}>
-            <span className="indicator-num">2</span>
-            <span className="indicator-label">Differentiation</span>
-          </div>
-          <div className="stage-connector" />
-          <div className={`stage-indicator ${getStageNumber() >= 3 ? 'active' : ''}`}>
-            <span className="indicator-num">3</span>
-            <span className="indicator-label">Grounding</span>
-          </div>
+        {/* Stage navigation breadcrumb */}
+        <div className="stage-nav-breadcrumb">
+          {STAGE_NAV.map((navItem, index) => {
+            const currentCheckpoint = getNavCheckpoint(stage)
+            const currentIndex = STAGE_NAV.findIndex(n => n.id === currentCheckpoint)
+            const isCurrent = navItem.id === currentCheckpoint
+            const isCompleted = index < currentIndex
+            const isClickable = navItem.navigable && isCompleted
+            const isDisabled = index > currentIndex
+
+            return (
+              <div key={navItem.id} className="nav-item-wrapper">
+                {index > 0 && <span className="nav-connector">›</span>}
+                <button
+                  className={`nav-stage-btn ${isCurrent ? 'current' : ''} ${isCompleted ? 'completed' : ''} ${isDisabled ? 'disabled' : ''}`}
+                  onClick={() => isClickable && navigateToStage(navItem.id)}
+                  disabled={isDisabled || isCurrent}
+                  title={isClickable ? `Go back to ${navItem.label}` : navItem.label}
+                >
+                  <span className="nav-num">{navItem.shortLabel}</span>
+                  <span className="nav-label">{navItem.label}</span>
+                </button>
+              </div>
+            )
+          })}
         </div>
 
         {/* Main content */}
         <div className="wizard-content">
+          {/* Back button - appears when not on first stage */}
+          {getPreviousStage() && !loading && (
+            <button className="wizard-back-btn" onClick={goBack}>
+              ← Back to {STAGE_NAV.find(n => n.id === getPreviousStage())?.label || 'Previous'}
+            </button>
+          )}
+
           {/* Error display */}
           {error && (
             <div className="wizard-error">
