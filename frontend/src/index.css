@@ -2180,6 +2180,36 @@ header h1 {
   font-style: italic;
 }
 
+/* New tensions from Stage 1 answers (distinct from notes) */
+.tensions-intro {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.tension-card.new-tension {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.tension-badge.new {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.tension-source {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tension-source .source-label {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 /* Gaps List */
 .gaps-list {
   list-style: none;
@@ -6314,6 +6344,159 @@ textarea {
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.8rem;
   white-space: nowrap;
+}
+
+/* ====== MULTI-SELECT GENERATED OPTIONS ====== */
+.generated-options-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 0 0.25rem;
+}
+
+.generated-options-header .options-instruction {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.btn-regenerate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-regenerate:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.btn-regenerate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.generated-options-list.multi-select .generated-option-card .option-selector.checkbox {
+  font-size: 1.2rem;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Selection summary */
+.selection-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(124, 58, 237, 0.1);
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+
+.selection-summary .selection-count {
+  color: #a855f7;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Comment field for generated options */
+.generated-options-comment {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.generated-options-comment label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.generated-options-comment .comment-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+}
+
+.generated-options-comment .comment-textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+/* Custom answer section (collapsed) */
+.custom-answer-section {
+  margin-top: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.custom-answer-section summary {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+
+.custom-answer-section summary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.custom-answer-section[open] summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.custom-answer-section textarea {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* Fallback textarea section */
+.fallback-textarea-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fallback-textarea-section .fallback-note {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Prominent loading state */
+.generating-options-loading.prominent {
+  padding: 2rem;
+  justify-content: center;
+  background: rgba(124, 58, 237, 0.05);
+  border: 1px dashed rgba(124, 58, 237, 0.3);
+  border-radius: 12px;
+  flex-direction: column;
+  text-align: center;
+}
+
+.generating-options-loading.prominent .loading-spinner {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0.5rem;
 }
 
 /* ====== GENEALOGY WIZARD STAGE ====== */

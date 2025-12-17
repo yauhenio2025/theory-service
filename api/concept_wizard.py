@@ -925,26 +925,34 @@ INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a 
 The user has completed Stage 1 questions about their concept "{concept_name}". Your task is to:
 1. Synthesize their answers into an interim understanding
 2. Identify key commitments they've made
-3. Detect potential tensions (which might become productive dialectics)
+3. Detect NEW potential tensions DIFFERENT from those already identified (see below)
 4. Identify gaps that need addressing in Stage 2
 
 ## User's Stage 1 Answers:
 {stage1_answers}
 
-## Dialectics Marked by User:
+## Dialectics Marked by User During Stage 1:
 {marked_dialectics}
+
+## IMPORTANT - Tensions Already Identified from Notes Analysis (DO NOT DUPLICATE):
+{already_identified_tensions}
+
+The tensions listed above were already identified during the initial notes analysis and validated by the user.
+You must identify NEW tensions that emerged from the Stage 1 answers - tensions that are DIFFERENT from those already listed.
+Look for tensions that arise specifically from the ANSWERS provided, not from the original notes.
 
 Produce a JSON response with:
 {{
     "interim_analysis": {{
         "understanding_summary": "Based on your answers, I understand that [concept_name] is... (2-3 sentences)",
         "key_commitments": ["List 3-5 core positions the user has taken"],
-        "tensions_detected": [
+        "new_tensions_from_answers": [
             {{
-                "description": "Brief description of the tension",
+                "description": "Brief description of this NEW tension (different from those in notes)",
                 "pole_a": "One side of the tension",
                 "pole_b": "The opposing side",
-                "marked_as_dialectic": true/false
+                "marked_as_dialectic": true/false,
+                "source": "Which Stage 1 answer(s) revealed this tension"
             }}
         ],
         "gaps_identified": ["Aspects that need more exploration in Stage 2"],
@@ -952,7 +960,8 @@ Produce a JSON response with:
     }}
 }}
 
-Be specific to what the user actually said. Don't fabricate or assume beyond their answers."""
+Be specific to what the user actually said. Don't fabricate or assume beyond their answers.
+Remember: NEW tensions only - do not repeat tensions from the "Already Identified" list above."""
 
 
 STAGE2_GENERATION_PROMPT = """Based on the user's Stage 1 answers about their novel concept "{concept_name}":
@@ -1057,6 +1066,8 @@ class Stage1AnswersRequest(BaseModel):
     notes: Optional[str] = None
     answers: List[AnswerWithMeta]
     source_id: Optional[int] = None
+    # Tensions already identified from notes preprocessing (Validate Understanding stage)
+    approved_tensions_from_notes: Optional[List[str]] = None
 
 
 class Stage2AnswersRequest(BaseModel):
@@ -3061,11 +3072,19 @@ async def analyze_stage1(request: Stage1AnswersRequest):
         for d in marked_dialectics
     ]) if marked_dialectics else "None marked"
 
+    # Format already-identified tensions from notes preprocessing
+    already_identified = "None - this is the first time identifying tensions."
+    if request.approved_tensions_from_notes and len(request.approved_tensions_from_notes) > 0:
+        already_identified = "\n".join([
+            f"- {tension}" for tension in request.approved_tensions_from_notes
+        ])
+
     # First LLM call: Generate interim analysis
     interim_prompt = INTERIM_ANALYSIS_PROMPT.format(
         concept_name=request.concept_name,
         stage1_answers=stage1_text,
-        marked_dialectics=dialectics_text
+        marked_dialectics=dialectics_text,
+        already_identified_tensions=already_identified
     )
 
     # Second LLM call: Generate Stage 2 questions (will use interim analysis)
