@@ -174,6 +174,34 @@ class DeepCommitmentsRequest(BaseModel):
     source_id: Optional[int] = None
 
 
+class Phase2QuestionsRequest(BaseModel):
+    """Request to generate Phase 2 follow-up questions based on Phase 1 answers."""
+    concept_name: str
+    notes_summary: Optional[str] = None
+    phase1_questions: List[Dict[str, Any]]  # Questions from Phase 1
+    phase1_answers: Dict[str, Any]  # Answers to Phase 1 questions
+    stage1_answers: Optional[List[Dict[str, Any]]] = None
+    stage2_answers: Optional[List[Dict[str, Any]]] = None
+    stage3_answers: Optional[List[Dict[str, Any]]] = None
+    genealogy: Optional[List[Dict[str, Any]]] = None  # Approved genealogy
+    dimensional_extraction: Optional[Dict[str, Any]] = None
+
+
+class Phase3QuestionsRequest(BaseModel):
+    """Request to generate Phase 3 synthesis/verification questions."""
+    concept_name: str
+    notes_summary: Optional[str] = None
+    phase1_questions: List[Dict[str, Any]]
+    phase1_answers: Dict[str, Any]
+    phase2_questions: List[Dict[str, Any]]
+    phase2_answers: Dict[str, Any]
+    stage1_answers: Optional[List[Dict[str, Any]]] = None
+    stage2_answers: Optional[List[Dict[str, Any]]] = None
+    stage3_answers: Optional[List[Dict[str, Any]]] = None
+    genealogy: Optional[List[Dict[str, Any]]] = None
+    dimensional_extraction: Optional[Dict[str, Any]] = None
+
+
 class DocumentAnalysisRequest(BaseModel):
     """Request to analyze an uploaded document."""
     concept_name: str
@@ -4339,5 +4367,308 @@ async def generate_genealogy(request: GenerateGenealogyRequest):
 
     return StreamingResponse(
         stream_genealogy(),
+        media_type="text/event-stream"
+    )
+
+
+# =============================================================================
+# PHASE 2: TARGETED FOLLOW-UP QUESTIONS
+# =============================================================================
+
+GENERATE_PHASE2_PROMPT = """You are Claude helping a user sharpen their philosophical commitments for the concept "{concept_name}".
+
+The user just completed Phase 1 of the philosophical interrogation. You have their answers.
+Your job: Generate TARGETED FOLLOW-UP questions based on their Phase 1 answers.
+
+## ACCUMULATED CONTEXT:
+Notes Summary: {notes_summary}
+Genealogy (approved influences): {genealogy}
+Earlier Stage Answers: {stage_answers}
+
+## PHASE 1 QUESTIONS AND ANSWERS:
+{phase1_qa}
+
+## YOUR TASK:
+Analyze each Phase 1 answer and identify:
+1. Answers that need clarification or sharpening
+2. Answers that reveal tensions with other commitments
+3. Answers where "None of these" was selected (need custom exploration)
+4. Implicit commitments that deserve explicit questioning
+5. Gaps in the dimensional coverage
+
+Generate 4-8 FOLLOW-UP questions that:
+- Explicitly reference and build on their Phase 1 answers
+- Are SHARPER and more SPECIFIC than Phase 1
+- Probe tensions, clarify ambiguities, fill gaps
+- Use concrete options derived from the user's context
+
+For each question include:
+- `follow_up_to`: Brief description of which Phase 1 answer this follows up on
+- `rationale`: Why this follow-up is needed
+
+Return as JSON:
+{{
+  "questions": [
+    {{
+      "id": "p2_q1",
+      "dimension": "quinean",
+      "follow_up_to": "They said X about inferential commitments, but...",
+      "question": "Specific follow-up question text?",
+      "rationale": "This matters because...",
+      "options": [
+        {{"value": "opt_a", "label": "Sharp option A", "description": "What this means"}},
+        {{"value": "opt_b", "label": "Sharp option B", "description": "What this means"}},
+        {{"value": "opt_c", "label": "Sharp option C", "description": "What this means"}}
+      ]
+    }}
+  ],
+  "generation_note": "Summary of what Phase 2 is probing"
+}}"""
+
+
+@router.post("/generate-phase2-questions")
+async def generate_phase2_questions(request: Phase2QuestionsRequest):
+    """
+    Generate Phase 2 follow-up questions based on Phase 1 answers.
+    These questions are sharper and more targeted based on the user's specific responses.
+    """
+    async def stream_phase2():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'phase2_generation'})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing Phase 1 answers...'})}\n\n"
+
+            # Build Phase 1 Q&A context
+            phase1_qa_lines = []
+            for q in request.phase1_questions:
+                q_id = q.get("id", "unknown")
+                q_text = q.get("question", "")
+                q_dim = q.get("dimension", "")
+                answer = request.phase1_answers.get(q_id, {})
+                selected = answer.get("selected", "(no answer)")
+                comment = answer.get("comment", "")
+
+                phase1_qa_lines.append(f"Q [{q_dim}]: {q_text}")
+                phase1_qa_lines.append(f"A: {selected}")
+                if comment:
+                    phase1_qa_lines.append(f"Comment: {comment}")
+                phase1_qa_lines.append("")
+
+            # Build stage answers context
+            stage_answers = []
+            if request.stage1_answers:
+                stage_answers.extend([f"Stage 1: {json.dumps(a)}" for a in request.stage1_answers[:3]])
+            if request.stage2_answers:
+                stage_answers.extend([f"Stage 2: {json.dumps(a)}" for a in request.stage2_answers[:3]])
+            if request.stage3_answers:
+                stage_answers.extend([f"Stage 3: {json.dumps(a)}" for a in request.stage3_answers[:3]])
+
+            prompt = GENERATE_PHASE2_PROMPT.format(
+                concept_name=request.concept_name,
+                notes_summary=request.notes_summary or "(No notes)",
+                genealogy=json.dumps(request.genealogy or [], indent=2),
+                stage_answers="\\n".join(stage_answers) if stage_answers else "(No earlier answers)",
+                phase1_qa="\\n".join(phase1_qa_lines)
+            )
+
+            # Use Sonnet for speed
+            with client.messages.stream(
+                model=SONNET_MODEL,
+                max_tokens=8192,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 8000
+                },
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                        elif hasattr(event.delta, 'text'):
+                            response_text += event.delta.text
+
+            # Parse JSON response
+            try:
+                json_text = response_text
+                if "```json" in json_text:
+                    json_text = json_text.split("```json")[1].split("```")[0]
+                elif "```" in json_text:
+                    json_text = json_text.split("```")[1].split("```")[0]
+
+                result = json.loads(json_text.strip())
+
+                yield f"data: {json.dumps({'type': 'complete', 'data': result})}\n\n"
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse Phase 2 JSON: {e}")
+                logger.error(f"Raw response: {response_text[:500]}")
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to parse follow-up questions'})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error generating Phase 2 questions: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_phase2(),
+        media_type="text/event-stream"
+    )
+
+
+# =============================================================================
+# PHASE 3: SYNTHESIS AND VERIFICATION QUESTIONS
+# =============================================================================
+
+GENERATE_PHASE3_PROMPT = """You are Claude helping a user finalize the philosophical commitments of their concept "{concept_name}".
+
+The user has completed Phases 1 and 2 of the philosophical interrogation. You have all their answers.
+Your job: Generate FINAL SYNTHESIS questions that verify coherence and resolve any remaining tensions.
+
+## ACCUMULATED CONTEXT:
+Notes Summary: {notes_summary}
+Genealogy (approved influences): {genealogy}
+
+## PHASE 1 QUESTIONS AND ANSWERS:
+{phase1_qa}
+
+## PHASE 2 QUESTIONS AND ANSWERS:
+{phase2_qa}
+
+## YOUR TASK:
+Generate 3-5 FINAL questions that:
+1. VERIFY key commitments by presenting them back for confirmation
+2. RESOLVE any remaining tensions between different answers
+3. SYNTHESIZE across dimensions to check for coherence
+4. Ask about edge cases or limiting conditions
+5. Confirm the user's overall philosophical stance
+
+Each question should:
+- Reference specific answers from P1/P2
+- Present a synthesis or verification check
+- Have 2-4 sharp options that crystallize different stances
+
+Include for each question:
+- `synthesis_context`: What aspects of their answers this synthesizes or verifies
+
+Return as JSON:
+{{
+  "questions": [
+    {{
+      "id": "p3_q1",
+      "dimension": "synthesis",
+      "synthesis_context": "Your answers suggest X (from Quinean) but also Y (from Deleuzian)...",
+      "question": "Which better captures your overall position?",
+      "rationale": "Resolving this tension will clarify...",
+      "options": [
+        {{"value": "synthesis_a", "label": "Position A (emphasizing X)", "description": "This means..."}},
+        {{"value": "synthesis_b", "label": "Position B (emphasizing Y)", "description": "This means..."}},
+        {{"value": "synthesis_c", "label": "Both can coexist because...", "description": "Explain how"}}
+      ]
+    }}
+  ],
+  "generation_note": "Summary of what Phase 3 synthesizes"
+}}"""
+
+
+@router.post("/generate-phase3-questions")
+async def generate_phase3_questions(request: Phase3QuestionsRequest):
+    """
+    Generate Phase 3 synthesis/verification questions.
+    These questions verify coherence and resolve tensions from Phases 1 and 2.
+    """
+    async def stream_phase3():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'phase3_generation'})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Synthesizing all answers...'})}\n\n"
+
+            # Build Phase 1 Q&A context
+            phase1_qa_lines = []
+            for q in request.phase1_questions:
+                q_id = q.get("id", "unknown")
+                q_text = q.get("question", "")
+                q_dim = q.get("dimension", "")
+                answer = request.phase1_answers.get(q_id, {})
+                selected = answer.get("selected", "(no answer)")
+                comment = answer.get("comment", "")
+
+                phase1_qa_lines.append(f"Q [{q_dim}]: {q_text}")
+                phase1_qa_lines.append(f"A: {selected}")
+                if comment:
+                    phase1_qa_lines.append(f"Comment: {comment}")
+                phase1_qa_lines.append("")
+
+            # Build Phase 2 Q&A context
+            phase2_qa_lines = []
+            for q in request.phase2_questions:
+                q_id = q.get("id", "unknown")
+                q_text = q.get("question", "")
+                q_dim = q.get("dimension", "")
+                answer = request.phase2_answers.get(q_id, {})
+                selected = answer.get("selected", "(no answer)")
+                comment = answer.get("comment", "")
+
+                phase2_qa_lines.append(f"Q [{q_dim}]: {q_text}")
+                phase2_qa_lines.append(f"A: {selected}")
+                if comment:
+                    phase2_qa_lines.append(f"Comment: {comment}")
+                phase2_qa_lines.append("")
+
+            prompt = GENERATE_PHASE3_PROMPT.format(
+                concept_name=request.concept_name,
+                notes_summary=request.notes_summary or "(No notes)",
+                genealogy=json.dumps(request.genealogy or [], indent=2),
+                phase1_qa="\\n".join(phase1_qa_lines),
+                phase2_qa="\\n".join(phase2_qa_lines)
+            )
+
+            # Use Sonnet for speed
+            with client.messages.stream(
+                model=SONNET_MODEL,
+                max_tokens=8192,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 8000
+                },
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'thinking'):
+                            yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                        elif hasattr(event.delta, 'text'):
+                            response_text += event.delta.text
+
+            # Parse JSON response
+            try:
+                json_text = response_text
+                if "```json" in json_text:
+                    json_text = json_text.split("```json")[1].split("```")[0]
+                elif "```" in json_text:
+                    json_text = json_text.split("```")[1].split("```")[0]
+
+                result = json.loads(json_text.strip())
+
+                yield f"data: {json.dumps({'type': 'complete', 'data': result})}\n\n"
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse Phase 3 JSON: {e}")
+                logger.error(f"Raw response: {response_text[:500]}")
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to parse synthesis questions'})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error generating Phase 3 questions: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_phase3(),
         media_type="text/event-stream"
     )

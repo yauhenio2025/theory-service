@@ -6618,3 +6618,58 @@ textarea {
   display: flex;
   justify-content: flex-end;
 }
+
+/* ====== PHILOSOPHICAL PHASES STYLING ====== */
+
+/* Phase-specific progress bar colors */
+.commitment-progress .progress-bar.phase2 .progress-fill {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.commitment-progress .progress-bar.phase3 .progress-fill {
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+}
+
+/* Phase 2 card styling */
+.commitment-question-card.phase2 {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(145deg, #1f1a12 0%, #161310 100%);
+}
+
+/* Phase 3 card styling */
+.commitment-question-card.phase3 {
+  border-left: 4px solid #8b5cf6;
+  background: linear-gradient(145deg, #1a1625 0%, #141018 100%);
+}
+
+/* Follow-up context (Phase 2) */
+.follow-up-context {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Synthesis context (Phase 3) */
+.synthesis-context {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+}
+
+/* Deep commitments stage phase header colors */
+.deep-commitments-stage.phase2 .stage-header h3 {
+  color: #f59e0b;
+}
+
+.deep-commitments-stage.phase3 .stage-header h3 {
+  color: #a78bfa;
+}

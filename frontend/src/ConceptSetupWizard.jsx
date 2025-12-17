@@ -36,8 +36,12 @@ const STAGES = {
   STAGE3: 'stage3',
   GENEALOGY: 'genealogy',  // Intellectual genealogy: influences, ancestors, debates
   GENERATING_GENEALOGY: 'generating_genealogy',  // Generating genealogy hypotheses
-  DEEP_COMMITMENTS: 'deep_commitments',  // All 9 philosophical dimensions MC questions
-  ANALYZING_COMMITMENTS: 'analyzing_commitments',  // Generating deep commitment questions
+  DEEP_COMMITMENTS: 'deep_commitments',  // Phase 1: Initial 9 philosophical dimensions questions
+  ANALYZING_COMMITMENTS: 'analyzing_commitments',  // Generating Phase 1 questions
+  GENERATING_PHASE2: 'generating_phase2',  // Generating Phase 2 follow-up questions
+  DEEP_COMMITMENTS_PHASE2: 'deep_commitments_phase2',  // Phase 2: Targeted follow-ups
+  GENERATING_PHASE3: 'generating_phase3',  // Generating Phase 3 synthesis questions
+  DEEP_COMMITMENTS_PHASE3: 'deep_commitments_phase3',  // Phase 3: Final verification
   PROCESSING: 'processing',
   COMPLETE: 'complete'
 }
@@ -53,7 +57,9 @@ const STAGE_NAV = [
   { id: STAGES.IMPLICATIONS_PREVIEW, label: 'Implications', shortLabel: '6', navigable: true },
   { id: STAGES.STAGE3, label: 'Methodology', shortLabel: '7', navigable: true },
   { id: STAGES.GENEALOGY, label: 'Genealogy', shortLabel: '8', navigable: true },
-  { id: STAGES.DEEP_COMMITMENTS, label: 'Philosophical Dimensions', shortLabel: '9', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS, label: 'Philosophy P1', shortLabel: '9a', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS_PHASE2, label: 'Philosophy P2', shortLabel: '9b', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS_PHASE3, label: 'Philosophy P3', shortLabel: '9c', navigable: true },
   { id: STAGES.COMPLETE, label: 'Complete', shortLabel: '10', navigable: true }
 ]
 
@@ -76,7 +82,11 @@ const getNavCheckpoint = (stage) => {
     [STAGES.GENERATING_GENEALOGY]: STAGES.GENEALOGY,
     [STAGES.DEEP_COMMITMENTS]: STAGES.DEEP_COMMITMENTS,
     [STAGES.ANALYZING_COMMITMENTS]: STAGES.DEEP_COMMITMENTS,
-    [STAGES.PROCESSING]: STAGES.DEEP_COMMITMENTS,
+    [STAGES.GENERATING_PHASE2]: STAGES.DEEP_COMMITMENTS_PHASE2,
+    [STAGES.DEEP_COMMITMENTS_PHASE2]: STAGES.DEEP_COMMITMENTS_PHASE2,
+    [STAGES.GENERATING_PHASE3]: STAGES.DEEP_COMMITMENTS_PHASE3,
+    [STAGES.DEEP_COMMITMENTS_PHASE3]: STAGES.DEEP_COMMITMENTS_PHASE3,
+    [STAGES.PROCESSING]: STAGES.DEEP_COMMITMENTS_PHASE3,
     [STAGES.COMPLETE]: STAGES.COMPLETE
   }
   return checkpointMap[stage] || stage
@@ -453,11 +463,23 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [documentAnalysisProgress, setDocumentAnalysisProgress] = useState(null)
   const [dimensionalExtraction, setDimensionalExtraction] = useState(null)  // Combined 9-dim data from docs
 
-  // Deep Commitments state (9 philosophical dimensions)
+  // Deep Commitments state (9 philosophical dimensions) - Phase 1
   const [deepCommitmentQuestions, setDeepCommitmentQuestions] = useState([])
   const [deepCommitmentAnswers, setDeepCommitmentAnswers] = useState({})  // {question_id: {selected, comment}}
   const [currentCommitmentIndex, setCurrentCommitmentIndex] = useState(0)
   const [isGeneratingCommitments, setIsGeneratingCommitments] = useState(false)
+
+  // Phase 2: Follow-up questions based on Phase 1 answers
+  const [phase2Questions, setPhase2Questions] = useState([])
+  const [phase2Answers, setPhase2Answers] = useState({})
+  const [currentPhase2Index, setCurrentPhase2Index] = useState(0)
+  const [isGeneratingPhase2, setIsGeneratingPhase2] = useState(false)
+
+  // Phase 3: Final verification/synthesis questions
+  const [phase3Questions, setPhase3Questions] = useState([])
+  const [phase3Answers, setPhase3Answers] = useState({})
+  const [currentPhase3Index, setCurrentPhase3Index] = useState(0)
+  const [isGeneratingPhase3, setIsGeneratingPhase3] = useState(false)
 
   // Card-based review state (new flow: hypothesis, genealogy, differentiation cards)
   const [hypothesisCards, setHypothesisCards] = useState([])  // From notes analysis
@@ -791,7 +813,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        setError(err.message)
+        const errorMsg = typeof err === 'string' ? err : (err?.message || JSON.stringify(err))
+        setError(errorMsg)
         console.error('Stream error:', err)
       }
     } finally {
@@ -2143,19 +2166,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   }
 
   /**
-   * Move to next commitment question or finish
+   * Move to next commitment question (Phase 1) or go to Phase 2
    */
   const nextCommitmentQuestion = () => {
     if (currentCommitmentIndex < deepCommitmentQuestions.length - 1) {
       setCurrentCommitmentIndex(prev => prev + 1)
     } else {
-      // Done with all commitment questions - proceed to finalization
-      finalizeWithCommitments()
+      // Done with Phase 1 - generate Phase 2 questions
+      generatePhase2Questions()
     }
   }
 
   /**
-   * Move to previous commitment question
+   * Move to previous commitment question (Phase 1)
    */
   const prevCommitmentQuestion = () => {
     if (currentCommitmentIndex > 0) {
@@ -2164,12 +2187,246 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   }
 
   /**
-   * Finalize concept including deep commitment answers
+   * Generate Phase 2 follow-up questions based on Phase 1 answers
+   */
+  const generatePhase2Questions = async () => {
+    setIsGeneratingPhase2(true)
+    setStage(STAGES.GENERATING_PHASE2)
+    setProgress({ stage: 10, total: 13, label: 'Generating targeted follow-up questions...' })
+    setThinking('')
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-phase2-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_name: conceptName,
+          notes_summary: notesUnderstanding?.summary || notes,
+          phase1_questions: deepCommitmentQuestions,
+          phase1_answers: deepCommitmentAnswers,
+          stage1_answers: stageData.stage1?.answers || [],
+          stage2_answers: stageData.stage2?.answers || [],
+          stage3_answers: stageData.stage3?.answers || [],
+          genealogy: stageData.genealogy || genealogyHypotheses.filter(h => h.status === 'approved'),
+          dimensional_extraction: dimensionalExtraction
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.statusText}`)
+      }
+
+      // Handle SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let questionsData = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.type === 'thinking') {
+                setThinking(prev => prev + parsed.content)
+              } else if (parsed.type === 'complete') {
+                questionsData = parsed.data
+              } else if (parsed.type === 'error') {
+                throw new Error(parsed.message)
+              }
+            } catch (e) {
+              if (e.message.includes('Request failed')) throw e
+            }
+          }
+        }
+      }
+
+      if (questionsData?.questions && questionsData.questions.length > 0) {
+        setPhase2Questions(questionsData.questions)
+        setCurrentPhase2Index(0)
+        setProgress({ stage: 10, total: 13, label: 'Phase 2: Targeted Follow-ups' })
+        setStage(STAGES.DEEP_COMMITMENTS_PHASE2)
+      } else {
+        // No Phase 2 questions generated, go to Phase 3
+        generatePhase3Questions()
+      }
+
+    } catch (error) {
+      const errorMsg = typeof error === 'string' ? error : (error?.message || JSON.stringify(error))
+      setError(errorMsg)
+      setStage(STAGES.DEEP_COMMITMENTS)  // Go back to Phase 1 on error
+    } finally {
+      setIsGeneratingPhase2(false)
+      setThinking('')
+    }
+  }
+
+  /**
+   * Answer a Phase 2 question
+   */
+  const answerPhase2Question = (questionId, selected, comment = '') => {
+    setPhase2Answers(prev => ({
+      ...prev,
+      [questionId]: { selected, comment }
+    }))
+  }
+
+  /**
+   * Move to next Phase 2 question or go to Phase 3
+   */
+  const nextPhase2Question = () => {
+    if (currentPhase2Index < phase2Questions.length - 1) {
+      setCurrentPhase2Index(prev => prev + 1)
+    } else {
+      // Done with Phase 2 - generate Phase 3 questions
+      generatePhase3Questions()
+    }
+  }
+
+  /**
+   * Move to previous Phase 2 question
+   */
+  const prevPhase2Question = () => {
+    if (currentPhase2Index > 0) {
+      setCurrentPhase2Index(prev => prev - 1)
+    }
+  }
+
+  /**
+   * Generate Phase 3 synthesis/verification questions
+   */
+  const generatePhase3Questions = async () => {
+    setIsGeneratingPhase3(true)
+    setStage(STAGES.GENERATING_PHASE3)
+    setProgress({ stage: 11, total: 13, label: 'Generating final synthesis questions...' })
+    setThinking('')
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-phase3-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_name: conceptName,
+          notes_summary: notesUnderstanding?.summary || notes,
+          phase1_questions: deepCommitmentQuestions,
+          phase1_answers: deepCommitmentAnswers,
+          phase2_questions: phase2Questions,
+          phase2_answers: phase2Answers,
+          stage1_answers: stageData.stage1?.answers || [],
+          stage2_answers: stageData.stage2?.answers || [],
+          stage3_answers: stageData.stage3?.answers || [],
+          genealogy: stageData.genealogy || genealogyHypotheses.filter(h => h.status === 'approved'),
+          dimensional_extraction: dimensionalExtraction
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.statusText}`)
+      }
+
+      // Handle SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let questionsData = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.type === 'thinking') {
+                setThinking(prev => prev + parsed.content)
+              } else if (parsed.type === 'complete') {
+                questionsData = parsed.data
+              } else if (parsed.type === 'error') {
+                throw new Error(parsed.message)
+              }
+            } catch (e) {
+              if (e.message.includes('Request failed')) throw e
+            }
+          }
+        }
+      }
+
+      if (questionsData?.questions && questionsData.questions.length > 0) {
+        setPhase3Questions(questionsData.questions)
+        setCurrentPhase3Index(0)
+        setProgress({ stage: 11, total: 13, label: 'Phase 3: Final Synthesis' })
+        setStage(STAGES.DEEP_COMMITMENTS_PHASE3)
+      } else {
+        // No Phase 3 questions generated, proceed to finalization
+        finalizeWithCommitments()
+      }
+
+    } catch (error) {
+      const errorMsg = typeof error === 'string' ? error : (error?.message || JSON.stringify(error))
+      setError(errorMsg)
+      setStage(STAGES.DEEP_COMMITMENTS_PHASE2)  // Go back to Phase 2 on error
+    } finally {
+      setIsGeneratingPhase3(false)
+      setThinking('')
+    }
+  }
+
+  /**
+   * Answer a Phase 3 question
+   */
+  const answerPhase3Question = (questionId, selected, comment = '') => {
+    setPhase3Answers(prev => ({
+      ...prev,
+      [questionId]: { selected, comment }
+    }))
+  }
+
+  /**
+   * Move to next Phase 3 question or finalize
+   */
+  const nextPhase3Question = () => {
+    if (currentPhase3Index < phase3Questions.length - 1) {
+      setCurrentPhase3Index(prev => prev + 1)
+    } else {
+      // Done with all phases - finalize
+      finalizeWithCommitments()
+    }
+  }
+
+  /**
+   * Move to previous Phase 3 question
+   */
+  const prevPhase3Question = () => {
+    if (currentPhase3Index > 0) {
+      setCurrentPhase3Index(prev => prev - 1)
+    }
+  }
+
+  /**
+   * Finalize concept including all philosophical commitment answers
    */
   const finalizeWithCommitments = async () => {
     setStage(STAGES.PROCESSING)
-    setProgress({ stage: 10, total: 11, label: 'Final synthesis with all dimensions...' })
-    // Pass Stage 3 answers and deep commitment answers to finalization
+    setProgress({ stage: 12, total: 13, label: 'Final synthesis with all dimensions...' })
+    // Pass all answers to finalization
     await finalizeConceptWorkflowWithCommitments(stageData.stage3?.answers || [])
   }
 
@@ -2219,7 +2476,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           stage1: stageData.stage1.answers,
           stage2: stageData.stage2.answers,
           stage3: stage3Answers,
-          deep_commitments: deepCommitmentAnswers  // Include deep commitment answers
+          deep_commitments_phase1: deepCommitmentAnswers,
+          deep_commitments_phase2: phase2Answers,
+          deep_commitments_phase3: phase3Answers
         },
         interim_analysis: interimAnalysis,
         dialectics: dialectics,
@@ -2237,7 +2496,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           setConceptData(data.concept)
           // Populate editable draft from concept data, including validated data
           populateEditableDraft(data.concept, validatedCases, validatedMarkers, approvedTensions)
-          setProgress({ stage: 11, total: 11, label: 'Complete!' })
+          setProgress({ stage: 13, total: 13, label: 'Complete!' })
           setStage(STAGES.COMPLETE)
         }
       }
@@ -2885,7 +3144,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           {/* Error display */}
           {error && (
             <div className="wizard-error">
-              {error}
+              {typeof error === 'string' ? error : (error?.message || JSON.stringify(error))}
               <button onClick={() => setError(null)}>&times;</button>
             </div>
           )}
@@ -4481,7 +4740,284 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   className="btn btn-primary"
                   onClick={nextCommitmentQuestion}
                 >
-                  {currentCommitmentIndex < deepCommitmentQuestions.length - 1 ? 'Next →' : 'Finish & Create Concept'}
+                  {currentCommitmentIndex < deepCommitmentQuestions.length - 1 ? 'Next →' : 'Continue to Phase 2 →'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Generating Phase 2 Questions */}
+          {stage === STAGES.GENERATING_PHASE2 && (
+            <div className="wizard-stage">
+              <div className="stage-header">
+                <h3>Generating Phase 2 Questions...</h3>
+                <p>Analyzing your Phase 1 answers to generate targeted follow-up questions.</p>
+              </div>
+              <div className="thinking-panel">
+                <div className="thinking-header">
+                  <span className="thinking-indicator">
+                    <span className="pulse"></span>
+                    Generating targeted questions...
+                  </span>
+                </div>
+                {thinking && (
+                  <div className="thinking-content" ref={thinkingRef}>
+                    {thinking}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Phase 2 - Targeted Follow-up Questions */}
+          {stage === STAGES.DEEP_COMMITMENTS_PHASE2 && phase2Questions.length > 0 && (
+            <div className="wizard-stage deep-commitments-stage phase2">
+              <div className="stage-header">
+                <h3>🎯 Phase 2: Targeted Follow-ups</h3>
+                <p>
+                  Based on your Phase 1 answers, here are sharper questions to fill gaps
+                  and probe specific commitments.
+                </p>
+              </div>
+
+              <div className="commitment-progress">
+                <div className="progress-bar phase2">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${((currentPhase2Index + 1) / phase2Questions.length) * 100}%` }}
+                  />
+                </div>
+                <span className="progress-text">
+                  Phase 2: Question {currentPhase2Index + 1} of {phase2Questions.length}
+                </span>
+              </div>
+
+              {(() => {
+                const currentQ = phase2Questions[currentPhase2Index]
+                if (!currentQ) return null
+
+                const currentAnswer = phase2Answers[currentQ.id] || {}
+
+                return (
+                  <div className="commitment-question-card phase2">
+                    {currentQ.dimension && (
+                      <div className="question-dimension-badge" data-dimension={currentQ.dimension}>
+                        {currentQ.dimension?.charAt(0).toUpperCase() + currentQ.dimension?.slice(1)}
+                      </div>
+                    )}
+                    {currentQ.follow_up_to && (
+                      <div className="follow-up-context">
+                        Following up on your answer: "{currentQ.follow_up_to}"
+                      </div>
+                    )}
+
+                    <h4 className="commitment-question-text">{currentQ.question}</h4>
+
+                    {currentQ.rationale && (
+                      <p className="commitment-rationale">{currentQ.rationale}</p>
+                    )}
+
+                    <div className="commitment-options">
+                      {currentQ.options?.map((opt, i) => (
+                        <label
+                          key={opt.value || i}
+                          className={`commitment-option ${currentAnswer.selected === opt.value ? 'selected' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name={`phase2_${currentQ.id}`}
+                            value={opt.value}
+                            checked={currentAnswer.selected === opt.value}
+                            onChange={() => answerPhase2Question(currentQ.id, opt.value, currentAnswer.comment)}
+                          />
+                          <span className="option-content">
+                            <span className="option-label">{opt.label}</span>
+                            {opt.description && <span className="option-desc">{opt.description}</span>}
+                          </span>
+                        </label>
+                      ))}
+
+                      <label
+                        className={`commitment-option none-option ${currentAnswer.selected === 'none' ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name={`phase2_${currentQ.id}`}
+                          value="none"
+                          checked={currentAnswer.selected === 'none'}
+                          onChange={() => answerPhase2Question(currentQ.id, 'none', currentAnswer.comment)}
+                        />
+                        <span className="option-content">
+                          <span className="option-label">None of these / Other</span>
+                          <span className="option-desc">I'll add a comment below</span>
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="commitment-comment">
+                      <label>Add a comment (optional)</label>
+                      <textarea
+                        placeholder="Elaborate, qualify, or provide an alternative..."
+                        value={currentAnswer.comment || ''}
+                        onChange={(e) => answerPhase2Question(currentQ.id, currentAnswer.selected, e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
+
+              <div className="wizard-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={prevPhase2Question}
+                  disabled={currentPhase2Index === 0}
+                >
+                  ← Previous
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={nextPhase2Question}
+                >
+                  {currentPhase2Index < phase2Questions.length - 1 ? 'Next →' : 'Continue to Phase 3 →'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Generating Phase 3 Questions */}
+          {stage === STAGES.GENERATING_PHASE3 && (
+            <div className="wizard-stage">
+              <div className="stage-header">
+                <h3>Generating Phase 3 Questions...</h3>
+                <p>Synthesizing final verification questions based on all your answers.</p>
+              </div>
+              <div className="thinking-panel">
+                <div className="thinking-header">
+                  <span className="thinking-indicator">
+                    <span className="pulse"></span>
+                    Generating synthesis questions...
+                  </span>
+                </div>
+                {thinking && (
+                  <div className="thinking-content" ref={thinkingRef}>
+                    {thinking}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STAGE: Phase 3 - Final Synthesis Questions */}
+          {stage === STAGES.DEEP_COMMITMENTS_PHASE3 && phase3Questions.length > 0 && (
+            <div className="wizard-stage deep-commitments-stage phase3">
+              <div className="stage-header">
+                <h3>🔮 Phase 3: Final Synthesis</h3>
+                <p>
+                  These final questions verify key commitments and resolve any remaining tensions.
+                </p>
+              </div>
+
+              <div className="commitment-progress">
+                <div className="progress-bar phase3">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${((currentPhase3Index + 1) / phase3Questions.length) * 100}%` }}
+                  />
+                </div>
+                <span className="progress-text">
+                  Phase 3: Question {currentPhase3Index + 1} of {phase3Questions.length}
+                </span>
+              </div>
+
+              {(() => {
+                const currentQ = phase3Questions[currentPhase3Index]
+                if (!currentQ) return null
+
+                const currentAnswer = phase3Answers[currentQ.id] || {}
+
+                return (
+                  <div className="commitment-question-card phase3">
+                    {currentQ.dimension && (
+                      <div className="question-dimension-badge" data-dimension={currentQ.dimension}>
+                        {currentQ.dimension?.charAt(0).toUpperCase() + currentQ.dimension?.slice(1)}
+                      </div>
+                    )}
+                    {currentQ.synthesis_context && (
+                      <div className="synthesis-context">
+                        {currentQ.synthesis_context}
+                      </div>
+                    )}
+
+                    <h4 className="commitment-question-text">{currentQ.question}</h4>
+
+                    {currentQ.rationale && (
+                      <p className="commitment-rationale">{currentQ.rationale}</p>
+                    )}
+
+                    <div className="commitment-options">
+                      {currentQ.options?.map((opt, i) => (
+                        <label
+                          key={opt.value || i}
+                          className={`commitment-option ${currentAnswer.selected === opt.value ? 'selected' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name={`phase3_${currentQ.id}`}
+                            value={opt.value}
+                            checked={currentAnswer.selected === opt.value}
+                            onChange={() => answerPhase3Question(currentQ.id, opt.value, currentAnswer.comment)}
+                          />
+                          <span className="option-content">
+                            <span className="option-label">{opt.label}</span>
+                            {opt.description && <span className="option-desc">{opt.description}</span>}
+                          </span>
+                        </label>
+                      ))}
+
+                      <label
+                        className={`commitment-option none-option ${currentAnswer.selected === 'none' ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name={`phase3_${currentQ.id}`}
+                          value="none"
+                          checked={currentAnswer.selected === 'none'}
+                          onChange={() => answerPhase3Question(currentQ.id, 'none', currentAnswer.comment)}
+                        />
+                        <span className="option-content">
+                          <span className="option-label">None of these / Other</span>
+                          <span className="option-desc">I'll add a comment below</span>
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="commitment-comment">
+                      <label>Add a comment (optional)</label>
+                      <textarea
+                        placeholder="Elaborate, qualify, or provide an alternative..."
+                        value={currentAnswer.comment || ''}
+                        onChange={(e) => answerPhase3Question(currentQ.id, currentAnswer.selected, e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
+
+              <div className="wizard-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={prevPhase3Question}
+                  disabled={currentPhase3Index === 0}
+                >
+                  ← Previous
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={nextPhase3Question}
+                >
+                  {currentPhase3Index < phase3Questions.length - 1 ? 'Next →' : 'Finish & Create Concept'}
                 </button>
               </div>
             </div>
