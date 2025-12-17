@@ -2383,64 +2383,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {/* Key Insights Extracted - with granular feedback */}
-                {notesUnderstanding.keyInsights?.length > 0 && (
-                  <div className="uv-section uv-insights">
-                    <h4>Key Insights Extracted</h4>
-                    <p className="uv-section-help">Approve or reject each insight. Add comments to request specific improvements.</p>
-                    <div className="uv-insights-granular">
-                      {notesUnderstanding.keyInsights.map((insight, i) => (
-                        <div key={i} className={`insight-item insight-${insightFeedback[i]?.status || 'pending'}`}>
-                          <div className="insight-content">
-                            <span className="insight-number">{i + 1}.</span>
-                            <span className="insight-text">{insight}</span>
-                          </div>
-                          <div className="insight-actions">
-                            <button
-                              className={`insight-btn approve ${insightFeedback[i]?.status === 'approved' ? 'active' : ''}`}
-                              onClick={() => setInsightStatus(i, 'approved')}
-                              title="Approve this insight"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              className={`insight-btn reject ${insightFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
-                              onClick={() => setInsightStatus(i, 'rejected')}
-                              title="Reject this insight"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              className="insight-btn comment"
-                              onClick={() => toggleInsightComment(i)}
-                              title="Add comment"
-                            >
-                              {expandedInsightComment[i] ? 'Hide' : 'Comment'}
-                            </button>
-                          </div>
-                          {expandedInsightComment[i] && (
-                            <div className="insight-comment-box">
-                              <input
-                                type="text"
-                                placeholder="What's wrong or how should this be improved?"
-                                value={insightFeedback[i]?.comment || ''}
-                                onChange={(e) => setInsightComment(i, e.target.value)}
-                                className="insight-comment-input"
-                              />
-                              <button
-                                className="btn btn-sm btn-secondary"
-                                onClick={() => regenerateInsight(i)}
-                                disabled={isRegenerating || !insightFeedback[i]?.comment?.trim()}
-                              >
-                                {isRegenerating ? 'Regenerating...' : 'Regenerate This Insight'}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Key Insights section REMOVED - replaced by hypothesis cards below */}
 
                 {/* Potential Tensions - with granular feedback */}
                 <div className="uv-section uv-tensions">
