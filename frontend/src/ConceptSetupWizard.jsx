@@ -562,7 +562,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 setCurrentPhase(event.phase)
                 handlers.onPhase?.(event.phase)
               } else if (event.type === 'thinking') {
-                setThinking(prev => prev + event.content)
+                // Only call handler - don't also set state here, as handler does that
                 handlers.onThinking?.(event.content)
               } else if (event.type === 'text') {
                 handlers.onText?.(event.content)
@@ -1638,6 +1638,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         source_id: sourceId
       },
       {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
         onComplete: (data) => {
           setConceptData(data.concept)
           // Populate editable draft from concept data, including validated data
@@ -1782,6 +1785,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         source_id: sourceId
       },
       {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
         onPhase: (phase) => {
           if (phase === 'interim_analysis') {
             setProgress({ stage: 4, total: 9, label: 'Building interim understanding...' })
@@ -1845,6 +1851,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         source_id: sourceId
       },
       {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
         onComplete: (data) => {
           // Store Stage 2 final data
           setStageData(prev => ({
@@ -1933,6 +1942,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         source_id: sourceId
       },
       {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
         onComplete: (data) => {
           setConceptData(data.concept)
           // Populate editable draft from concept data, including validated data
