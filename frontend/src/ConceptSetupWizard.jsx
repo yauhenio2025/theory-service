@@ -803,7 +803,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
               } else if (event.type === 'complete') {
                 handlers.onComplete?.(event.data)
               } else if (event.type === 'error') {
-                throw new Error(event.message)
+                const errMsg = typeof event.message === 'string'
+                  ? event.message
+                  : (event.message?.detail || event.message?.error || JSON.stringify(event.message))
+                throw new Error(errMsg)
               }
             } catch (e) {
               if (e.message !== 'Unexpected end of JSON input') {
@@ -1595,7 +1598,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
               if (event.type === 'options') {
                 setGeneratedOptions(event.data || [])
               } else if (event.type === 'error') {
-                setError(event.message)
+                const errMsg = typeof event.message === 'string'
+                  ? event.message
+                  : (event.message?.detail || JSON.stringify(event.message))
+                setError(errMsg)
               }
             } catch (e) {
               // Ignore parse errors for partial data
@@ -1605,7 +1611,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }
     } catch (e) {
       console.error('Error generating options:', e)
-      setError('Failed to generate options: ' + e.message)
+      setError('Failed to generate options: ' + (e?.message || 'Unknown error'))
     } finally {
       setIsGeneratingOptions(false)
     }
@@ -1739,7 +1745,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }
     } catch (e) {
       console.error('Error transforming option:', e)
-      setError('Failed to transform option: ' + e.message)
+      setError('Failed to transform option: ' + (e?.message || 'Unknown error'))
     } finally {
       setTransformingOptionId(null)
     }
@@ -1829,7 +1835,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
               } else if (event.type === 'status') {
                 setThinking(event.message)
               } else if (event.type === 'error') {
-                setError(event.message)
+                const errMsg = typeof event.message === 'string'
+                  ? event.message
+                  : (event.message?.detail || JSON.stringify(event.message))
+                setError(errMsg)
               }
             } catch (e) {
               // Ignore parse errors
@@ -1839,7 +1848,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }
     } catch (e) {
       console.error('Error generating genealogy:', e)
-      setError('Failed to generate genealogy: ' + e.message)
+      setError('Failed to generate genealogy: ' + (e?.message || 'Unknown error'))
     } finally {
       setIsGeneratingGenealogy(false)
       setThinking('')
@@ -2037,7 +2046,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       setThinking('')
 
     } catch (error) {
-      setError(error.message)
+      const errorMsg = typeof error === 'string' ? error : (error?.message || JSON.stringify(error))
+      setError(errorMsg)
     } finally {
       setIsUploadingDocument(false)
     }
@@ -2203,7 +2213,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }
 
     } catch (error) {
-      setError(error.message)
+      const errorMsg = typeof error === 'string' ? error : (error?.message || JSON.stringify(error))
+      setError(errorMsg)
       setStage(STAGES.STAGE3)  // Go back to Stage 3 on error
     } finally {
       setIsGeneratingCommitments(false)
@@ -3161,7 +3172,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       const result = await response.json()
       onComplete?.(result.concept)
     } catch (err) {
-      setError(err.message)
+      const errorMsg = typeof err === 'string' ? err : (err?.message || JSON.stringify(err))
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
