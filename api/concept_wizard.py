@@ -167,9 +167,9 @@ class DeepCommitmentsRequest(BaseModel):
     """Request to generate deep philosophical commitment questions."""
     concept_name: str
     notes_summary: str
-    genealogy: Dict[str, Any]
-    stage1_answers: Dict[str, Any]
-    stage2_answers: Optional[Dict[str, Any]] = None
+    genealogy: Any  # Can be dict or empty object
+    stage1_answers: Any  # Can be list of answers or dict
+    stage2_answers: Optional[Any] = None  # Can be list of answers or dict
     dimensional_extraction: Optional[Dict[str, Any]] = None  # From documents/notes
     source_id: Optional[int] = None
 
