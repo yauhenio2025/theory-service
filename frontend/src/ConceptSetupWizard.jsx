@@ -253,9 +253,6 @@ function HypothesisCard({ card, cardType, onApprove, onReject, onTransform, isTr
     <div className={`hypothesis-card ${statusClass}`}>
       <div className="card-header">
         <span className={`card-type ${card.type || ''}`}>{getTypeLabel()}</span>
-        <span className={`card-confidence ${card.confidence || 'medium'}`}>
-          {card.confidence === 'high' ? '●●●' : card.confidence === 'low' ? '●○○' : '●●○'}
-        </span>
       </div>
 
       <div className="card-content">
@@ -891,8 +888,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
    * Regenerate understanding with user feedback
    */
   const regenerateUnderstanding = async () => {
-    if (!understandingCorrection.trim() && understandingRating === 0) {
-      setError('Please provide a rating or correction to regenerate')
+    if (!understandingCorrection.trim()) {
+      setError('Please provide corrections or clarifications to regenerate')
       return
     }
 
@@ -908,7 +905,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         concept_name: conceptName,
         notes: notes,
         previous_understanding: notesUnderstanding,
-        user_rating: understandingRating,
+        user_rating: 3,  // Default to neutral rating since we removed the UI
         user_correction: understandingCorrection,
         source_id: sourceId
       },
@@ -2395,393 +2392,18 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {/* Key Insights section REMOVED - replaced by hypothesis cards below */}
-
-                {/* Potential Tensions - with granular feedback */}
-                <div className="uv-section uv-tensions">
-                  <div className="uv-tensions-header">
-                    <h4>Potential Tensions Detected</h4>
-                    <button
-                      className="btn btn-sm btn-secondary"
-                      onClick={generateMoreTensions}
-                      disabled={isGeneratingTensions}
-                    >
-                      {isGeneratingTensions ? 'Generating...' : 'Generate More Tensions'}
-                    </button>
-                  </div>
-                  <p className="uv-section-help">Approve tensions to preserve as productive dialectics in your concept.</p>
-
-                  {isGeneratingTensions && thinking && (
-                    <div className="thinking-mini">
-                      <span className="thinking-label">Thinking...</span>
-                      <p className="thinking-preview">{thinking.slice(-200)}</p>
-                    </div>
-                  )}
-
-                  {notesUnderstanding.potentialTensions?.length > 0 ? (
-                    <div className="uv-tensions-granular">
-                      {notesUnderstanding.potentialTensions.map((tension, i) => {
-                        const tensionText = typeof tension === 'string'
-                          ? tension
-                          : (tension.description || tension.tension || JSON.stringify(tension))
-                        const tensionPoles = typeof tension === 'object'
-                          ? { pole_a: tension.pole_a, pole_b: tension.pole_b }
-                          : null
-                        return (
-                          <div key={i} className={`tension-item tension-${tensionFeedback[i]?.status || 'pending'}`}>
-                            <div className="tension-content">
-                              <span className="tension-icon">⚡</span>
-                              <div className="tension-details">
-                                <span className="tension-text">{tensionText}</span>
-                                {tensionPoles && tensionPoles.pole_a && tensionPoles.pole_b && (
-                                  <div className="tension-poles-display">
-                                    <span className="pole">{tensionPoles.pole_a}</span>
-                                    <span className="vs">vs</span>
-                                    <span className="pole">{tensionPoles.pole_b}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="tension-actions">
-                              <button
-                                className={`tension-btn approve ${tensionFeedback[i]?.status === 'approved' ? 'active' : ''}`}
-                                onClick={() => setTensionStatus(i, 'approved')}
-                                title="Approve this tension as-is"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                className={`tension-btn approve-comment ${tensionFeedback[i]?.status === 'approved_with_comment' ? 'active' : ''}`}
-                                onClick={() => {
-                                  setTensionStatus(i, 'approved_with_comment')
-                                  setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
-                                }}
-                                title="Approve and add context (keeps original)"
-                              >
-                                Approve w/ Comment
-                              </button>
-                              <button
-                                className={`tension-btn regenerate ${tensionFeedback[i]?.status === 'regenerate' ? 'active' : ''}`}
-                                onClick={() => {
-                                  setTensionStatus(i, 'regenerate')
-                                  setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
-                                }}
-                                title="Regenerate this tension using your feedback"
-                              >
-                                Regenerate w/ Comment
-                              </button>
-                              <button
-                                className={`tension-btn reject ${tensionFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
-                                onClick={() => setTensionStatus(i, 'rejected')}
-                                title="Reject this tension"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                            {(tensionFeedback[i]?.status === 'approved_with_comment' ||
-                              tensionFeedback[i]?.status === 'regenerate' ||
-                              expandedTensionComment[i]) && (
-                              <div className="tension-comment-box">
-                                <input
-                                  type="text"
-                                  placeholder={tensionFeedback[i]?.status === 'regenerate'
-                                    ? "Describe how to improve this tension..."
-                                    : "Add context or clarification about this tension..."}
-                                  value={tensionFeedback[i]?.comment || ''}
-                                  onChange={(e) => setTensionComment(i, e.target.value)}
-                                  className="tension-comment-input"
-                                />
-                                {tensionFeedback[i]?.status === 'regenerate' && (
-                                  <button
-                                    className="btn btn-sm btn-primary regenerate-tension-btn"
-                                    onClick={() => regenerateTension(i)}
-                                    disabled={!tensionFeedback[i]?.comment?.trim() || isGeneratingTensions}
-                                  >
-                                    {isGeneratingTensions ? 'Regenerating...' : 'Regenerate'}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="uv-tensions-empty">
-                      <p>No tensions detected yet. Click "Generate More Tensions" to identify potential dialectics in your concept.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Genealogy Section - Intellectual Origins & Influences */}
-                <div className="uv-section uv-genealogy">
-                  <div className="uv-section-header" onClick={() => setExpandedGenealogy(!expandedGenealogy)}>
-                    <h4>📚 Intellectual Genealogy</h4>
-                    <span className="section-toggle">{expandedGenealogy ? '▼' : '▶'}</span>
-                  </div>
-                  <p className="uv-section-help">
-                    Help me understand the intellectual origins of your concept. Who or what inspired it?
-                  </p>
-
-                  {expandedGenealogy && (
-                    <div className="genealogy-content">
-                      {/* Hypothesized Influences - LLM's best guesses */}
-                      {(notesUnderstanding.genealogy?.hypothesized_influences?.length > 0 ||
-                        notesUnderstanding.genealogy?.detected_influences?.length > 0) && (
-                        <div className="genealogy-subsection">
-                          <h5>🎯 Hypothesized Influences</h5>
-                          <p className="subsection-help">Based on your notes, I think these shaped your concept. Confirm or reject:</p>
-                          <div className="influences-list">
-                            {(notesUnderstanding.genealogy.hypothesized_influences ||
-                              notesUnderstanding.genealogy.detected_influences || []).map((influence, i) => (
-                              <div key={i} className={`influence-item ${genealogyAnswers[`influence_${i}`] || ''}`}>
-                                <div className="influence-header">
-                                  <span className={`influence-type type-${influence.type}`}>
-                                    {influence.type === 'thinker' && '👤'}
-                                    {influence.type === 'framework' && '🔧'}
-                                    {influence.type === 'tradition' && '📜'}
-                                    {influence.type === 'concept' && '💡'}
-                                    {' '}{influence.name}
-                                  </span>
-                                  <span className={`confidence-badge conf-${influence.confidence}`}>
-                                    {influence.confidence}
-                                  </span>
-                                </div>
-                                <p className="influence-reasoning">
-                                  {influence.why_hypothesized || influence.relationship}
-                                </p>
-                                {influence.source_excerpt && (
-                                  <p className="influence-excerpt">"{influence.source_excerpt}"</p>
-                                )}
-                                <div className="influence-actions">
-                                  <button
-                                    className={`influence-btn confirm ${genealogyAnswers[`influence_${i}`] === 'confirmed' ? 'active' : ''}`}
-                                    onClick={() => setGenealogyAnswers(prev => ({ ...prev, [`influence_${i}`]: 'confirmed' }))}
-                                  >
-                                    ✓ Yes, this influenced me
-                                  </button>
-                                  <button
-                                    className={`influence-btn partial ${genealogyAnswers[`influence_${i}`] === 'partial' ? 'active' : ''}`}
-                                    onClick={() => setGenealogyAnswers(prev => ({ ...prev, [`influence_${i}`]: 'partial' }))}
-                                  >
-                                    ~ Partially
-                                  </button>
-                                  <button
-                                    className={`influence-btn reject ${genealogyAnswers[`influence_${i}`] === 'rejected' ? 'active' : ''}`}
-                                    onClick={() => setGenealogyAnswers(prev => ({ ...prev, [`influence_${i}`]: 'rejected' }))}
-                                  >
-                                    ✗ Not really
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Emergence Context */}
-                      {notesUnderstanding.genealogy?.emergence_context && (
-                        <div className="genealogy-subsection">
-                          <h5>📍 Emergence Context</h5>
-                          <div className="context-grid">
-                            {notesUnderstanding.genealogy.emergence_context.domain && (
-                              <div className="context-item">
-                                <span className="context-label">Domain:</span>
-                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.domain}</span>
-                              </div>
-                            )}
-                            {notesUnderstanding.genealogy.emergence_context.field && (
-                              <div className="context-item">
-                                <span className="context-label">Field:</span>
-                                <span className="context-value">{notesUnderstanding.genealogy.emergence_context.field}</span>
-                              </div>
-                            )}
-                            {(notesUnderstanding.genealogy.emergence_context.inferred_trigger ||
-                              notesUnderstanding.genealogy.emergence_context.trigger) && (
-                              <div className="context-item">
-                                <span className="context-label">Trigger:</span>
-                                <span className="context-value">
-                                  {notesUnderstanding.genealogy.emergence_context.inferred_trigger ||
-                                   notesUnderstanding.genealogy.emergence_context.trigger}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Multiple Choice Genealogy Questions */}
-                      {notesUnderstanding.genealogy?.genealogy_questions?.length > 0 && (
-                        <div className="genealogy-subsection genealogy-questions">
-                          <h5>🔍 Help Me Refine the Lineage</h5>
-                          <p className="subsection-help">Select the options that best describe your concept's origins:</p>
-                          {notesUnderstanding.genealogy.genealogy_questions.map((q, qIndex) => (
-                            <div key={q.id || qIndex} className="genealogy-mc-question">
-                              <label className="genealogy-q-label">{q.question}</label>
-                              {q.rationale && <p className="genealogy-q-rationale">{q.rationale}</p>}
-                              <div className="genealogy-options">
-                                {q.options?.map((opt, optIndex) => (
-                                  <label
-                                    key={opt.value || optIndex}
-                                    className={`genealogy-option ${genealogyAnswers[q.id] === opt.value ? 'selected' : ''}`}
-                                  >
-                                    <input
-                                      type="radio"
-                                      name={`genealogy_${q.id}`}
-                                      value={opt.value}
-                                      checked={genealogyAnswers[q.id] === opt.value}
-                                      onChange={() => setGenealogyAnswers(prev => ({ ...prev, [q.id]: opt.value }))}
-                                    />
-                                    <span className="option-content">
-                                      <span className="option-label">{opt.label}</span>
-                                      {opt.description && <span className="option-desc">{opt.description}</span>}
-                                    </span>
-                                  </label>
-                                ))}
-                                {/* None of the above option */}
-                                <label className={`genealogy-option none-option ${genealogyAnswers[q.id] === 'none' ? 'selected' : ''}`}>
-                                  <input
-                                    type="radio"
-                                    name={`genealogy_${q.id}`}
-                                    value="none"
-                                    checked={genealogyAnswers[q.id] === 'none'}
-                                    onChange={() => setGenealogyAnswers(prev => ({ ...prev, [q.id]: 'none' }))}
-                                  />
-                                  <span className="option-content">
-                                    <span className="option-label">None of these</span>
-                                    <span className="option-desc">I'll specify below</span>
-                                  </span>
-                                </label>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Single Optional Open-Ended Question */}
-                      {notesUnderstanding.genealogy?.open_ended_question?.question && (
-                        <div className="genealogy-subsection open-ended">
-                          <h5>💭 One More Thing</h5>
-                          <p className="open-ended-why">{notesUnderstanding.genealogy.open_ended_question.why_needed}</p>
-                          <label className="open-ended-label">{notesUnderstanding.genealogy.open_ended_question.question}</label>
-                          <textarea
-                            placeholder="Your answer (optional)..."
-                            value={genealogyAnswers.open_ended || ''}
-                            onChange={(e) => setGenealogyAnswers(prev => ({ ...prev, open_ended: e.target.value }))}
-                            rows={2}
-                          />
-                        </div>
-                      )}
-
-                      {/* Fallback for old format: needs_probing */}
-                      {notesUnderstanding.genealogy?.needs_probing?.length > 0 &&
-                       !notesUnderstanding.genealogy?.genealogy_questions?.length && (
-                        <div className="genealogy-subsection probing">
-                          <h5>Help Me Understand Better</h5>
-                          {notesUnderstanding.genealogy.needs_probing.slice(0, 2).map((question, i) => (
-                            <div key={i} className="probing-question">
-                              <label>{question}</label>
-                              <textarea
-                                placeholder="Your answer..."
-                                value={genealogyAnswers[`probe_${i}`] || ''}
-                                onChange={(e) => setGenealogyAnswers(prev => ({ ...prev, [`probe_${i}`]: e.target.value }))}
-                                rows={2}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Add Your Own - only if user selected "none" anywhere or wants to add more */}
-                      <div className="genealogy-subsection add-influence collapsed-default">
-                        <details>
-                          <summary>➕ Add influences I missed</summary>
-                          <p className="add-influence-help">
-                            Mention any thinkers, frameworks, or experiences I didn't catch:
-                          </p>
-                          <textarea
-                            className="add-influence-input"
-                            placeholder="E.g., 'My main influence was actually X, which you didn't mention...'"
-                            value={userInfluences.join('\n')}
-                            onChange={(e) => setUserInfluences(e.target.value.split('\n').filter(s => s.trim()))}
-                            rows={2}
-                          />
-                        </details>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confidence Indicators */}
-                <div className="uv-section uv-confidence">
-                  <h4>Pre-filled Confidence</h4>
-                  <div className="uv-confidence-grid">
-                    <div className="uv-confidence-item">
-                      <span className="conf-label">Questions pre-filled:</span>
-                      <span className="conf-value">{notesUnderstanding.prefilledCount} / {notesUnderstanding.totalQuestions}</span>
-                    </div>
-                    {notesUnderstanding.confidenceLevels && Object.entries(notesUnderstanding.confidenceLevels).map(([level, count]) => (
-                      <div key={level} className={`uv-confidence-item conf-${level}`}>
-                        <span className="conf-label">{level} confidence:</span>
-                        <span className="conf-value">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Rating Section */}
-                <div className="uv-section uv-rating">
-                  <h4>Rate My Understanding</h4>
-                  <p className="uv-rating-help">How well did I capture your concept? (1 = poor, 5 = excellent)</p>
-                  <div className="star-rating">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <button
-                        key={star}
-                        type="button"
-                        className={`star-btn ${understandingRating >= star ? 'active' : ''}`}
-                        onClick={() => setUnderstandingRating(star)}
-                      >
-                        {understandingRating >= star ? '★' : '☆'}
-                      </button>
-                    ))}
-                    {understandingRating > 0 && (
-                      <span className="rating-label">
-                        {understandingRating === 1 && 'Poor - needs significant correction'}
-                        {understandingRating === 2 && 'Fair - several things wrong'}
-                        {understandingRating === 3 && 'Okay - some corrections needed'}
-                        {understandingRating === 4 && 'Good - minor adjustments'}
-                        {understandingRating === 5 && 'Excellent - captured it well'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Correction Input */}
-                <div className="uv-section uv-correction">
-                  <h4>Add Corrections or Clarifications</h4>
-                  <p className="uv-correction-help">
-                    If I misunderstood something, please explain. This will improve the questions I ask.
-                  </p>
-                  <textarea
-                    value={understandingCorrection}
-                    onChange={e => setUnderstandingCorrection(e.target.value)}
-                    placeholder="What did I get wrong? What's missing? What needs clarification?"
-                    rows={4}
-                    className="wizard-textarea uv-correction-textarea"
-                  />
-                </div>
               </div>
 
               {/* =========================================================== */}
-              {/* HYPOTHESIS CARDS REVIEW SECTION (New Card-Based Flow)       */}
+              {/* HYPOTHESIS CARDS REVIEW SECTION (Card-Based Flow)           */}
               {/* =========================================================== */}
-              {(hypothesisCards.length > 0 || genealogyCards.length > 0 || differentiationCards.length > 0) && (
+              {(hypothesisCards.length > 0 || differentiationCards.length > 0) && (
                 <div className="cards-review-section">
                   <div className="cards-review-header">
                     <h3>Review Generated Claims</h3>
                     <p>These claims were extracted from your notes. Approve, reject, or transform each card.</p>
 
-                    {/* Card stage tabs */}
+                    {/* Card stage tabs - only hypothesis and differentiation */}
                     <div className="card-stage-tabs">
                       <button
                         className={`card-stage-tab ${cardReviewStage === 'hypothesis' ? 'active' : ''}`}
@@ -2791,17 +2413,6 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                         {hypothesisCards.filter(c => c.status === 'approved').length > 0 && (
                           <span className="approved-count">
                             ✓{hypothesisCards.filter(c => c.status === 'approved').length}
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        className={`card-stage-tab ${cardReviewStage === 'genealogy' ? 'active' : ''}`}
-                        onClick={() => setCardReviewStage('genealogy')}
-                      >
-                        Genealogy ({genealogyCards.length})
-                        {genealogyCards.filter(c => c.status === 'approved').length > 0 && (
-                          <span className="approved-count">
-                            ✓{genealogyCards.filter(c => c.status === 'approved').length}
                           </span>
                         )}
                       </button>
@@ -2836,23 +2447,6 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     </div>
                   )}
 
-                  {/* Genealogy Cards */}
-                  {cardReviewStage === 'genealogy' && genealogyCards.length > 0 && (
-                    <div className="card-grid">
-                      {genealogyCards.map(card => (
-                        <HypothesisCard
-                          key={card.id}
-                          card={card}
-                          cardType="genealogy"
-                          onApprove={approveCard}
-                          onReject={rejectCard}
-                          onTransform={transformCard}
-                          isTransforming={isTransformingCard === card.id}
-                        />
-                      ))}
-                    </div>
-                  )}
-
                   {/* Differentiation Cards */}
                   {cardReviewStage === 'differentiation' && differentiationCards.length > 0 && (
                     <div className="card-grid">
@@ -2873,17 +2467,148 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   {/* Summary of reviewed cards */}
                   <div className="cards-review-summary">
                     <span>
-                      Approved: {[...hypothesisCards, ...genealogyCards, ...differentiationCards].filter(c => c.status === 'approved').length}
+                      Approved: {[...hypothesisCards, ...differentiationCards].filter(c => c.status === 'approved').length}
                     </span>
                     <span>
-                      Rejected: {[...hypothesisCards, ...genealogyCards, ...differentiationCards].filter(c => c.status === 'rejected').length}
+                      Rejected: {[...hypothesisCards, ...differentiationCards].filter(c => c.status === 'rejected').length}
                     </span>
                     <span>
-                      Pending: {[...hypothesisCards, ...genealogyCards, ...differentiationCards].filter(c => c.status === 'pending').length}
+                      Pending: {[...hypothesisCards, ...differentiationCards].filter(c => c.status === 'pending').length}
                     </span>
                   </div>
                 </div>
               )}
+
+              {/* Potential Tensions - after card review */}
+              <div className="uv-section uv-tensions">
+                <div className="uv-tensions-header">
+                  <h4>Potential Tensions Detected</h4>
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    onClick={generateMoreTensions}
+                    disabled={isGeneratingTensions}
+                  >
+                    {isGeneratingTensions ? 'Generating...' : 'Generate More Tensions'}
+                  </button>
+                </div>
+                <p className="uv-section-help">Approve tensions to preserve as productive dialectics in your concept.</p>
+
+                {isGeneratingTensions && thinking && (
+                  <div className="thinking-mini">
+                    <span className="thinking-label">Thinking...</span>
+                    <p className="thinking-preview">{thinking.slice(-200)}</p>
+                  </div>
+                )}
+
+                {notesUnderstanding.potentialTensions?.length > 0 ? (
+                  <div className="uv-tensions-granular">
+                    {notesUnderstanding.potentialTensions.map((tension, i) => {
+                      const tensionText = typeof tension === 'string'
+                        ? tension
+                        : (tension.description || tension.tension || JSON.stringify(tension))
+                      const tensionPoles = typeof tension === 'object'
+                        ? { pole_a: tension.pole_a, pole_b: tension.pole_b }
+                        : null
+                      return (
+                        <div key={i} className={`tension-item tension-${tensionFeedback[i]?.status || 'pending'}`}>
+                          <div className="tension-content">
+                            <span className="tension-icon">⚡</span>
+                            <div className="tension-details">
+                              <span className="tension-text">{tensionText}</span>
+                              {tensionPoles && tensionPoles.pole_a && tensionPoles.pole_b && (
+                                <div className="tension-poles-display">
+                                  <span className="pole">{tensionPoles.pole_a}</span>
+                                  <span className="vs">vs</span>
+                                  <span className="pole">{tensionPoles.pole_b}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="tension-actions">
+                            <button
+                              className={`tension-btn approve ${tensionFeedback[i]?.status === 'approved' ? 'active' : ''}`}
+                              onClick={() => setTensionStatus(i, 'approved')}
+                              title="Approve this tension as-is"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className={`tension-btn approve-comment ${tensionFeedback[i]?.status === 'approved_with_comment' ? 'active' : ''}`}
+                              onClick={() => {
+                                setTensionStatus(i, 'approved_with_comment')
+                                setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
+                              }}
+                              title="Approve and add context (keeps original)"
+                            >
+                              Approve w/ Comment
+                            </button>
+                            <button
+                              className={`tension-btn regenerate ${tensionFeedback[i]?.status === 'regenerate' ? 'active' : ''}`}
+                              onClick={() => {
+                                setTensionStatus(i, 'regenerate')
+                                setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
+                              }}
+                              title="Regenerate this tension using your feedback"
+                            >
+                              Regenerate w/ Comment
+                            </button>
+                            <button
+                              className={`tension-btn reject ${tensionFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
+                              onClick={() => setTensionStatus(i, 'rejected')}
+                              title="Reject this tension"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                          {(tensionFeedback[i]?.status === 'approved_with_comment' ||
+                            tensionFeedback[i]?.status === 'regenerate' ||
+                            expandedTensionComment[i]) && (
+                            <div className="tension-comment-box">
+                              <input
+                                type="text"
+                                placeholder={tensionFeedback[i]?.status === 'regenerate'
+                                  ? "Describe how to improve this tension..."
+                                  : "Add context or clarification about this tension..."}
+                                value={tensionFeedback[i]?.comment || ''}
+                                onChange={(e) => setTensionComment(i, e.target.value)}
+                                className="tension-comment-input"
+                              />
+                              {tensionFeedback[i]?.status === 'regenerate' && (
+                                <button
+                                  className="btn btn-sm btn-primary regenerate-tension-btn"
+                                  onClick={() => regenerateTension(i)}
+                                  disabled={!tensionFeedback[i]?.comment?.trim() || isGeneratingTensions}
+                                >
+                                  {isGeneratingTensions ? 'Regenerating...' : 'Regenerate'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="uv-tensions-empty">
+                    <p>No tensions detected yet. Click "Generate More Tensions" to identify potential dialectics in your concept.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Correction Input - at the very bottom */}
+              <div className="uv-section uv-correction">
+                <h4>Add Corrections or Clarifications</h4>
+                <p className="uv-correction-help">
+                  If I misunderstood something, please explain. This will improve the questions I ask.
+                </p>
+                <textarea
+                  value={understandingCorrection}
+                  onChange={e => setUnderstandingCorrection(e.target.value)}
+                  placeholder="What did I get wrong? What's missing? What needs clarification?"
+                  rows={4}
+                  className="wizard-textarea uv-correction-textarea"
+                />
+              </div>
 
               <div className="wizard-actions">
                 <button className="btn btn-secondary" onClick={onCancel}>
@@ -2892,7 +2617,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <button
                   className="btn btn-secondary"
                   onClick={regenerateUnderstanding}
-                  disabled={isRegenerating || (!understandingCorrection.trim() && understandingRating === 0)}
+                  disabled={isRegenerating || !understandingCorrection.trim()}
                 >
                   {isRegenerating ? 'Re-analyzing...' : 'Regenerate with Feedback'}
                 </button>
