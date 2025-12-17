@@ -34,6 +34,8 @@ const STAGES = {
   ANALYZING_STAGE2: 'analyzing_stage2',
   IMPLICATIONS_PREVIEW: 'implications_preview',
   STAGE3: 'stage3',
+  GENEALOGY: 'genealogy',  // Intellectual genealogy: influences, ancestors, debates
+  GENERATING_GENEALOGY: 'generating_genealogy',  // Generating genealogy hypotheses
   DEEP_COMMITMENTS: 'deep_commitments',  // All 9 philosophical dimensions MC questions
   ANALYZING_COMMITMENTS: 'analyzing_commitments',  // Generating deep commitment questions
   PROCESSING: 'processing',
@@ -50,8 +52,9 @@ const STAGE_NAV = [
   { id: STAGES.STAGE2, label: 'Differentiation', shortLabel: '5', navigable: true },
   { id: STAGES.IMPLICATIONS_PREVIEW, label: 'Implications', shortLabel: '6', navigable: true },
   { id: STAGES.STAGE3, label: 'Methodology', shortLabel: '7', navigable: true },
-  { id: STAGES.DEEP_COMMITMENTS, label: 'Philosophical Dimensions', shortLabel: '8', navigable: true },
-  { id: STAGES.COMPLETE, label: 'Complete', shortLabel: '9', navigable: true }
+  { id: STAGES.GENEALOGY, label: 'Genealogy', shortLabel: '8', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS, label: 'Philosophical Dimensions', shortLabel: '9', navigable: true },
+  { id: STAGES.COMPLETE, label: 'Complete', shortLabel: '10', navigable: true }
 ]
 
 // Map any stage to its nearest navigable checkpoint
@@ -69,6 +72,8 @@ const getNavCheckpoint = (stage) => {
     [STAGES.ANALYZING_STAGE2]: STAGES.STAGE2,
     [STAGES.IMPLICATIONS_PREVIEW]: STAGES.IMPLICATIONS_PREVIEW,
     [STAGES.STAGE3]: STAGES.STAGE3,
+    [STAGES.GENEALOGY]: STAGES.GENEALOGY,
+    [STAGES.GENERATING_GENEALOGY]: STAGES.GENEALOGY,
     [STAGES.DEEP_COMMITMENTS]: STAGES.DEEP_COMMITMENTS,
     [STAGES.ANALYZING_COMMITMENTS]: STAGES.DEEP_COMMITMENTS,
     [STAGES.PROCESSING]: STAGES.DEEP_COMMITMENTS,
@@ -467,6 +472,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [selectedGeneratedOption, setSelectedGeneratedOption] = useState(null)  // Currently selected option
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const [transformingOptionId, setTransformingOptionId] = useState(null)  // Option being transformed
+
+  // Intellectual Genealogy state (Stage 8)
+  const [genealogyHypotheses, setGenealogyHypotheses] = useState([])  // Generated genealogy hypotheses
+  const [userAddedInfluences, setUserAddedInfluences] = useState([])  // User-added influences
+  const [isGeneratingGenealogy, setIsGeneratingGenealogy] = useState(false)
+  const [newInfluenceInput, setNewInfluenceInput] = useState({ name: '', type: 'thinker', connection: '' })
 
   // Session persistence state
   const [hasSavedSession, setHasSavedSession] = useState(false)
@@ -1678,6 +1689,140 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setSelectedGeneratedOption(null)
   }, [currentQuestionIndex])
 
+  // ==========================================================================
+  // INTELLECTUAL GENEALOGY
+  // ==========================================================================
+
+  /**
+   * Generate intellectual genealogy hypotheses based on all previous responses
+   */
+  const generateGenealogy = async () => {
+    setIsGeneratingGenealogy(true)
+    setGenealogyHypotheses([])
+    setThinking('')
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-genealogy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_name: conceptName,
+          notes: notes,
+          hypothesis_cards: hypothesisCards,
+          differentiation_cards: differentiationCards,
+          stage1_answers: stageData.stage1?.answers || [],
+          stage2_answers: stageData.stage2?.answers || [],
+          stage3_answers: stageData.stage3?.answers || [],
+          notes_understanding: notesUnderstanding
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate genealogy')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const event = JSON.parse(data)
+              if (event.type === 'genealogy') {
+                // Add status: 'pending' to each hypothesis
+                const hypothesesWithStatus = (event.data || []).map(h => ({
+                  ...h,
+                  status: 'pending'
+                }))
+                setGenealogyHypotheses(hypothesesWithStatus)
+              } else if (event.type === 'status') {
+                setThinking(event.message)
+              } else if (event.type === 'error') {
+                setError(event.message)
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error generating genealogy:', e)
+      setError('Failed to generate genealogy: ' + e.message)
+    } finally {
+      setIsGeneratingGenealogy(false)
+      setThinking('')
+    }
+  }
+
+  /**
+   * Approve/reject a genealogy hypothesis
+   */
+  const updateGenealogyStatus = (hypothesisId, status) => {
+    setGenealogyHypotheses(prev => prev.map(h =>
+      h.id === hypothesisId ? { ...h, status } : h
+    ))
+  }
+
+  /**
+   * Add a user-specified influence
+   */
+  const addUserInfluence = () => {
+    if (!newInfluenceInput.name.trim()) return
+
+    const newInfluence = {
+      id: `user_${Date.now()}`,
+      type: newInfluenceInput.type,
+      name: newInfluenceInput.name.trim(),
+      connection: newInfluenceInput.connection.trim(),
+      confidence: 'user_added',
+      status: 'approved',
+      is_user_added: true
+    }
+
+    setUserAddedInfluences(prev => [...prev, newInfluence])
+    setNewInfluenceInput({ name: '', type: 'thinker', connection: '' })
+  }
+
+  /**
+   * Remove a user-added influence
+   */
+  const removeUserInfluence = (influenceId) => {
+    setUserAddedInfluences(prev => prev.filter(i => i.id !== influenceId))
+  }
+
+  /**
+   * Proceed from genealogy to deep commitments
+   */
+  const proceedFromGenealogy = async () => {
+    // Collect approved genealogy (both generated and user-added)
+    const approvedGenealogy = [
+      ...genealogyHypotheses.filter(h => h.status === 'approved'),
+      ...userAddedInfluences
+    ]
+
+    // Store in stage data
+    setStageData(prev => ({
+      ...prev,
+      genealogy: approvedGenealogy
+    }))
+
+    // Generate deep commitment questions (will transition to DEEP_COMMITMENTS when done)
+    await generateDeepCommitments()
+  }
+
   /**
    * Handle document file selection
    */
@@ -1919,6 +2064,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           concept_name: conceptName,
           notes_summary: notesUnderstanding?.summary || notes,
           genealogy: notesUnderstanding?.genealogy || {},
+          user_approved_genealogy: stageData.genealogy || genealogyHypotheses.filter(h => h.status === 'approved'),
           stage1_answers: stageData.stage1?.answers || [],
           stage2_answers: stageData.stage2?.answers || [],
           dimensional_extraction: dimensionalExtraction
@@ -2204,13 +2350,14 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       } else if (stage === STAGES.STAGE2) {
         await analyzeStage2(answers)
       } else if (stage === STAGES.STAGE3) {
-        // Store Stage 3 answers, then go to Deep Commitments
+        // Store Stage 3 answers, then go to Genealogy
         setStageData(prev => ({
           ...prev,
           stage3: { ...prev.stage3, answers: answers }
         }))
-        // Generate deep commitment questions based on accumulated context
-        await generateDeepCommitments()
+        // Go to Intellectual Genealogy stage (Stage 8)
+        setStage(STAGES.GENEALOGY)
+        setProgress({ stage: 8, total: 11, label: 'Intellectual Genealogy' })
       }
     }
   }
@@ -4024,6 +4171,170 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
               <div className="wizard-error">
                 No questions loaded for this stage. Questions: {questions.length}, Index: {currentQuestionIndex}
               </div>
+            </div>
+          )}
+
+          {/* STAGE: Intellectual Genealogy */}
+          {(stage === STAGES.GENEALOGY || stage === STAGES.GENERATING_GENEALOGY) && (
+            <div className="wizard-stage genealogy-stage">
+              <div className="stage-header">
+                <h3>📚 Intellectual Genealogy</h3>
+                <p>
+                  What thinkers, concepts, frameworks, and debates influenced your concept?
+                  Based on everything you've told me, I'll hypothesize some intellectual lineages.
+                </p>
+              </div>
+
+              {/* Generate button */}
+              {genealogyHypotheses.length === 0 && !isGeneratingGenealogy && (
+                <div className="genealogy-generate-section">
+                  <button
+                    className="btn btn-primary btn-generate-genealogy"
+                    onClick={generateGenealogy}
+                  >
+                    🔍 Generate Genealogy Hypotheses
+                  </button>
+                  <p className="generate-hint">
+                    I'll analyze your notes and all previous answers to identify likely influences,
+                    conceptual ancestors, relevant debates, and failed alternatives.
+                  </p>
+                </div>
+              )}
+
+              {/* Loading state */}
+              {isGeneratingGenealogy && (
+                <div className="genealogy-loading">
+                  <span className="loading-spinner" />
+                  <span>{thinking || 'Analyzing your concept for intellectual genealogy...'}</span>
+                </div>
+              )}
+
+              {/* Generated hypotheses */}
+              {genealogyHypotheses.length > 0 && (
+                <div className="genealogy-hypotheses">
+                  <h4>Generated Hypotheses</h4>
+                  <p className="section-hint">Approve influences that apply, reject those that don't.</p>
+
+                  <div className="genealogy-cards">
+                    {genealogyHypotheses.map((hyp, idx) => (
+                      <div
+                        key={hyp.id || idx}
+                        className={`genealogy-card ${hyp.status}`}
+                      >
+                        <div className="genealogy-card-header">
+                          <span className={`genealogy-type ${hyp.type}`}>{hyp.type}</span>
+                          <span className={`genealogy-confidence ${hyp.confidence}`}>
+                            {hyp.confidence === 'high' ? '●●●' : hyp.confidence === 'medium' ? '●●○' : '●○○'}
+                          </span>
+                        </div>
+
+                        <div className="genealogy-name">{hyp.name}</div>
+
+                        <div className="genealogy-connection">{hyp.connection}</div>
+
+                        {hyp.source_evidence && (
+                          <div className="genealogy-evidence">
+                            <em>Evidence: {hyp.source_evidence}</em>
+                          </div>
+                        )}
+
+                        {hyp.why_relevant && (
+                          <div className="genealogy-relevance">
+                            <strong>Why relevant:</strong> {hyp.why_relevant}
+                          </div>
+                        )}
+
+                        <div className="genealogy-actions">
+                          <button
+                            className={`btn-action approve ${hyp.status === 'approved' ? 'active' : ''}`}
+                            onClick={() => updateGenealogyStatus(hyp.id, 'approved')}
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            className={`btn-action reject ${hyp.status === 'rejected' ? 'active' : ''}`}
+                            onClick={() => updateGenealogyStatus(hyp.id, 'rejected')}
+                          >
+                            ✗ Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* User-added influences */}
+              {(genealogyHypotheses.length > 0 || userAddedInfluences.length > 0) && (
+                <div className="user-influences-section">
+                  <h4>Add Your Own Influences</h4>
+                  <p className="section-hint">Add any influences the LLM missed.</p>
+
+                  {/* User added list */}
+                  {userAddedInfluences.length > 0 && (
+                    <div className="user-influences-list">
+                      {userAddedInfluences.map(inf => (
+                        <div key={inf.id} className="user-influence-item">
+                          <span className={`genealogy-type ${inf.type}`}>{inf.type}</span>
+                          <span className="influence-name">{inf.name}</span>
+                          {inf.connection && <span className="influence-connection">— {inf.connection}</span>}
+                          <button
+                            className="btn-remove"
+                            onClick={() => removeUserInfluence(inf.id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add new influence form */}
+                  <div className="add-influence-form">
+                    <select
+                      value={newInfluenceInput.type}
+                      onChange={e => setNewInfluenceInput(prev => ({ ...prev, type: e.target.value }))}
+                    >
+                      <option value="thinker">Thinker</option>
+                      <option value="concept">Concept</option>
+                      <option value="framework">Framework</option>
+                      <option value="debate">Debate</option>
+                      <option value="failed_alternative">Failed Alternative</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Name (e.g., Karl Polanyi, embeddedness)"
+                      value={newInfluenceInput.name}
+                      onChange={e => setNewInfluenceInput(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Connection (optional)"
+                      value={newInfluenceInput.connection}
+                      onChange={e => setNewInfluenceInput(prev => ({ ...prev, connection: e.target.value }))}
+                    />
+                    <button
+                      className="btn btn-secondary"
+                      onClick={addUserInfluence}
+                      disabled={!newInfluenceInput.name.trim()}
+                    >
+                      + Add
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Continue button */}
+              {genealogyHypotheses.length > 0 && (
+                <div className="stage-actions">
+                  <button
+                    className="btn btn-primary"
+                    onClick={proceedFromGenealogy}
+                  >
+                    Continue to Philosophical Dimensions →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

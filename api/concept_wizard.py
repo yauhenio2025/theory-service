@@ -203,6 +203,18 @@ class GenerateOptionsRequest(BaseModel):
     notes_understanding: Optional[Dict[str, Any]] = None  # LLM's understanding of notes
 
 
+class GenerateGenealogyRequest(BaseModel):
+    """Request to generate intellectual genealogy hypotheses."""
+    concept_name: str
+    notes: Optional[str] = None
+    hypothesis_cards: Optional[List[Dict[str, Any]]] = None
+    differentiation_cards: Optional[List[Dict[str, Any]]] = None
+    stage1_answers: Optional[List[Dict[str, Any]]] = None
+    stage2_answers: Optional[List[Dict[str, Any]]] = None
+    stage3_answers: Optional[List[Dict[str, Any]]] = None
+    notes_understanding: Optional[Dict[str, Any]] = None
+
+
 # =============================================================================
 # STAGE 1 QUESTIONS: Genesis & Problem Space
 # =============================================================================
@@ -4149,5 +4161,183 @@ async def generate_options(request: GenerateOptionsRequest):
 
     return StreamingResponse(
         stream_options(),
+        media_type="text/event-stream"
+    )
+
+
+# =============================================================================
+# GENERATE INTELLECTUAL GENEALOGY
+# =============================================================================
+
+GENERATE_GENEALOGY_PROMPT = """You are helping a user develop a novel concept called "{concept_name}".
+
+They have now completed several stages of concept development. Based on everything they've told you,
+generate hypotheses about the INTELLECTUAL GENEALOGY of their concept.
+
+## User's Notes
+{notes_context}
+
+## Validated Theses About Their Concept
+{hypothesis_context}
+
+## How They Differentiate Their Concept
+{differentiation_context}
+
+## Their Answers to Stage 1-3 Questions
+{answers_context}
+
+## Your Task: Generate Genealogy Hypotheses
+
+For each hypothesis, identify:
+1. **Type**: One of:
+   - "thinker" - A specific thinker/philosopher/theorist
+   - "concept" - A specific concept their idea descends from or responds to
+   - "framework" - A theoretical framework they're working within or against
+   - "debate" - An intellectual debate their concept intervenes in
+   - "failed_alternative" - A concept/framework that failed, prompting theirs
+
+2. **Name**: The specific thinker, concept, framework, or debate
+
+3. **Connection**: HOW it relates to their concept (2-3 sentences, specific)
+
+4. **Confidence**: high/medium/low based on explicit mentions vs inference
+
+5. **Source Evidence**: Quote or reference from their notes if available
+
+Generate 6-10 genealogy hypotheses. Be SPECIFIC:
+- Not "critical theory" but "Adorno's concept of the culture industry"
+- Not "Marxism" but "Marx's concept of commodity fetishism" or "Polanyi's embeddedness"
+- Not "platform studies" but "Srnicek's platform capitalism" or "Zuboff's surveillance capitalism"
+
+Think about:
+- What thinkers do they explicitly or implicitly reference?
+- What concepts does their concept seem to descend from or critique?
+- What frameworks are they working within?
+- What debates does their concept intervene in?
+- What alternatives failed, creating the need for their concept?
+
+Output JSON:
+{{
+  "genealogy_hypotheses": [
+    {{
+      "id": "gen_001",
+      "type": "thinker",
+      "name": "Karl Polanyi",
+      "connection": "Your concept of 'organic capitalism' extends Polanyi's idea of embedded/disembedded economies. You're arguing platforms re-embed economic relations while appearing disembedded.",
+      "confidence": "high",
+      "source_evidence": "User explicitly mentions embeddedness...",
+      "why_relevant": "Central to understanding the 'organic' dimension"
+    }}
+  ]
+}}"""
+
+
+@router.post("/generate-genealogy")
+async def generate_genealogy(request: GenerateGenealogyRequest):
+    """
+    Generate intellectual genealogy hypotheses based on all previous wizard responses.
+
+    This generates specific hypotheses about:
+    - Thinkers who influenced the concept
+    - Conceptual ancestors
+    - Frameworks being used or critiqued
+    - Debates the concept intervenes in
+    - Failed alternatives that motivated the concept
+    """
+    async def stream_genealogy():
+        try:
+            client = get_claude_client()
+
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing your concept development for intellectual genealogy...'})}\n\n"
+
+            # Build context from all inputs
+            notes_context = request.notes[:12000] if request.notes else "No notes provided."
+
+            hypothesis_context = "No hypothesis cards."
+            if request.hypothesis_cards:
+                approved = [c for c in request.hypothesis_cards if c.get('status') == 'approved']
+                if approved:
+                    hypothesis_context = "\n".join([
+                        f"- {c.get('content', c.get('text', ''))}"
+                        for c in approved[:15]
+                    ])
+
+            differentiation_context = "No differentiation cards."
+            if request.differentiation_cards:
+                approved = [c for c in request.differentiation_cards if c.get('status') == 'approved']
+                if approved:
+                    differentiation_context = "\n".join([
+                        f"- NOT {c.get('contrasted_with', '')}: {c.get('difference', c.get('content', ''))}"
+                        for c in approved[:10]
+                    ])
+
+            # Compile all stage answers
+            answers_parts = []
+            for stage_name, answers in [
+                ("Stage 1 (Genesis)", request.stage1_answers),
+                ("Stage 2 (Differentiation)", request.stage2_answers),
+                ("Stage 3 (Methodology)", request.stage3_answers)
+            ]:
+                if answers:
+                    stage_text = f"\n### {stage_name}\n"
+                    for ans in answers[:10]:
+                        q = ans.get('question', ans.get('question_id', 'Q'))
+                        a = ans.get('answer', ans.get('text_answer', ans.get('selected_options', '')))
+                        if isinstance(a, list):
+                            a = ', '.join(str(x) for x in a)
+                        if a:
+                            stage_text += f"Q: {q}\nA: {a}\n\n"
+                    answers_parts.append(stage_text)
+
+            answers_context = "\n".join(answers_parts) if answers_parts else "No stage answers yet."
+
+            prompt = GENERATE_GENEALOGY_PROMPT.format(
+                concept_name=request.concept_name,
+                notes_context=notes_context,
+                hypothesis_context=hypothesis_context,
+                differentiation_context=differentiation_context,
+                answers_context=answers_context
+            )
+
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Generating genealogy hypotheses...'})}\n\n"
+
+            # Use Sonnet for fast generation with extended context
+            with client.messages.stream(
+                model=SONNET_MODEL,
+                max_tokens=8192,
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if event.type == "content_block_delta":
+                        if hasattr(event.delta, 'text'):
+                            response_text += event.delta.text
+
+            # Parse JSON response
+            try:
+                json_text = response_text
+                if "```json" in json_text:
+                    json_text = json_text.split("```json")[1].split("```")[0]
+                elif "```" in json_text:
+                    json_text = json_text.split("```")[1].split("```")[0]
+
+                result = json.loads(json_text.strip())
+                hypotheses = result.get("genealogy_hypotheses", [])
+
+                yield f"data: {json.dumps({'type': 'genealogy', 'data': hypotheses})}\n\n"
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse genealogy JSON: {e}")
+                logger.error(f"Raw response: {response_text[:500]}")
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Failed to parse genealogy hypotheses'})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error generating genealogy: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_genealogy(),
         media_type="text/event-stream"
     )

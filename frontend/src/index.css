@@ -6315,3 +6315,306 @@ textarea {
   font-size: 0.8rem;
   white-space: nowrap;
 }
+
+/* ====== GENEALOGY WIZARD STAGE ====== */
+.genealogy-stage {
+  max-width: 900px;
+}
+
+.genealogy-stage .stage-header {
+  margin-bottom: 1.5rem;
+}
+
+.genealogy-stage .stage-header h3 {
+  margin-bottom: 0.5rem;
+}
+
+.genealogy-stage .stage-header p {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+/* Generate section */
+.genealogy-generate-section {
+  text-align: center;
+  padding: 2rem;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px dashed rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.btn-generate-genealogy {
+  font-size: 1rem;
+  padding: 0.875rem 1.75rem;
+}
+
+.generate-hint {
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Loading state */
+.genealogy-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+/* Hypotheses section */
+.genealogy-hypotheses {
+  margin-bottom: 2rem;
+}
+
+.genealogy-hypotheses h4 {
+  color: #e6edf3;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+/* Genealogy cards grid */
+.genealogy-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.genealogy-card {
+  background: linear-gradient(145deg, #1c1c2e 0%, #161625 100%);
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.genealogy-card:hover {
+  border-color: #8b5cf6;
+}
+
+.genealogy-card.approved {
+  border-color: #22c55e;
+  background: linear-gradient(145deg, #0f2918 0%, #0d1f14 100%);
+}
+
+.genealogy-card.rejected {
+  border-color: #ef4444;
+  background: linear-gradient(145deg, #1f0f0f 0%, #1a0c0c 100%);
+  opacity: 0.6;
+}
+
+.genealogy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.genealogy-type {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.genealogy-type.thinker { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+.genealogy-type.concept { background: rgba(163, 113, 247, 0.2); color: #a371f7; }
+.genealogy-type.framework { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+.genealogy-type.debate { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+.genealogy-type.failed_alternative { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+
+.genealogy-confidence {
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+
+.genealogy-confidence.high { color: #3fb950; }
+.genealogy-confidence.medium { color: #d29922; }
+.genealogy-confidence.low { color: #8b949e; }
+
+.genealogy-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e6edf3;
+  margin-bottom: 0.5rem;
+}
+
+.genealogy-connection {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.genealogy-evidence {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  font-style: italic;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.genealogy-relevance {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.genealogy-relevance strong {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.genealogy-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-action {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-action:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-action.approve:hover,
+.btn-action.approve.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.btn-action.reject:hover,
+.btn-action.reject.active {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* User influences section */
+.user-influences-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-influences-section h4 {
+  color: #e6edf3;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.user-influences-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.user-influence-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 6px;
+}
+
+.user-influence-item .influence-name {
+  font-weight: 500;
+  color: #e6edf3;
+}
+
+.user-influence-item .influence-connection {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+}
+
+.user-influence-item .btn-remove {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.user-influence-item .btn-remove:hover {
+  color: #ef4444;
+}
+
+/* Add influence form */
+.add-influence-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.add-influence-form select,
+.add-influence-form input {
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.9rem;
+}
+
+.add-influence-form select {
+  min-width: 130px;
+}
+
+.add-influence-form input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.add-influence-form select:focus,
+.add-influence-form input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+}
+
+.add-influence-form .btn {
+  padding: 0.5rem 1rem;
+}
+
+/* Stage actions */
+.stage-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
