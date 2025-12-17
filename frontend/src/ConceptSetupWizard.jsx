@@ -507,16 +507,78 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [hasSavedSession, setHasSavedSession] = useState(false)
   const [savedSessionInfo, setSavedSessionInfo] = useState(null)
 
+  // Server session state
+  const [serverSessions, setServerSessions] = useState([])
+  const [currentSessionKey, setCurrentSessionKey] = useState(null)
+  const [isLoadingServerSessions, setIsLoadingServerSessions] = useState(false)
+  const [serverSessionError, setServerSessionError] = useState(null)
+
   // Refs
   const thinkingRef = useRef(null)
   const abortControllerRef = useRef(null)
+  const serverSaveTimeoutRef = useRef(null)
 
   // =========================================================================
-  // SESSION PERSISTENCE - Save/Restore wizard state to localStorage
+  // SESSION PERSISTENCE - Save/Restore wizard state (localStorage + server)
   // =========================================================================
   const STORAGE_KEY = `concept_wizard_session_${sourceId || 'default'}`
 
-  // Check for saved session on mount
+  // Fetch server sessions on mount
+  useEffect(() => {
+    fetchServerSessions()
+  }, [])
+
+  // Fetch sessions from server
+  const fetchServerSessions = async () => {
+    setIsLoadingServerSessions(true)
+    setServerSessionError(null)
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/sessions?status=active`)
+      if (response.ok) {
+        const sessions = await response.json()
+        setServerSessions(sessions)
+      } else {
+        console.error('Failed to fetch server sessions:', response.status)
+      }
+    } catch (e) {
+      console.error('Error fetching server sessions:', e)
+      setServerSessionError('Could not connect to server')
+    } finally {
+      setIsLoadingServerSessions(false)
+    }
+  }
+
+  // Save session to server (debounced)
+  const saveToServer = async (sessionData) => {
+    if (!currentSessionKey && !sessionData.conceptName) return
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_key: currentSessionKey || undefined,
+          concept_name: sessionData.conceptName,
+          session_state: sessionData,
+          stage: sessionData.stage,
+          source_id: sourceId || null
+        })
+      })
+
+      if (response.ok) {
+        const saved = await response.json()
+        if (!currentSessionKey) {
+          setCurrentSessionKey(saved.session_key)
+        }
+        return saved
+      }
+    } catch (e) {
+      console.error('Error saving session to server:', e)
+    }
+    return null
+  }
+
+  // Check for saved session on mount (localStorage fallback)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
@@ -541,54 +603,106 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     // Don't save if we're at the beginning or if no concept name
     if (stage === STAGES.NOTES || !conceptName) return
 
+    const sessionData = {
+      stage,
+      conceptName,
+      notes,
+      stageData,
+      notesUnderstanding,
+      hypothesisCards,
+      differentiationCards,
+      tensionFeedback,
+      uploadedDocuments,
+      dimensionalExtraction,
+      questions,
+      currentQuestionIndex,
+      interimAnalysis,
+      savedAt: new Date().toISOString()
+    }
+
+    // Save to localStorage immediately
     try {
-      const sessionData = {
-        stage,
-        conceptName,
-        notes,
-        stageData,
-        notesUnderstanding,
-        hypothesisCards,
-        differentiationCards,
-        tensionFeedback,
-        uploadedDocuments,
-        dimensionalExtraction,
-        questions,
-        currentQuestionIndex,
-        interimAnalysis,
-        savedAt: new Date().toISOString()
-      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData))
     } catch (e) {
-      console.error('Error saving session:', e)
+      console.error('Error saving session to localStorage:', e)
+    }
+
+    // Save to server (debounced - 3 seconds)
+    if (serverSaveTimeoutRef.current) {
+      clearTimeout(serverSaveTimeoutRef.current)
+    }
+    serverSaveTimeoutRef.current = setTimeout(() => {
+      saveToServer(sessionData)
+    }, 3000)
+
+    return () => {
+      if (serverSaveTimeoutRef.current) {
+        clearTimeout(serverSaveTimeoutRef.current)
+      }
     }
   }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex, interimAnalysis])
 
-  // Restore saved session
+  // Restore from localStorage
   const restoreSession = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
-        setStage(parsed.stage)
-        setConceptName(parsed.conceptName)
-        setNotes(parsed.notes || '')
-        setStageData(parsed.stageData || { stage1: { questions: [], answers: [] }, stage2: { questions: [], answers: [] }, stage3: { questions: [], answers: [] } })
-        setNotesUnderstanding(parsed.notesUnderstanding || null)
-        setHypothesisCards(parsed.hypothesisCards || [])
-        setDifferentiationCards(parsed.differentiationCards || [])
-        setTensionFeedback(parsed.tensionFeedback || {})
-        setUploadedDocuments(parsed.uploadedDocuments || [])
-        setDimensionalExtraction(parsed.dimensionalExtraction || null)
-        setQuestions(parsed.questions || [])
-        setCurrentQuestionIndex(parsed.currentQuestionIndex || 0)
-        setInterimAnalysis(parsed.interimAnalysis || null)
+        applySessionData(parsed)
         setHasSavedSession(false)
         setSavedSessionInfo(null)
       }
     } catch (e) {
       console.error('Error restoring session:', e)
       clearSavedSession()
+    }
+  }
+
+  // Restore from server session
+  const restoreServerSession = async (sessionKey) => {
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/sessions/${sessionKey}`)
+      if (response.ok) {
+        const session = await response.json()
+        applySessionData(session.session_state)
+        setCurrentSessionKey(session.session_key)
+      } else {
+        setError('Failed to load session from server')
+      }
+    } catch (e) {
+      console.error('Error restoring server session:', e)
+      setError('Could not connect to server')
+    }
+  }
+
+  // Apply session data to state (shared between local and server restore)
+  const applySessionData = (parsed) => {
+    setStage(parsed.stage)
+    setConceptName(parsed.conceptName)
+    setNotes(parsed.notes || '')
+    setStageData(parsed.stageData || { stage1: { questions: [], answers: [] }, stage2: { questions: [], answers: [] }, stage3: { questions: [], answers: [] } })
+    setNotesUnderstanding(parsed.notesUnderstanding || null)
+    setHypothesisCards(parsed.hypothesisCards || [])
+    setDifferentiationCards(parsed.differentiationCards || [])
+    setTensionFeedback(parsed.tensionFeedback || {})
+    setUploadedDocuments(parsed.uploadedDocuments || [])
+    setDimensionalExtraction(parsed.dimensionalExtraction || null)
+    setQuestions(parsed.questions || [])
+    setCurrentQuestionIndex(parsed.currentQuestionIndex || 0)
+    setInterimAnalysis(parsed.interimAnalysis || null)
+  }
+
+  // Delete server session
+  const deleteServerSession = async (sessionKey) => {
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/sessions/${sessionKey}`, {
+        method: 'DELETE'
+      })
+      if (response.ok) {
+        setServerSessions(prev => prev.filter(s => s.session_key !== sessionKey))
+      }
+    } catch (e) {
+      console.error('Error deleting server session:', e)
     }
   }
 
@@ -603,36 +717,47 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     }
   }
 
-  // Manual save checkpoint
-  const saveCheckpoint = () => {
+  // Manual save checkpoint (saves to both localStorage and server)
+  const saveCheckpoint = async () => {
     if (!conceptName || stage === STAGES.NOTES) return
 
-    try {
-      const sessionData = {
-        stage,
-        conceptName,
-        notes,
-        stageData,
-        notesUnderstanding,
-        hypothesisCards,
-        differentiationCards,
-        tensionFeedback,
-        uploadedDocuments,
-        dimensionalExtraction,
-        questions,
-        currentQuestionIndex,
-        interimAnalysis,
-        savedAt: new Date().toISOString(),
-        isManualCheckpoint: true
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData))
-      // Show brief confirmation
-      const originalLabel = progress.label
-      setProgress(prev => ({ ...prev, label: '✓ Checkpoint saved!' }))
-      setTimeout(() => setProgress(prev => ({ ...prev, label: originalLabel })), 2000)
-    } catch (e) {
-      console.error('Error saving checkpoint:', e)
+    const sessionData = {
+      stage,
+      conceptName,
+      notes,
+      stageData,
+      notesUnderstanding,
+      hypothesisCards,
+      differentiationCards,
+      tensionFeedback,
+      uploadedDocuments,
+      dimensionalExtraction,
+      questions,
+      currentQuestionIndex,
+      interimAnalysis,
+      savedAt: new Date().toISOString(),
+      isManualCheckpoint: true
     }
+
+    // Save to localStorage
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData))
+    } catch (e) {
+      console.error('Error saving checkpoint to localStorage:', e)
+    }
+
+    // Save to server immediately (not debounced for manual saves)
+    const originalLabel = progress.label
+    setProgress(prev => ({ ...prev, label: 'Saving to server...' }))
+
+    const saved = await saveToServer(sessionData)
+
+    if (saved) {
+      setProgress(prev => ({ ...prev, label: '✓ Saved to server!' }))
+    } else {
+      setProgress(prev => ({ ...prev, label: '✓ Saved locally (server unavailable)' }))
+    }
+    setTimeout(() => setProgress(prev => ({ ...prev, label: originalLabel })), 2000)
   }
 
   // Navigate to a specific stage
@@ -3276,11 +3401,49 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           {/* STAGE: Notes Input */}
           {stage === STAGES.NOTES && (
             <div className="wizard-stage">
-              {/* Resume Session Banner */}
-              {hasSavedSession && savedSessionInfo && (
-                <div className="resume-session-banner">
+              {/* Server Sessions Banner */}
+              {serverSessions.length > 0 && (
+                <div className="server-sessions-banner">
+                  <div className="server-sessions-header">
+                    <strong>Continue a saved session</strong>
+                    <span className="session-count">{serverSessions.length} active session{serverSessions.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="server-sessions-list">
+                    {serverSessions.map(session => (
+                      <div key={session.session_key} className="server-session-item">
+                        <div className="session-info">
+                          <span className="session-concept">{session.concept_name}</span>
+                          <span className="session-stage">{session.stage || 'In progress'}</span>
+                          <span className="session-time">
+                            Last updated: {new Date(session.updated_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="session-actions">
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => restoreServerSession(session.session_key)}
+                          >
+                            Resume
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => deleteServerSession(session.session_key)}
+                            title="Delete session"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Local Resume Session Banner (fallback when server unavailable) */}
+              {hasSavedSession && savedSessionInfo && !serverSessions.find(s => s.concept_name === savedSessionInfo.conceptName) && (
+                <div className="resume-session-banner local-session">
                   <div className="resume-info">
-                    <strong>Resume previous session?</strong>
+                    <strong>Resume local session?</strong>
                     <p>
                       Found saved progress for "<em>{savedSessionInfo.conceptName}</em>"
                       {savedSessionInfo.savedAt && (

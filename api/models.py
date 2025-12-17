@@ -454,3 +454,46 @@ class ChallengeClusterMember(Base):
     challenge = relationship("Challenge", foreign_keys=[challenge_id])
     emerging_concept = relationship("EmergingConcept", foreign_keys=[emerging_concept_id])
     emerging_dialectic = relationship("EmergingDialectic", foreign_keys=[emerging_dialectic_id])
+
+
+# =============================================================================
+# WIZARD SESSIONS - Cross-device session persistence
+# =============================================================================
+
+class WizardSessionStatus(str, enum.Enum):
+    """Status for wizard sessions."""
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    ABANDONED = "abandoned"
+
+
+class WizardSession(Base):
+    """
+    Stores wizard session state for cross-device persistence.
+    Allows users to start a concept on one device and continue on another.
+    """
+    __tablename__ = "wizard_sessions"
+
+    id = Column(Integer, primary_key=True)
+
+    # Session identification
+    session_key = Column(String(64), unique=True, nullable=False, index=True)
+    concept_name = Column(String(300), nullable=False)
+
+    # Session state (JSON blob with all wizard state)
+    session_state = Column(JSON, nullable=False)
+
+    # Metadata
+    stage = Column(String(50))
+    source_id = Column(Integer, ForeignKey("theory_sources.id"))
+
+    # Status
+    status = Column(String(20), default="active")
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    last_accessed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    source = relationship("TheorySource", foreign_keys=[source_id])

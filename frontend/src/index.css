@@ -6035,6 +6035,109 @@ textarea {
 }
 
 /* =========================================================================
+   SERVER SESSIONS BANNER
+   ========================================================================= */
+.server-sessions-banner {
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #1a2332, #1e2d3d);
+  border: 1px solid #3fb950;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(63, 185, 80, 0.15);
+}
+
+.server-sessions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #30363d;
+}
+
+.server-sessions-header strong {
+  color: #3fb950;
+  font-size: 1.1rem;
+}
+
+.session-count {
+  color: #8b949e;
+  font-size: 0.85rem;
+}
+
+.server-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.server-session-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid #30363d;
+}
+
+.server-session-item:hover {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: #3fb950;
+}
+
+.session-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.session-concept {
+  color: #58a6ff;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.session-stage {
+  color: #7ee787;
+  font-size: 0.85rem;
+}
+
+.session-time {
+  color: #8b949e;
+  font-size: 0.8rem;
+}
+
+.session-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.session-actions .btn-danger {
+  background: transparent;
+  border: 1px solid #f85149;
+  color: #f85149;
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.session-actions .btn-danger:hover {
+  background: #f85149;
+  color: #fff;
+}
+
+.resume-session-banner.local-session {
+  border-color: #8b949e;
+  background: linear-gradient(135deg, #1a2332, #21262d);
+}
+
+.resume-session-banner.local-session .resume-info strong {
+  color: #8b949e;
+}
+
+/* =========================================================================
    STAGE NAVIGATION BREADCRUMB
    ========================================================================= */
 .stage-nav-breadcrumb {

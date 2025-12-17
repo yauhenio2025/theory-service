@@ -17,6 +17,7 @@ import json
 import asyncio
 import logging
 import tempfile
+import uuid
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -27,9 +28,11 @@ logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
 from anthropic import Anthropic
 
 from .database import get_db
+from .models import WizardSession
 
 # PDF extraction (optional - graceful fallback)
 try:
@@ -1172,6 +1175,49 @@ class RefineWithFeedbackRequest(BaseModel):
     genealogy_answers: Optional[Dict[str, str]] = None  # User answers to probing questions
     user_influences: Optional[List[str]] = None  # User-added influences not detected
     source_id: Optional[int] = None
+
+
+# =============================================================================
+# WIZARD SESSION SCHEMAS (Cross-device persistence)
+# =============================================================================
+
+class WizardSessionCreate(BaseModel):
+    """Create or update a wizard session."""
+    session_key: Optional[str] = None  # If None, generates new UUID
+    concept_name: str
+    session_state: Dict[str, Any]  # Full wizard state
+    stage: Optional[str] = None
+    source_id: Optional[int] = None
+
+
+class WizardSessionResponse(BaseModel):
+    """Response for wizard session."""
+    id: int
+    session_key: str
+    concept_name: str
+    session_state: Dict[str, Any]
+    stage: Optional[str] = None
+    source_id: Optional[int] = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WizardSessionListItem(BaseModel):
+    """Summary item for session list."""
+    id: int
+    session_key: str
+    concept_name: str
+    stage: Optional[str] = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # =============================================================================
@@ -4691,3 +4737,188 @@ async def generate_phase3_questions(request: Phase3QuestionsRequest):
         stream_phase3(),
         media_type="text/event-stream"
     )
+
+
+# =============================================================================
+# WIZARD SESSION ENDPOINTS (Cross-device persistence)
+# =============================================================================
+
+@router.get("/sessions", response_model=List[WizardSessionListItem])
+async def list_sessions(
+    status: Optional[str] = "active",
+    db: AsyncSession = Depends(get_db)
+):
+    """List all wizard sessions, optionally filtered by status."""
+    try:
+        query = select(WizardSession).order_by(WizardSession.updated_at.desc())
+        if status:
+            query = query.where(WizardSession.status == status)
+
+        result = await db.execute(query)
+        sessions = result.scalars().all()
+
+        return [
+            WizardSessionListItem(
+                id=s.id,
+                session_key=s.session_key,
+                concept_name=s.concept_name,
+                stage=s.stage,
+                status=s.status,
+                created_at=s.created_at,
+                updated_at=s.updated_at
+            )
+            for s in sessions
+        ]
+    except Exception as e:
+        logger.error(f"Error listing sessions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sessions/{session_key}", response_model=WizardSessionResponse)
+async def get_session(
+    session_key: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a specific wizard session by session key."""
+    try:
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == session_key)
+        )
+        session = result.scalar_one_or_none()
+
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Update last_accessed_at
+        session.last_accessed_at = datetime.utcnow()
+        await db.commit()
+
+        return WizardSessionResponse(
+            id=session.id,
+            session_key=session.session_key,
+            concept_name=session.concept_name,
+            session_state=session.session_state,
+            stage=session.stage,
+            source_id=session.source_id,
+            status=session.status,
+            created_at=session.created_at,
+            updated_at=session.updated_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting session: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sessions", response_model=WizardSessionResponse)
+async def save_session(
+    request: WizardSessionCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create or update a wizard session."""
+    try:
+        session_key = request.session_key or str(uuid.uuid4())
+
+        # Check if session exists
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == session_key)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update existing session
+            existing.concept_name = request.concept_name
+            existing.session_state = request.session_state
+            existing.stage = request.stage
+            existing.source_id = request.source_id
+            existing.last_accessed_at = datetime.utcnow()
+            session = existing
+        else:
+            # Create new session
+            session = WizardSession(
+                session_key=session_key,
+                concept_name=request.concept_name,
+                session_state=request.session_state,
+                stage=request.stage,
+                source_id=request.source_id,
+                status="active"
+            )
+            db.add(session)
+
+        await db.commit()
+        await db.refresh(session)
+
+        return WizardSessionResponse(
+            id=session.id,
+            session_key=session.session_key,
+            concept_name=session.concept_name,
+            session_state=session.session_state,
+            stage=session.stage,
+            source_id=session.source_id,
+            status=session.status,
+            created_at=session.created_at,
+            updated_at=session.updated_at
+        )
+    except Exception as e:
+        logger.error(f"Error saving session: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/sessions/{session_key}")
+async def delete_session(
+    session_key: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a wizard session."""
+    try:
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == session_key)
+        )
+        session = result.scalar_one_or_none()
+
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        await db.delete(session)
+        await db.commit()
+
+        return {"status": "deleted", "session_key": session_key}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting session: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/sessions/{session_key}/status")
+async def update_session_status(
+    session_key: str,
+    status: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a session's status (active, completed, abandoned)."""
+    try:
+        if status not in ["active", "completed", "abandoned"]:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == session_key)
+        )
+        session = result.scalar_one_or_none()
+
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        session.status = status
+        await db.commit()
+
+        return {"status": status, "session_key": session_key}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating session status: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
