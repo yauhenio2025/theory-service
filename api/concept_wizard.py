@@ -3646,12 +3646,12 @@ async def analyze_document(
             )
 
             # Use Sonnet 4.5 with 1M context beta
-            # Must use client.beta.messages.stream() with betas parameter
+            # Beta header for Sonnet 4.5: context-1m-2025-08-07
             with client.beta.messages.stream(
                 model=SONNET_MODEL,
                 max_tokens=SONNET_MAX_OUTPUT,
                 messages=[{"role": "user", "content": prompt}],
-                betas=["max-tokens-3-5-sonnet-2024-07-15"]  # 1M context beta
+                betas=["context-1m-2025-08-07"]  # Sonnet 4.5 1M context beta
             ) as stream:
                 full_text = ""
                 for event in stream:
