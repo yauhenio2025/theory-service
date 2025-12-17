@@ -1434,21 +1434,84 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   }
 
   /**
-   * Skip document upload and continue to Stage 1
+   * Convert approved hypothesis cards to Stage 1 "answers" format
+   * This allows us to skip Stage 1 generic questions when cards are validated
    */
-  const skipDocumentUpload = () => {
-    setProgress({ stage: 3, total: 11, label: 'Stage 1: Genesis & Problem Space' })
-    setStage(STAGES.STAGE1)
-    setCurrentQuestionIndex(0)
+  const convertCardsToAnswers = () => {
+    const answers = []
+
+    // Convert approved hypothesis cards to answers
+    hypothesisCards
+      .filter(c => c.status === 'approved')
+      .forEach(card => {
+        answers.push({
+          question_id: `hypothesis_${card.id}`,
+          text_answer: card.content,
+          card_type: card.type || 'thesis',
+          source: 'validated_card'
+        })
+      })
+
+    // Convert approved differentiation cards to answers
+    differentiationCards
+      .filter(c => c.status === 'approved')
+      .forEach(card => {
+        answers.push({
+          question_id: `differentiation_${card.id}`,
+          text_answer: `NOT ${card.contrasted_with}: ${card.difference}`,
+          card_type: 'differentiation',
+          source: 'validated_card'
+        })
+      })
+
+    return answers
   }
 
   /**
-   * Continue from document upload to Stage 1
+   * Proceed with validated cards - skip Stage 1 generic questions
+   */
+  const proceedWithValidatedCards = async () => {
+    // Check if we have any approved cards
+    const approvedHypotheses = hypothesisCards.filter(c => c.status === 'approved')
+    const approvedDifferentiations = differentiationCards.filter(c => c.status === 'approved')
+
+    if (approvedHypotheses.length === 0 && approvedDifferentiations.length === 0) {
+      // No cards approved - fall back to Stage 1 questions
+      setProgress({ stage: 3, total: 11, label: 'Stage 1: Genesis & Problem Space' })
+      setStage(STAGES.STAGE1)
+      setCurrentQuestionIndex(0)
+      return
+    }
+
+    // Convert approved cards to answers format
+    const cardAnswers = convertCardsToAnswers()
+
+    // Store as Stage 1 answers and proceed to analysis
+    setStageData(prev => ({
+      ...prev,
+      stage1: {
+        ...prev.stage1,
+        answers: cardAnswers,
+        skippedGenericQuestions: true
+      }
+    }))
+
+    // Go directly to Stage 1 analysis (which generates Stage 2)
+    await analyzeStage1(cardAnswers)
+  }
+
+  /**
+   * Skip document upload and continue with validated cards
+   */
+  const skipDocumentUpload = () => {
+    proceedWithValidatedCards()
+  }
+
+  /**
+   * Continue from document upload with validated cards
    */
   const continueFromDocumentUpload = () => {
-    setProgress({ stage: 3, total: 11, label: 'Stage 1: Genesis & Problem Space' })
-    setStage(STAGES.STAGE1)
-    setCurrentQuestionIndex(0)
+    proceedWithValidatedCards()
   }
 
   /**
