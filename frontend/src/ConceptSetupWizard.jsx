@@ -4141,12 +4141,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {implicationsPreview.remaining_tensions?.length > 0 && (
+                {(implicationsPreview.areas_still_developing?.length > 0 || implicationsPreview.remaining_tensions?.length > 0) && (
                   <div className="implications-section">
-                    <h4>Remaining Tensions</h4>
+                    <h4>Areas Still Developing</h4>
                     <ul className="tensions-remaining">
-                      {implicationsPreview.remaining_tensions.map((t, i) => (
-                        <li key={i}>{t}</li>
+                      {(implicationsPreview.areas_still_developing || implicationsPreview.remaining_tensions || []).map((t, i) => (
+                        <li key={i}>{typeof t === 'string' ? t : (t?.description || t?.pole_a + ' vs ' + t?.pole_b || JSON.stringify(t))}</li>
                       ))}
                     </ul>
                   </div>
@@ -4218,7 +4218,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                         <strong>Preserved tensions (dialectics):</strong>
                         <ul>
                           {stageData.stage1.approvedTensions.map((tension, i) => (
-                            <li key={i}>{tension}</li>
+                            <li key={i}>{typeof tension === 'string' ? tension : (tension?.description || tension?.pole_a + ' vs ' + tension?.pole_b)}</li>
                           ))}
                         </ul>
                       </div>
