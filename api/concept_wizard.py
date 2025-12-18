@@ -4792,6 +4792,7 @@ async def get_session(
         # Update last_accessed_at
         session.last_accessed_at = datetime.utcnow()
         await db.commit()
+        await db.refresh(session)  # Reload to avoid lazy-load issues in async context
 
         return WizardSessionResponse(
             id=session.id,
