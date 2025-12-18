@@ -894,7 +894,17 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Request failed' }))
-        throw new Error(error.detail || 'Request failed')
+        // Handle FastAPI validation errors which return detail as an array
+        const detail = error.detail
+        let errorMessage = 'Request failed'
+        if (typeof detail === 'string') {
+          errorMessage = detail
+        } else if (Array.isArray(detail)) {
+          errorMessage = detail.map(d => d.msg || d.message || JSON.stringify(d)).join('; ')
+        } else if (detail?.msg || detail?.message) {
+          errorMessage = detail.msg || detail.message
+        }
+        throw new Error(errorMessage)
       }
 
       const reader = response.body.getReader()
