@@ -978,13 +978,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         onComplete: (data) => {
           // Store questions and analysis for later use
           setQuestions(data.questions || [])
+          // Support both new (gaps_tensions_questions) and old (potential_tensions) field names
+          const gapsTensionsQuestions = data.gaps_tensions_questions || data.potential_tensions || []
           setStageData(prev => ({
             ...prev,
             stage1: {
               ...prev.stage1,
               questions: data.questions || [],
               notesAnalysis: data.notes_analysis || null,
-              potentialTensions: data.potential_tensions || []
+              gapsTensionsQuestions: gapsTensionsQuestions
             }
           }))
 
@@ -1014,7 +1016,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             summary: data.notes_analysis?.summary || 'Unable to extract summary from your notes.',
             preliminaryDefinition: data.notes_analysis?.preliminary_definition || null,
             keyInsights: data.notes_analysis?.key_insights || [],
-            potentialTensions: data.potential_tensions || [],
+            gapsTensionsQuestions: gapsTensionsQuestions,
             // Genealogy - intellectual origins and influences
             genealogy: data.genealogy || {
               detected_influences: [],
@@ -1089,7 +1091,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             summary: notesUnderstanding.summary,
             preliminaryDefinition: notesUnderstanding.preliminaryDefinition,
             key_insights: notesUnderstanding.keyInsights,
-            potentialTensions: notesUnderstanding.potentialTensions,
+            gapsTensionsQuestions: notesUnderstanding.gapsTensionsQuestions,
             genealogy: notesUnderstanding.genealogy
           },
           insight_feedback: insightFeedback,
@@ -1281,13 +1283,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         },
         onComplete: (data) => {
           setQuestions(data.questions || [])
+          // Support both new (gaps_tensions_questions) and old (potential_tensions) field names
+          const gapsTensionsQuestionsRegen = data.gaps_tensions_questions || data.potential_tensions || []
           setStageData(prev => ({
             ...prev,
             stage1: {
               ...prev.stage1,
               questions: data.questions || [],
               notesAnalysis: data.notes_analysis || null,
-              potentialTensions: data.potential_tensions || []
+              gapsTensionsQuestions: gapsTensionsQuestionsRegen
             }
           }))
 
@@ -1311,7 +1315,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             summary: data.notes_analysis?.summary || 'Unable to extract summary.',
             preliminaryDefinition: data.notes_analysis?.preliminary_definition || null,
             keyInsights: data.notes_analysis?.key_insights || [],
-            potentialTensions: data.potential_tensions || [],
+            gapsTensionsQuestions: gapsTensionsQuestionsRegen,
             // Preserve or update genealogy from regeneration
             genealogy: data.genealogy || notesUnderstanding?.genealogy || {
               detected_influences: [],
@@ -1450,7 +1454,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setThinking('')
 
     // Get approved tensions to avoid duplicates
-    const approvedTensions = notesUnderstanding.potentialTensions
+    const approvedTensions = notesUnderstanding.gapsTensionsQuestions
       .filter((_, i) => tensionFeedback[i]?.status === 'approved' || tensionFeedback[i]?.status === 'approved_with_comment')
 
     await streamWizardRequest(
@@ -1458,7 +1462,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       {
         concept_name: conceptName,
         notes: notes,
-        existing_tensions: notesUnderstanding.potentialTensions,
+        existing_tensions: notesUnderstanding.gapsTensionsQuestions,
         approved_tensions: approvedTensions,
         notes_analysis: notesUnderstanding
       },
@@ -1471,7 +1475,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           const newTensions = data.generated_tensions || []
           setNotesUnderstanding(prev => ({
             ...prev,
-            potentialTensions: [...prev.potentialTensions, ...newTensions]
+            gapsTensionsQuestions: [...prev.gapsTensionsQuestions, ...newTensions]
           }))
           setIsGeneratingTensions(false)
           setThinking('')
@@ -1484,7 +1488,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
    * Regenerate a specific tension using the comment as context
    */
   const regenerateTension = async (index) => {
-    const tension = notesUnderstanding.potentialTensions[index]
+    const tension = notesUnderstanding.gapsTensionsQuestions[index]
     const feedback = tensionFeedback[index]
 
     if (!feedback?.comment?.trim()) {
@@ -1507,7 +1511,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         tension_index: index,
         current_tension: tensionText,
         feedback: feedback.comment,
-        all_tensions: notesUnderstanding.potentialTensions.map(t =>
+        all_tensions: notesUnderstanding.gapsTensionsQuestions.map(t =>
           typeof t === 'string' ? t : (t.description || t.tension || JSON.stringify(t))
         )
       },
@@ -1517,11 +1521,11 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         },
         onComplete: (data) => {
           // Update the specific tension
-          const newTensions = [...notesUnderstanding.potentialTensions]
+          const newTensions = [...notesUnderstanding.gapsTensionsQuestions]
           newTensions[index] = data.regenerated_tension
           setNotesUnderstanding(prev => ({
             ...prev,
-            potentialTensions: newTensions
+            gapsTensionsQuestions: newTensions
           }))
           // Clear feedback for this tension
           setTensionFeedback(prev => {
@@ -1654,6 +1658,28 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         break
       case 'differentiation':
         setDifferentiationCards(updateCardStatus)
+        break
+    }
+  }
+
+  /**
+   * Accept all pending cards of a given type
+   */
+  const acceptAllCards = (cardType) => {
+    const acceptAll = (prevCards) => prevCards.map(c =>
+      c.status === 'pending' ? { ...c, status: 'approved' } : c
+    )
+
+    switch (cardType) {
+      case 'hypothesis':
+        setHypothesisCards(acceptAll)
+        break
+      case 'differentiation':
+        setDifferentiationCards(acceptAll)
+        break
+      case 'all':
+        setHypothesisCards(acceptAll)
+        setDifferentiationCards(acceptAll)
         break
     }
   }
@@ -2648,7 +2674,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }))
 
     // Build approved tensions from understanding validation
-    const approvedTensions = (notesUnderstanding?.potentialTensions || [])
+    const approvedTensions = (notesUnderstanding?.gapsTensionsQuestions || [])
       .filter((_, i) => {
         const feedback = tensionFeedback[i]
         return feedback?.status === 'approved' || feedback?.status === 'approved_with_comment'
@@ -2865,7 +2891,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
     // Collect approved tensions from notes preprocessing (Validate Understanding stage)
     // These will be passed so the Interim Analysis can identify NEW tensions
-    const approvedTensionsFromNotes = (notesUnderstanding?.potentialTensions || [])
+    const approvedTensionsFromNotes = (notesUnderstanding?.gapsTensionsQuestions || [])
       .map((t, i) => {
         const feedback = tensionFeedback[i]
         if (feedback?.status === 'approved' || feedback?.status === 'approved_with_comment') {
@@ -3010,7 +3036,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       }))
 
     // Build approved tensions from understanding validation
-    const approvedTensions = (notesUnderstanding?.potentialTensions || [])
+    const approvedTensions = (notesUnderstanding?.gapsTensionsQuestions || [])
       .filter((_, i) => {
         const feedback = tensionFeedback[i]
         return feedback?.status === 'approved' || feedback?.status === 'approved_with_comment'
@@ -3597,7 +3623,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     <h3>Review Generated Claims</h3>
                     <p>These claims were extracted from your notes. Approve, reject, or transform each card.</p>
 
-                    {/* Card stage tabs - only hypothesis and differentiation */}
+                    {/* Card stage tabs with Accept All buttons */}
+                    <div className="card-stage-tabs-container">
                     <div className="card-stage-tabs">
                       <button
                         className={`card-stage-tab ${cardReviewStage === 'hypothesis' ? 'active' : ''}`}
@@ -3621,6 +3648,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                           </span>
                         )}
                       </button>
+                    </div>
+                    <button
+                      className="btn btn-sm btn-success accept-all-btn"
+                      onClick={() => acceptAllCards('all')}
+                      disabled={[...hypothesisCards, ...differentiationCards].filter(c => c.status === 'pending').length === 0}
+                      title="Accept all pending hypotheses and differentiations"
+                    >
+                      ✓ Accept All ({[...hypothesisCards, ...differentiationCards].filter(c => c.status === 'pending').length})
+                    </button>
                     </div>
                   </div>
 
@@ -3673,19 +3709,22 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 </div>
               )}
 
-              {/* Potential Tensions - after card review */}
+              {/* Gaps, Tensions & Open Questions - after card review */}
               <div className="uv-section uv-tensions">
                 <div className="uv-tensions-header">
-                  <h4>Potential Tensions Detected</h4>
+                  <h4>Gaps, Tensions & Open Questions</h4>
                   <button
                     className="btn btn-sm btn-secondary"
                     onClick={generateMoreTensions}
                     disabled={isGeneratingTensions}
                   >
-                    {isGeneratingTensions ? 'Generating...' : 'Generate More Tensions'}
+                    {isGeneratingTensions ? 'Generating...' : 'Identify More'}
                   </button>
                 </div>
-                <p className="uv-section-help">Approve tensions to preserve as productive dialectics in your concept.</p>
+                <p className="uv-section-help">
+                  These are areas where your concept may need clarification. Confirming them helps me ask better questions in subsequent stages.
+                  You don't need to resolve these now—just indicate if I've identified the right areas of uncertainty.
+                </p>
 
                 {isGeneratingTensions && thinking && (
                   <div className="thinking-mini">
@@ -3694,9 +3733,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {notesUnderstanding.potentialTensions?.length > 0 ? (
+                {notesUnderstanding.gapsTensionsQuestions?.length > 0 ? (
                   <div className="uv-tensions-granular">
-                    {notesUnderstanding.potentialTensions.map((tension, i) => {
+                    {notesUnderstanding.gapsTensionsQuestions.map((tension, i) => {
                       const tensionText = typeof tension === 'string'
                         ? tension
                         : (tension.description || tension.tension || JSON.stringify(tension))
@@ -3722,9 +3761,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                             <button
                               className={`tension-btn approve ${tensionFeedback[i]?.status === 'approved' ? 'active' : ''}`}
                               onClick={() => setTensionStatus(i, 'approved')}
-                              title="Approve this tension as-is"
+                              title="Yes, this is an area that needs exploration"
                             >
-                              Approve
+                              Yes, explore this
                             </button>
                             <button
                               className={`tension-btn approve-comment ${tensionFeedback[i]?.status === 'approved_with_comment' ? 'active' : ''}`}
@@ -3732,9 +3771,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                 setTensionStatus(i, 'approved_with_comment')
                                 setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
                               }}
-                              title="Approve and add context (keeps original)"
+                              title="Confirm and add context to guide exploration"
                             >
-                              Approve w/ Comment
+                              Yes + Context
                             </button>
                             <button
                               className={`tension-btn regenerate ${tensionFeedback[i]?.status === 'regenerate' ? 'active' : ''}`}
@@ -3742,16 +3781,16 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                 setTensionStatus(i, 'regenerate')
                                 setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
                               }}
-                              title="Regenerate this tension using your feedback"
+                              title="Refine this to better capture the gap/tension"
                             >
-                              Regenerate w/ Comment
+                              Refine
                             </button>
                             <button
                               className={`tension-btn reject ${tensionFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
                               onClick={() => setTensionStatus(i, 'rejected')}
-                              title="Reject this tension"
+                              title="This isn't a relevant gap or tension"
                             >
-                              Reject
+                              Not relevant
                             </button>
                           </div>
                           {(tensionFeedback[i]?.status === 'approved_with_comment' ||
@@ -3761,8 +3800,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                               <input
                                 type="text"
                                 placeholder={tensionFeedback[i]?.status === 'regenerate'
-                                  ? "Describe how to improve this tension..."
-                                  : "Add context or clarification about this tension..."}
+                                  ? "How should this gap/tension be reframed?"
+                                  : "Add context to help guide exploration of this area..."}
                                 value={tensionFeedback[i]?.comment || ''}
                                 onChange={(e) => setTensionComment(i, e.target.value)}
                                 className="tension-comment-input"
@@ -3784,7 +3823,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 ) : (
                   <div className="uv-tensions-empty">
-                    <p>No tensions detected yet. Click "Generate More Tensions" to identify potential dialectics in your concept.</p>
+                    <p>No gaps or tensions identified yet. Click "Identify More" to probe areas where clarification might help.</p>
                   </div>
                 )}
               </div>

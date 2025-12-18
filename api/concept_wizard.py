@@ -778,7 +778,15 @@ Analyze the notes and produce a JSON response:
         }}
     ],
     "questions_to_prioritize": ["question_ids that need user clarification because notes were unclear"],
-    "potential_tensions": ["Any contradictions or tensions detected in the notes that could be productive dialectics"],
+    "gaps_tensions_questions": [
+        {{
+            "type": "gap|tension|question",
+            "description": "Description of the gap, tension, or open question detected",
+            "pole_a": "For tensions: one side. For gaps/questions: what's unclear",
+            "pole_b": "For tensions: opposing side. For gaps/questions: what clarification would help",
+            "productive_potential": "Why exploring this would help develop the concept"
+        }}
+    ],
 
     "hypothesis_cards": [
         {{
@@ -928,8 +936,8 @@ INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a 
 The user has completed Stage 1 questions about their concept "{concept_name}". Your task is to:
 1. Synthesize their answers into an interim understanding
 2. Identify key commitments they've made
-3. Detect NEW potential tensions DIFFERENT from those already identified (see below)
-4. Identify gaps that need addressing in Stage 2
+3. Detect NEW gaps, tensions, or open questions DIFFERENT from those already identified (see below)
+4. Identify areas that need addressing in Stage 2
 
 ## User's Stage 1 Answers:
 {stage1_answers}
@@ -937,12 +945,12 @@ The user has completed Stage 1 questions about their concept "{concept_name}". Y
 ## Dialectics Marked by User During Stage 1:
 {marked_dialectics}
 
-## IMPORTANT - Tensions Already Identified from Notes Analysis (DO NOT DUPLICATE):
+## IMPORTANT - Items Already Identified from Notes Analysis (DO NOT DUPLICATE):
 {already_identified_tensions}
 
-The tensions listed above were already identified during the initial notes analysis and validated by the user.
-You must identify NEW tensions that emerged from the Stage 1 answers - tensions that are DIFFERENT from those already listed.
-Look for tensions that arise specifically from the ANSWERS provided, not from the original notes.
+The items listed above were already identified during the initial notes analysis and confirmed by the user.
+You must identify NEW items that emerged from the Stage 1 answers - items that are DIFFERENT from those already listed.
+Look for gaps/tensions/questions that arise specifically from the ANSWERS provided, not from the original notes.
 
 Produce a JSON response with:
 {{
@@ -951,20 +959,22 @@ Produce a JSON response with:
         "key_commitments": ["List 3-5 core positions the user has taken"],
         "new_tensions_from_answers": [
             {{
-                "description": "Brief description of this NEW tension (different from those in notes)",
-                "pole_a": "One side of the tension",
-                "pole_b": "The opposing side",
+                "type": "gap|tension|question",
+                "description": "Brief description of this NEW gap, tension, or question",
+                "pole_a": "For tensions: one side. For gaps/questions: the unclear aspect",
+                "pole_b": "For tensions: opposing side. For gaps/questions: what clarification would provide",
                 "marked_as_dialectic": true/false,
-                "source": "Which Stage 1 answer(s) revealed this tension"
+                "source": "Which Stage 1 answer(s) revealed this"
             }}
         ],
-        "gaps_identified": ["Aspects that need more exploration in Stage 2"],
+        "areas_needing_clarification": ["Aspects that need more exploration in Stage 2"],
         "preliminary_definition": "A working 1-paragraph definition based on what we know so far"
     }}
 }}
 
 Be specific to what the user actually said. Don't fabricate or assume beyond their answers.
-Remember: NEW tensions only - do not repeat tensions from the "Already Identified" list above."""
+Remember: NEW items only - do not repeat items from the "Already Identified" list above.
+The goal is to model areas where more clarity would help develop the concept."""
 
 
 STAGE2_GENERATION_PROMPT = """Based on the user's Stage 1 answers about their novel concept "{concept_name}":
@@ -978,11 +988,18 @@ STAGE2_GENERATION_PROMPT = """Based on the user's Stage 1 answers about their no
 ## Adjacent Concepts Selected:
 {adjacent_concepts}
 
+## Confirmed Gaps, Tensions & Open Questions to Address:
+{approved_items}
+
 Generate 4-6 Stage 2 questions that:
-1. **Probe specific gaps** identified in the interim analysis
-2. **Sharpen distinctions** from the adjacent concepts they mentioned
-3. **Test commitments** they've made to see if they hold under scrutiny
-4. **Explore tensions** they flagged as dialectics or that you detected
+1. **Clarify identified gaps** - Questions that help fill in incomplete aspects of the concept
+2. **Explore open questions** - Questions that help the user work through uncertainties they've confirmed
+3. **Navigate confirmed tensions** - Questions that help articulate productive dialectics without forcing resolution
+4. **Sharpen distinctions** from adjacent concepts
+5. **Test commitments** they've made to see if they hold under scrutiny
+
+PRIORITY: Questions should directly address the gaps, tensions, and open questions the user has confirmed as relevant.
+The goal is not to resolve these areas immediately, but to help the user articulate them more clearly.
 
 For each question:
 - Decide if it should be multiple_choice (when there are clear alternatives), multi_select, or open_ended
@@ -1035,7 +1052,7 @@ STAGE3_REFINEMENT_PROMPT = """Based on the user's Stage 2 answers about "{concep
 ## Differentiations Made:
 {differentiations}
 
-## Tensions/Dialectics:
+## Gaps, Tensions & Open Questions:
 {dialectics}
 
 The user will now answer Stage 3 questions about grounding and recognition.
@@ -1052,7 +1069,7 @@ Before they do, generate an "implications preview" that shows them what their St
                 "consequence": "This means..."
             }}
         ],
-        "remaining_tensions": ["Tensions that are still unresolved"],
+        "areas_still_developing": ["Gaps, tensions, or questions that are still being explored"],
         "grounding_focus": "For Stage 3, focus on... (guide for what examples/evidence to provide)"
     }}
 }}
@@ -1300,7 +1317,15 @@ Analyze the notes with the user's corrections in mind and produce a JSON respons
         }}
     ],
     "questions_to_prioritize": ["question_ids that still need user clarification"],
-    "potential_tensions": ["Any contradictions or tensions detected, including from user feedback"],
+    "gaps_tensions_questions": [
+        {{
+            "type": "gap|tension|question",
+            "description": "Description of the gap, tension, or open question detected",
+            "pole_a": "For tensions: one side. For gaps/questions: what's unclear",
+            "pole_b": "For tensions: opposing side. For gaps/questions: what clarification would help",
+            "productive_potential": "Why exploring this would help develop the concept"
+        }}
+    ],
     "changes_made": ["List of specific changes made based on user feedback"]
 }}
 
@@ -1508,7 +1533,7 @@ Return as JSON:
 Only return the single regenerated insight, not the whole list."""
 
 
-GENERATE_TENSIONS_PROMPT = """You are an expert in conceptual analysis helping identify productive tensions (dialectics) in a novel concept.
+GENERATE_TENSIONS_PROMPT = """You are an expert in conceptual analysis helping identify gaps, tensions, and open questions in a novel concept.
 
 ## Concept Name: {concept_name}
 
@@ -1521,73 +1546,85 @@ GENERATE_TENSIONS_PROMPT = """You are an expert in conceptual analysis helping i
 ## Preliminary Definition:
 {preliminary_definition}
 
-## Existing Tensions Already Identified:
+## Existing Items Already Identified:
 {existing_tensions}
 
-## Tensions Already Approved by User:
+## Items Already Confirmed by User:
 {approved_tensions}
 
-Generate 2-3 ADDITIONAL productive tensions that could exist in this concept. Look for:
-1. Tensions between different aspects or implications of the concept
-2. Trade-offs inherent in how the concept operates
-3. Dialectics between the concept and related concepts
-4. Tensions between theoretical and practical applications
-5. Methodological tensions in how the concept should be applied
+Generate 2-3 ADDITIONAL items from these categories that could help clarify this concept:
 
-DO NOT duplicate tensions already identified. Generate truly new ones.
+1. **GAPS** - Areas where the concept's understanding is incomplete or underdeveloped
+   - What aspects need more clarity?
+   - Where is the user's thinking still vague or unformed?
+   - What connections haven't been fully explored?
+
+2. **PRODUCTIVE TENSIONS** - Dialectics inherent in the concept
+   - Tensions between different aspects or implications
+   - Trade-offs in how the concept operates
+   - Creative polarities to preserve (not contradictions to resolve)
+
+3. **OPEN QUESTIONS** - Uncertainties that would benefit from exploration
+   - What hasn't the user fully worked out?
+   - Where might the user's assumptions need examination?
+   - What would more clarity help illuminate?
+
+DO NOT duplicate items already identified. Generate truly new ones.
 
 Return as JSON:
 {{
     "generated_tensions": [
         {{
-            "description": "Brief description of the tension",
-            "pole_a": "One side of the tension",
-            "pole_b": "The opposing side",
-            "productive_potential": "Why this tension could be productive for the concept"
+            "type": "gap|tension|question",
+            "description": "Brief description of the gap, tension, or question",
+            "pole_a": "For tensions: one side of the dialectic. For gaps/questions: the unclear aspect",
+            "pole_b": "For tensions: the opposing side. For gaps/questions: what clarification would provide",
+            "productive_potential": "Why exploring this would help develop the concept"
         }}
     ],
-    "generation_note": "Brief note about what types of tensions were identified"
+    "generation_note": "Brief note about what areas were identified as needing clarification"
 }}
 
-Focus on tensions that would be productive dialectics - not contradictions to resolve, but creative tensions to preserve."""
+The goal is to model where the concept needs more development so that subsequent questions can help clarify these areas. These are areas to EXPLORE, not problems to immediately RESOLVE."""
 
 
-REGENERATE_TENSION_PROMPT = """You are an expert in conceptual analysis helping refine a productive tension (dialectic) based on user feedback.
+REGENERATE_TENSION_PROMPT = """You are an expert in conceptual analysis helping refine a gap, tension, or open question based on user feedback.
 
 ## Concept Name: {concept_name}
 
 ## User's Notes:
 {notes}
 
-## Current Tension to Regenerate:
+## Current Item to Regenerate:
 {current_tension}
 
 ## User's Feedback for Regeneration:
 {feedback}
 
-## Other Tensions in This Concept (for context, avoid duplication):
+## Other Items in This Concept (for context, avoid duplication):
 {other_tensions}
 
-Your task is to regenerate this tension based on the user's feedback. The user wants a NEW formulation that incorporates their feedback - not just the original with a comment appended.
+Your task is to regenerate this item based on the user's feedback. The user wants a NEW formulation that incorporates their feedback - not just the original with a comment appended.
 
 Consider:
-1. What aspect of the tension does the user want emphasized or changed?
-2. Are the poles (opposing sides) correctly identified?
-3. Is the tension at the right level of abstraction?
-4. Does it capture a genuinely productive dialectic?
+1. What aspect does the user want emphasized or changed?
+2. Is this correctly categorized (gap vs tension vs question)?
+3. Is it at the right level of abstraction?
+4. Does it capture a genuinely productive area for exploration?
 
 Return as JSON:
 {{
     "regenerated_tension": {{
-        "description": "Regenerated description of the tension based on feedback",
-        "pole_a": "One side of the tension",
-        "pole_b": "The opposing side",
-        "productive_potential": "Why this tension is productive for the concept"
+        "type": "gap|tension|question",
+        "description": "Regenerated description based on feedback",
+        "pole_a": "For tensions: one side. For gaps/questions: the unclear aspect",
+        "pole_b": "For tensions: opposing side. For gaps/questions: what clarification would provide",
+        "productive_potential": "Why exploring this would help develop the concept"
     }},
     "regeneration_note": "Brief note about what was changed based on feedback"
 }}
 
-Generate a tension that reflects the user's feedback while maintaining theoretical rigor."""
+Generate an item that reflects the user's feedback while maintaining theoretical rigor."""
 
 
 # =============================================================================
@@ -2165,7 +2202,8 @@ async def regenerate_understanding(request: RegenerateUnderstandingRequest):
             notes_analysis = analysis_data.get("notes_analysis", {})
             prefilled_answers = analysis_data.get("prefilled_answers", [])
             questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
-            potential_tensions = analysis_data.get("potential_tensions", [])
+            # Support both new (gaps_tensions_questions) and old (potential_tensions) field names
+            gaps_tensions_questions = analysis_data.get("gaps_tensions_questions", analysis_data.get("potential_tensions", []))
             changes_made = analysis_data.get("changes_made", [])
 
             # Build questions with pre-filled values
@@ -2197,7 +2235,7 @@ async def regenerate_understanding(request: RegenerateUnderstandingRequest):
                     'stage_title': 'Genesis & Problem Space',
                     'stage_description': "I've revised my understanding based on your feedback.",
                     'notes_analysis': notes_analysis,
-                    'potential_tensions': potential_tensions,
+                    'gaps_tensions_questions': gaps_tensions_questions,
                     'changes_made': changes_made,
                     'questions': questions,
                     'regenerated': True
@@ -2915,7 +2953,8 @@ async def get_stage1_questions(request: StartWizardRequest):
             notes_analysis = analysis_data.get("notes_analysis", {})
             prefilled_answers = analysis_data.get("prefilled_answers", [])
             questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
-            potential_tensions = analysis_data.get("potential_tensions", [])
+            # Support both new (gaps_tensions_questions) and old (potential_tensions) field names
+            gaps_tensions_questions = analysis_data.get("gaps_tensions_questions", analysis_data.get("potential_tensions", []))
 
             # Extract new card types for card-based review flow
             hypothesis_cards = analysis_data.get("hypothesis_cards", [])
@@ -2968,7 +3007,7 @@ async def get_stage1_questions(request: StartWizardRequest):
                     'stage_title': 'Review Generated Hypotheses',
                     'stage_description': "We've extracted these claims from your notes. Approve, reject, or transform each card.",
                     'notes_analysis': notes_analysis,
-                    'potential_tensions': potential_tensions,
+                    'gaps_tensions_questions': gaps_tensions_questions,
 
                     # New card-based data
                     'hypothesis_cards': hypothesis_cards,
@@ -3174,11 +3213,19 @@ async def analyze_stage1(request: Stage1AnswersRequest):
             # Phase 2: Generate Stage 2 questions based on interim
             yield f"data: {json.dumps({'type': 'phase', 'phase': 'stage2_generation'})}\n\n"
 
+            # Format approved gaps/tensions/questions for Stage 2 generation
+            approved_items_text = "None confirmed yet."
+            if request.approved_tensions_from_notes and len(request.approved_tensions_from_notes) > 0:
+                approved_items_text = "\n".join([
+                    f"- {item}" for item in request.approved_tensions_from_notes
+                ])
+
             stage2_prompt = STAGE2_GENERATION_PROMPT.format(
                 concept_name=request.concept_name,
                 stage1_summary=stage1_text,
                 interim_analysis=json.dumps(interim_analysis, indent=2),
-                adjacent_concepts=adjacent_concepts
+                adjacent_concepts=adjacent_concepts,
+                approved_items=approved_items_text
             )
 
             with client.messages.stream(
