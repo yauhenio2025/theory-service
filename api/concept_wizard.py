@@ -138,12 +138,32 @@ class Tension(BaseModel):
     user_note: Optional[str] = None
 
 
+class NewTensionFromAnswers(BaseModel):
+    """A gap, tension, or question detected from answers."""
+    type: Optional[str] = "tension"  # gap, tension, or question
+    description: str
+    pole_a: Optional[str] = None
+    pole_b: Optional[str] = None
+    marked_as_dialectic: bool = False
+    source: Optional[str] = None  # Which answer revealed this
+    user_note: Optional[str] = None
+
+
 class InterimAnalysis(BaseModel):
-    """Intermediate understanding shown between stages."""
+    """Intermediate understanding shown between stages.
+
+    Accepts both old field names (tensions_detected, gaps_identified)
+    and new field names (new_tensions_from_answers, areas_needing_clarification)
+    for backward compatibility with existing sessions.
+    """
     understanding_summary: str  # "Based on your answers, I understand..."
     key_commitments: List[str]  # Core positions you've taken
-    tensions_detected: List[Tension]  # Potential dialectics
-    gaps_identified: List[str]  # What we still need to know
+    # Old field names (for backward compatibility)
+    tensions_detected: Optional[List[Tension]] = None  # Potential dialectics (old format)
+    gaps_identified: Optional[List[str]] = None  # What we still need to know (old format)
+    # New field names (current format)
+    new_tensions_from_answers: Optional[List[NewTensionFromAnswers]] = None  # New tensions with type
+    areas_needing_clarification: Optional[List[str]] = None  # Areas needing clarification
     preliminary_definition: str  # Working definition so far
 
 
