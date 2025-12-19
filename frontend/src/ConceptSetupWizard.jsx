@@ -3719,21 +3719,22 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 </div>
               )}
 
-              {/* Gaps, Tensions & Open Questions - after card review */}
-              <div className="uv-section uv-tensions">
+              {/* Blind Spots - epistemic gaps in user's positioning */}
+              <div className="uv-section uv-tensions uv-blind-spots">
                 <div className="uv-tensions-header">
-                  <h4>Gaps, Tensions & Open Questions</h4>
+                  <h4>Blind Spots</h4>
                   <button
                     className="btn btn-sm btn-secondary"
                     onClick={generateMoreTensions}
                     disabled={isGeneratingTensions}
                   >
-                    {isGeneratingTensions ? 'Generating...' : 'Identify More'}
+                    {isGeneratingTensions ? 'Identifying...' : 'Identify More'}
                   </button>
                 </div>
                 <p className="uv-section-help">
-                  These are areas where your concept may need clarification. Confirming them helps me ask better questions in subsequent stages.
-                  You don't need to resolve these now—just indicate if I've identified the right areas of uncertainty.
+                  These are places where your epistemic positioning isn't yet explicit—presuppositions, ambiguities,
+                  paradigm dependencies, or unconfronted challenges. Confirming them helps surface your priors so I can
+                  ask better questions. You don't need to resolve these now—just indicate if I've identified real blind spots.
                 </p>
 
                 {isGeneratingTensions && thinking && (
@@ -3744,34 +3745,53 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 )}
 
                 {notesUnderstanding.gapsTensionsQuestions?.length > 0 ? (
-                  <div className="uv-tensions-granular">
-                    {notesUnderstanding.gapsTensionsQuestions.map((tension, i) => {
-                      const tensionText = typeof tension === 'string'
-                        ? tension
-                        : (tension.description || tension.tension || JSON.stringify(tension))
-                      const tensionPoles = typeof tension === 'object'
-                        ? { pole_a: tension.pole_a, pole_b: tension.pole_b }
-                        : null
+                  <div className="uv-tensions-granular uv-blind-spots-list">
+                    {notesUnderstanding.gapsTensionsQuestions.map((blindSpot, i) => {
+                      const blindSpotText = typeof blindSpot === 'string'
+                        ? blindSpot
+                        : (blindSpot.description || blindSpot.tension || JSON.stringify(blindSpot))
+                      // Support both new (category, what_unclear, what_would_help) and old (type, pole_a, pole_b) fields
+                      const category = blindSpot.category || blindSpot.type || 'ambiguity'
+                      const whatUnclear = blindSpot.what_unclear || blindSpot.pole_a
+                      const whatWouldHelp = blindSpot.what_would_help || blindSpot.pole_b
+                      // Category display config
+                      const categoryConfig = {
+                        ambiguity: { icon: '🔀', label: 'Ambiguity', color: '#6366f1' },
+                        presupposition: { icon: '🎯', label: 'Presupposition', color: '#f59e0b' },
+                        paradigm_dependency: { icon: '🔭', label: 'Paradigm', color: '#8b5cf6' },
+                        likely_misreading: { icon: '⚠️', label: 'Misreading Risk', color: '#ef4444' },
+                        gray_zone: { icon: '🌫️', label: 'Gray Zone', color: '#6b7280' },
+                        unfilled_slot: { icon: '📝', label: 'Unfilled', color: '#3b82f6' },
+                        unconfronted_challenge: { icon: '❓', label: 'Challenge', color: '#ec4899' },
+                        // Legacy type mappings
+                        gap: { icon: '📝', label: 'Gap', color: '#3b82f6' },
+                        tension: { icon: '⚡', label: 'Tension', color: '#f59e0b' },
+                        question: { icon: '❓', label: 'Question', color: '#8b5cf6' }
+                      }
+                      const config = categoryConfig[category] || categoryConfig.ambiguity
                       return (
-                        <div key={i} className={`tension-item tension-${tensionFeedback[i]?.status || 'pending'}`}>
-                          <div className="tension-content">
-                            <span className="tension-icon">⚡</span>
-                            <div className="tension-details">
-                              <span className="tension-text">{tensionText}</span>
-                              {tensionPoles && tensionPoles.pole_a && tensionPoles.pole_b && (
-                                <div className="tension-poles-display">
-                                  <span className="pole">{tensionPoles.pole_a}</span>
-                                  <span className="vs">vs</span>
-                                  <span className="pole">{tensionPoles.pole_b}</span>
+                        <div key={i} className={`tension-item blind-spot-item tension-${tensionFeedback[i]?.status || 'pending'}`}>
+                          <div className="tension-content blind-spot-content">
+                            <span className="tension-icon blind-spot-icon" title={config.label}>{config.icon}</span>
+                            <div className="tension-details blind-spot-details">
+                              <div className="blind-spot-header">
+                                <span className="blind-spot-category" style={{ backgroundColor: config.color }}>{config.label}</span>
+                              </div>
+                              <span className="tension-text blind-spot-text">{blindSpotText}</span>
+                              {whatUnclear && whatWouldHelp && (
+                                <div className="tension-poles-display blind-spot-clarification">
+                                  <span className="pole what-unclear">{whatUnclear}</span>
+                                  <span className="vs">→</span>
+                                  <span className="pole what-would-help">{whatWouldHelp}</span>
                                 </div>
                               )}
                             </div>
                           </div>
-                          <div className="tension-actions">
+                          <div className="tension-actions blind-spot-actions">
                             <button
                               className={`tension-btn approve ${tensionFeedback[i]?.status === 'approved' ? 'active' : ''}`}
                               onClick={() => setTensionStatus(i, 'approved')}
-                              title="Yes, this is an area that needs exploration"
+                              title="Yes, this is a real blind spot worth exploring"
                             >
                               Yes, explore this
                             </button>
@@ -3781,7 +3801,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                 setTensionStatus(i, 'approved_with_comment')
                                 setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
                               }}
-                              title="Confirm and add context to guide exploration"
+                              title="Confirm and add context about your positioning"
                             >
                               Yes + Context
                             </button>
@@ -3791,14 +3811,14 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                                 setTensionStatus(i, 'regenerate')
                                 setExpandedTensionComment(prev => ({ ...prev, [i]: true }))
                               }}
-                              title="Refine this to better capture the gap/tension"
+                              title="Refine this to better capture the blind spot"
                             >
                               Refine
                             </button>
                             <button
                               className={`tension-btn reject ${tensionFeedback[i]?.status === 'rejected' ? 'active' : ''}`}
                               onClick={() => setTensionStatus(i, 'rejected')}
-                              title="This isn't a relevant gap or tension"
+                              title="This isn't a relevant blind spot"
                             >
                               Not relevant
                             </button>
@@ -3806,12 +3826,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                           {(tensionFeedback[i]?.status === 'approved_with_comment' ||
                             tensionFeedback[i]?.status === 'regenerate' ||
                             expandedTensionComment[i]) && (
-                            <div className="tension-comment-box">
+                            <div className="tension-comment-box blind-spot-comment-box">
                               <input
                                 type="text"
                                 placeholder={tensionFeedback[i]?.status === 'regenerate'
-                                  ? "How should this gap/tension be reframed?"
-                                  : "Add context to help guide exploration of this area..."}
+                                  ? "How should this blind spot be reframed? What's the real issue?"
+                                  : "Add context about your positioning or what you'd like to clarify..."}
                                 value={tensionFeedback[i]?.comment || ''}
                                 onChange={(e) => setTensionComment(i, e.target.value)}
                                 className="tension-comment-input"
@@ -3832,8 +3852,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     })}
                   </div>
                 ) : (
-                  <div className="uv-tensions-empty">
-                    <p>No gaps or tensions identified yet. Click "Identify More" to probe areas where clarification might help.</p>
+                  <div className="uv-tensions-empty uv-blind-spots-empty">
+                    <p>No blind spots identified yet. Click "Identify More" to surface presuppositions, ambiguities, or other areas where your positioning could be made more explicit.</p>
                   </div>
                 )}
               </div>
@@ -4058,39 +4078,60 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   </div>
                 )}
 
-                {/* New tensions discovered from Stage 1 answers (distinct from notes preprocessing) */}
-                {(interimAnalysis.new_tensions_from_answers?.length > 0 || interimAnalysis.tensions_detected?.length > 0) && (
+                {/* New blind spots discovered from Stage 1 answers (distinct from notes preprocessing) */}
+                {(interimAnalysis.epistemic_blind_spots?.length > 0 || interimAnalysis.new_tensions_from_answers?.length > 0 || interimAnalysis.tensions_detected?.length > 0) && (
                   <div className="interim-section">
-                    <h4>New Tensions from Your Answers</h4>
+                    <h4>New Blind Spots from Your Answers</h4>
                     <p className="tensions-intro">
-                      These tensions emerged from your Stage 1 responses (different from those identified in your notes):
+                      These epistemic gaps emerged from your Stage 1 responses—areas where your positioning could be made more explicit:
                     </p>
-                    <div className="tensions-list">
-                      {(interimAnalysis.new_tensions_from_answers || interimAnalysis.tensions_detected || []).map((t, i) => (
-                        <div key={i} className="tension-card new-tension">
-                          <span className="tension-badge new">
-                            {t.marked_as_dialectic ? '⚡ Potential Dialectic' : '🔍 New Tension'}
-                          </span>
-                          <p className="tension-description">{t.description}</p>
-                          <div className="tension-poles">
-                            <span className="pole">{t.pole_a}</span>
-                            <span className="vs">vs</span>
-                            <span className="pole">{t.pole_b}</span>
+                    <div className="tensions-list blind-spots-list">
+                      {(interimAnalysis.epistemic_blind_spots || interimAnalysis.new_tensions_from_answers || interimAnalysis.tensions_detected || []).map((bs, i) => {
+                        // Category config for display
+                        const category = bs.category || bs.type || 'ambiguity'
+                        const categoryConfig = {
+                          ambiguity: { icon: '🔀', label: 'Ambiguity', color: '#6366f1' },
+                          presupposition: { icon: '🎯', label: 'Presupposition', color: '#f59e0b' },
+                          paradigm_dependency: { icon: '🔭', label: 'Paradigm', color: '#8b5cf6' },
+                          likely_misreading: { icon: '⚠️', label: 'Misreading Risk', color: '#ef4444' },
+                          gray_zone: { icon: '🌫️', label: 'Gray Zone', color: '#6b7280' },
+                          unfilled_slot: { icon: '📝', label: 'Unfilled', color: '#3b82f6' },
+                          unconfronted_challenge: { icon: '❓', label: 'Challenge', color: '#ec4899' },
+                          gap: { icon: '📝', label: 'Gap', color: '#3b82f6' },
+                          tension: { icon: '⚡', label: 'Tension', color: '#f59e0b' },
+                          question: { icon: '❓', label: 'Question', color: '#8b5cf6' }
+                        }
+                        const config = categoryConfig[category] || categoryConfig.ambiguity
+                        const whatUnclear = bs.what_unclear || bs.pole_a
+                        const whatWouldHelp = bs.what_would_help || bs.pole_b
+                        return (
+                          <div key={i} className="tension-card new-tension blind-spot-card">
+                            <span className="tension-badge blind-spot-badge" style={{ backgroundColor: config.color }}>
+                              {config.icon} {config.label}
+                            </span>
+                            <p className="tension-description">{bs.description}</p>
+                            {whatUnclear && whatWouldHelp && (
+                              <div className="tension-poles blind-spot-clarification">
+                                <span className="pole what-unclear">{whatUnclear}</span>
+                                <span className="vs">→</span>
+                                <span className="pole what-would-help">{whatWouldHelp}</span>
+                              </div>
+                            )}
+                            {bs.source && (
+                              <div className="tension-source">
+                                <span className="source-label">Source:</span> {bs.source}
+                              </div>
+                            )}
                           </div>
-                          {t.source && (
-                            <div className="tension-source">
-                              <span className="source-label">Source:</span> {t.source}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
 
                 {interimAnalysis.gaps_identified?.length > 0 && (
                   <div className="interim-section">
-                    <h4>Gaps to Explore in Stage 2</h4>
+                    <h4>Areas to Clarify in Stage 2</h4>
                     <ul className="gaps-list">
                       {interimAnalysis.gaps_identified.map((g, i) => (
                         <li key={i} className="gap-item">{g}</li>

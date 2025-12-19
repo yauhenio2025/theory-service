@@ -138,32 +138,53 @@ class Tension(BaseModel):
     user_note: Optional[str] = None
 
 
-class NewTensionFromAnswers(BaseModel):
-    """A gap, tension, or question detected from answers."""
-    type: Optional[str] = "tension"  # gap, tension, or question
+class EpistemicBlindSpot(BaseModel):
+    """An epistemic gap or clarification need detected from notes/answers.
+
+    Categories (epistemic, not ontological):
+    - ambiguity: Terms/phrases with multiple valid readings
+    - presupposition: What's being treated as "given" that isn't justified
+    - paradigm_dependency: Where different epistemes produce different conclusions
+    - likely_misreading: Common ways this concept could be misunderstood
+    - gray_zone: Boundary cases where application is uncertain
+    - unfilled_slot: Placeholder structures awaiting elaboration
+    - unconfronted_challenge: Objections/problems not yet addressed
+    """
+    category: str = "ambiguity"  # One of the 7 epistemic categories
     description: str
-    pole_a: Optional[str] = None
-    pole_b: Optional[str] = None
-    marked_as_dialectic: bool = False
-    source: Optional[str] = None  # Which answer revealed this
+    what_unclear: Optional[str] = None  # The unclear aspect
+    what_would_help: Optional[str] = None  # What clarification would provide
+    source: Optional[str] = None  # Which answer/note revealed this
     user_note: Optional[str] = None
+    # Legacy support for existing sessions
+    type: Optional[str] = None  # Maps to category for backward compat
+    pole_a: Optional[str] = None  # Maps to what_unclear
+    pole_b: Optional[str] = None  # Maps to what_would_help
+    marked_as_dialectic: bool = False  # Deprecated but kept for compat
+
+
+# Alias for backward compatibility
+NewTensionFromAnswers = EpistemicBlindSpot
 
 
 class InterimAnalysis(BaseModel):
     """Intermediate understanding shown between stages.
 
-    Accepts both old field names (tensions_detected, gaps_identified)
-    and new field names (new_tensions_from_answers, areas_needing_clarification)
-    for backward compatibility with existing sessions.
+    Accepts multiple field name formats for backward compatibility:
+    - epistemic_blind_spots (current)
+    - new_tensions_from_answers (legacy v2)
+    - tensions_detected, gaps_identified (legacy v1)
     """
     understanding_summary: str  # "Based on your answers, I understand..."
     key_commitments: List[str]  # Core positions you've taken
-    # Old field names (for backward compatibility)
+    # Current field name
+    epistemic_blind_spots: Optional[List[EpistemicBlindSpot]] = None  # Epistemic gaps from answers
+    # Legacy v2 field names (for backward compatibility)
+    new_tensions_from_answers: Optional[List[EpistemicBlindSpot]] = None  # Alias for epistemic_blind_spots
+    areas_needing_clarification: Optional[List[str]] = None  # Areas needing clarification
+    # Legacy v1 field names (oldest format)
     tensions_detected: Optional[List[Tension]] = None  # Potential dialectics (old format)
     gaps_identified: Optional[List[str]] = None  # What we still need to know (old format)
-    # New field names (current format)
-    new_tensions_from_answers: Optional[List[NewTensionFromAnswers]] = None  # New tensions with type
-    areas_needing_clarification: Optional[List[str]] = None  # Areas needing clarification
     preliminary_definition: str  # Working definition so far
 
 
@@ -798,13 +819,13 @@ Analyze the notes and produce a JSON response:
         }}
     ],
     "questions_to_prioritize": ["question_ids that need user clarification because notes were unclear"],
-    "gaps_tensions_questions": [
+    "epistemic_blind_spots": [
         {{
-            "type": "gap|tension|question",
-            "description": "Description of the gap, tension, or open question detected",
-            "pole_a": "For tensions: one side. For gaps/questions: what's unclear",
-            "pole_b": "For tensions: opposing side. For gaps/questions: what clarification would help",
-            "productive_potential": "Why exploring this would help develop the concept"
+            "category": "ambiguity|presupposition|paradigm_dependency|likely_misreading|gray_zone|unfilled_slot|unconfronted_challenge",
+            "description": "Description of this epistemic gap - what the user hasn't yet made explicit",
+            "what_unclear": "The specific aspect that needs clarification",
+            "what_would_help": "What kind of clarification would help surface the user's positioning",
+            "productive_potential": "Why exploring this would help the user articulate their priors"
         }}
     ],
 
@@ -916,6 +937,51 @@ Extract preliminary signals for ALL 9 philosophical dimensions. Even if notes ar
 
 Set confidence to "low" if you're inferring without explicit evidence.
 
+## EPISTEMIC BLIND SPOTS INSTRUCTIONS (CRITICAL - Surface User's Positioning):
+These are NOT problems with the concept itself, but places where the USER'S epistemic positioning isn't yet explicit.
+The goal is to help users articulate their priors, confront structural limits of their framing, and grasp conditions of possibility.
+
+Generate 3-6 epistemic blind spots across these 7 categories (use the 9D analysis to inform):
+
+1. **AMBIGUITY** - Terms/phrases with multiple valid readings
+   - Look for key terms that could mean different things in different contexts
+   - Source: Brandomian (perspectival content), Blumenberg (metaphors that do conceptual work)
+   - Example: "The term 'sovereignty' in your notes could mean Westphalian territorial sovereignty OR decisionist authority OR popular sovereignty"
+
+2. **PRESUPPOSITION** - What's being treated as "given" that isn't justified
+   - Look for Sellarsian markers: "obviously," "naturally," "clearly," "of course"
+   - What's assumed without argument? What's the "plane" enabling this thinking?
+   - Source: Sellarsian (givenness), Deleuzian (plane assumptions)
+   - Example: "You seem to assume that digital platforms inherently tend toward monopoly - this requires argument"
+
+3. **PARADIGM_DEPENDENCY** - Where different epistemes would produce different conclusions
+   - What reasoning style is being used? What would a different tradition see?
+   - Source: Hacking (reasoning styles), Bachelardian (regional rationality)
+   - Example: "A Marxist reading would emphasize class dynamics while a Foucauldian reading would focus on governmentality - which is your frame?"
+
+4. **LIKELY_MISREADING** - Common ways this concept could be misunderstood
+   - What de dicto/de re confusions might arise? What incommensurabilities exist?
+   - Source: Brandomian (perspectival content), Carey (incommensurability)
+   - Example: "Readers might confuse your 'organic capitalism' with Polanyi's 'embedded economy' - they differ in X"
+
+5. **GRAY_ZONE** - Boundary cases where application is uncertain
+   - Where are the edges of the concept's applicability?
+   - Source: Quinean (web tensions), Canguilhem (milieu boundaries)
+   - Example: "It's unclear whether your concept applies to pre-digital platform capitalism (Sears, etc.)"
+
+6. **UNFILLED_SLOT** - Placeholder structures awaiting elaboration
+   - What conceptual slots haven't been filled in yet?
+   - Source: Carey (placeholder structures), Quinean (missing inferences)
+   - Example: "You identify three modes but only elaborate two - what's the third?"
+
+7. **UNCONFRONTED_CHALLENGE** - Objections/problems not yet addressed
+   - What obvious objections could be raised? What obstacles might block understanding?
+   - Source: Brandomian (challenges), Bachelardian (epistemological obstacles)
+   - Example: "The concept seems vulnerable to the objection that all capitalism is already 'organic' in some sense"
+
+IMPORTANT: These are EPISTEMIC (about the user's grasp/positioning) not ONTOLOGICAL (about the object itself being indeterminate).
+Dialectics/tensions belong in the Dialectics section. Epistemic blind spots are about what WE haven't yet worked through.
+
 GENEALOGY CRITICAL INSTRUCTIONS:
 1. HYPOTHESIZE influences aggressively using your knowledge - the user may not know their own intellectual lineage
 2. Generate 2-4 MULTIPLE CHOICE questions with domain-specific options (not generic)
@@ -956,7 +1022,7 @@ INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a 
 The user has completed Stage 1 questions about their concept "{concept_name}". Your task is to:
 1. Synthesize their answers into an interim understanding
 2. Identify key commitments they've made
-3. Detect NEW gaps, tensions, or open questions DIFFERENT from those already identified (see below)
+3. Detect NEW epistemic blind spots DIFFERENT from those already identified (see below)
 4. Identify areas that need addressing in Stage 2
 
 ## User's Stage 1 Answers:
@@ -965,25 +1031,33 @@ The user has completed Stage 1 questions about their concept "{concept_name}". Y
 ## Dialectics Marked by User During Stage 1:
 {marked_dialectics}
 
-## IMPORTANT - Items Already Identified from Notes Analysis (DO NOT DUPLICATE):
+## IMPORTANT - Epistemic Blind Spots Already Identified (DO NOT DUPLICATE):
 {already_identified_tensions}
 
 The items listed above were already identified during the initial notes analysis and confirmed by the user.
-You must identify NEW items that emerged from the Stage 1 answers - items that are DIFFERENT from those already listed.
-Look for gaps/tensions/questions that arise specifically from the ANSWERS provided, not from the original notes.
+You must identify NEW epistemic blind spots that emerged from the Stage 1 answers - different from those already listed.
+Look for blind spots that arise specifically from the ANSWERS provided, not from the original notes.
+
+## The 7 Epistemic Categories:
+1. AMBIGUITY - Terms with multiple valid readings
+2. PRESUPPOSITION - What's treated as "given" without justification
+3. PARADIGM_DEPENDENCY - Where different epistemes produce different conclusions
+4. LIKELY_MISREADING - Common ways this could be misunderstood
+5. GRAY_ZONE - Boundary cases where application is uncertain
+6. UNFILLED_SLOT - Placeholder structures awaiting elaboration
+7. UNCONFRONTED_CHALLENGE - Objections not yet addressed
 
 Produce a JSON response with:
 {{
     "interim_analysis": {{
         "understanding_summary": "Based on your answers, I understand that [concept_name] is... (2-3 sentences)",
         "key_commitments": ["List 3-5 core positions the user has taken"],
-        "new_tensions_from_answers": [
+        "epistemic_blind_spots": [
             {{
-                "type": "gap|tension|question",
-                "description": "Brief description of this NEW gap, tension, or question",
-                "pole_a": "For tensions: one side. For gaps/questions: the unclear aspect",
-                "pole_b": "For tensions: opposing side. For gaps/questions: what clarification would provide",
-                "marked_as_dialectic": true/false,
+                "category": "ambiguity|presupposition|paradigm_dependency|likely_misreading|gray_zone|unfilled_slot|unconfronted_challenge",
+                "description": "Brief description of this NEW epistemic blind spot",
+                "what_unclear": "The specific aspect that needs clarification",
+                "what_would_help": "What clarification would surface the user's positioning",
                 "source": "Which Stage 1 answer(s) revealed this"
             }}
         ],
@@ -993,8 +1067,9 @@ Produce a JSON response with:
 }}
 
 Be specific to what the user actually said. Don't fabricate or assume beyond their answers.
-Remember: NEW items only - do not repeat items from the "Already Identified" list above.
-The goal is to model areas where more clarity would help develop the concept."""
+Remember: NEW blind spots only - do not repeat items from the "Already Identified" list above.
+These are EPISTEMIC (about user's positioning) not ONTOLOGICAL (about the object being indeterminate).
+The goal is to help users articulate their priors and grasp conditions of possibility for their thinking."""
 
 
 STAGE2_GENERATION_PROMPT = """Based on the user's Stage 1 answers about their novel concept "{concept_name}":
@@ -1008,18 +1083,19 @@ STAGE2_GENERATION_PROMPT = """Based on the user's Stage 1 answers about their no
 ## Adjacent Concepts Selected:
 {adjacent_concepts}
 
-## Confirmed Gaps, Tensions & Open Questions to Address:
+## Confirmed Epistemic Blind Spots to Address:
 {approved_items}
 
 Generate 4-6 Stage 2 questions that:
-1. **Clarify identified gaps** - Questions that help fill in incomplete aspects of the concept
-2. **Explore open questions** - Questions that help the user work through uncertainties they've confirmed
-3. **Navigate confirmed tensions** - Questions that help articulate productive dialectics without forcing resolution
-4. **Sharpen distinctions** from adjacent concepts
-5. **Test commitments** they've made to see if they hold under scrutiny
+1. **Surface presuppositions** - Questions that help make explicit what the user is treating as "given"
+2. **Clarify paradigm positioning** - Questions that help the user articulate which epistemic framework they're operating in
+3. **Address ambiguities** - Questions that force clarification of terms with multiple valid readings
+4. **Anticipate misreadings** - Questions that help the user distinguish their concept from likely confusions
+5. **Sharpen distinctions** from adjacent concepts
+6. **Test commitments** they've made to see if they hold under scrutiny
 
-PRIORITY: Questions should directly address the gaps, tensions, and open questions the user has confirmed as relevant.
-The goal is not to resolve these areas immediately, but to help the user articulate them more clearly.
+PRIORITY: Questions should directly address the epistemic blind spots the user has confirmed as relevant.
+The goal is to help the user articulate their priors and positioning, not to resolve uncertainties prematurely.
 
 For each question:
 - Decide if it should be multiple_choice (when there are clear alternatives), multi_select, or open_ended
@@ -1553,7 +1629,7 @@ Return as JSON:
 Only return the single regenerated insight, not the whole list."""
 
 
-GENERATE_TENSIONS_PROMPT = """You are an expert in conceptual analysis helping identify gaps, tensions, and open questions in a novel concept.
+GENERATE_BLIND_SPOTS_PROMPT = """You are an expert in conceptual analysis helping identify EPISTEMIC BLIND SPOTS in a novel concept.
 
 ## Concept Name: {concept_name}
 
@@ -1566,85 +1642,111 @@ GENERATE_TENSIONS_PROMPT = """You are an expert in conceptual analysis helping i
 ## Preliminary Definition:
 {preliminary_definition}
 
-## Existing Items Already Identified:
+## Existing Blind Spots Already Identified:
 {existing_tensions}
 
-## Items Already Confirmed by User:
+## Blind Spots Already Confirmed by User:
 {approved_tensions}
 
-Generate 2-3 ADDITIONAL items from these categories that could help clarify this concept:
+Generate 2-3 ADDITIONAL epistemic blind spots. These are NOT problems with the concept itself, but places where the USER'S epistemic positioning isn't yet explicit.
 
-1. **GAPS** - Areas where the concept's understanding is incomplete or underdeveloped
-   - What aspects need more clarity?
-   - Where is the user's thinking still vague or unformed?
-   - What connections haven't been fully explored?
+## The 7 Epistemic Categories:
 
-2. **PRODUCTIVE TENSIONS** - Dialectics inherent in the concept
-   - Tensions between different aspects or implications
-   - Trade-offs in how the concept operates
-   - Creative polarities to preserve (not contradictions to resolve)
+1. **AMBIGUITY** - Terms/phrases with multiple valid readings
+   - Key terms that could mean different things in different contexts
 
-3. **OPEN QUESTIONS** - Uncertainties that would benefit from exploration
-   - What hasn't the user fully worked out?
-   - Where might the user's assumptions need examination?
-   - What would more clarity help illuminate?
+2. **PRESUPPOSITION** - What's being treated as "given" that isn't justified
+   - Look for: "obviously," "naturally," "clearly," "of course"
+   - What's assumed without argument?
+
+3. **PARADIGM_DEPENDENCY** - Where different epistemes would produce different conclusions
+   - What reasoning style is being used? What would a different tradition see?
+
+4. **LIKELY_MISREADING** - Common ways this concept could be misunderstood
+   - What confusions might arise? What adjacent concepts might it be conflated with?
+
+5. **GRAY_ZONE** - Boundary cases where application is uncertain
+   - Where are the edges of the concept's applicability?
+
+6. **UNFILLED_SLOT** - Placeholder structures awaiting elaboration
+   - What conceptual slots haven't been filled in yet?
+
+7. **UNCONFRONTED_CHALLENGE** - Objections/problems not yet addressed
+   - What obvious objections could be raised?
 
 DO NOT duplicate items already identified. Generate truly new ones.
 
 Return as JSON:
 {{
-    "generated_tensions": [
+    "generated_blind_spots": [
         {{
-            "type": "gap|tension|question",
-            "description": "Brief description of the gap, tension, or question",
-            "pole_a": "For tensions: one side of the dialectic. For gaps/questions: the unclear aspect",
-            "pole_b": "For tensions: the opposing side. For gaps/questions: what clarification would provide",
-            "productive_potential": "Why exploring this would help develop the concept"
+            "category": "ambiguity|presupposition|paradigm_dependency|likely_misreading|gray_zone|unfilled_slot|unconfronted_challenge",
+            "description": "Description of this epistemic gap - what the user hasn't yet made explicit",
+            "what_unclear": "The specific aspect that needs clarification",
+            "what_would_help": "What kind of clarification would help surface the user's positioning",
+            "productive_potential": "Why exploring this would help the user articulate their priors"
         }}
     ],
-    "generation_note": "Brief note about what areas were identified as needing clarification"
+    "generation_note": "Brief note about what epistemic gaps were identified"
 }}
 
-The goal is to model where the concept needs more development so that subsequent questions can help clarify these areas. These are areas to EXPLORE, not problems to immediately RESOLVE."""
+IMPORTANT: These are EPISTEMIC (about the user's grasp/positioning) not ONTOLOGICAL (about the object being indeterminate).
+The goal is to help users articulate their priors, confront structural limits, and grasp conditions of possibility."""
+
+# Legacy alias for backward compatibility
+GENERATE_TENSIONS_PROMPT = GENERATE_BLIND_SPOTS_PROMPT
 
 
-REGENERATE_TENSION_PROMPT = """You are an expert in conceptual analysis helping refine a gap, tension, or open question based on user feedback.
+REGENERATE_BLIND_SPOT_PROMPT = """You are an expert in conceptual analysis helping refine an epistemic blind spot based on user feedback.
 
 ## Concept Name: {concept_name}
 
 ## User's Notes:
 {notes}
 
-## Current Item to Regenerate:
+## Current Blind Spot to Regenerate:
 {current_tension}
 
 ## User's Feedback for Regeneration:
 {feedback}
 
-## Other Items in This Concept (for context, avoid duplication):
+## Other Blind Spots in This Concept (for context, avoid duplication):
 {other_tensions}
 
-Your task is to regenerate this item based on the user's feedback. The user wants a NEW formulation that incorporates their feedback - not just the original with a comment appended.
+Your task is to regenerate this epistemic blind spot based on the user's feedback. The user wants a NEW formulation that incorporates their feedback - not just the original with a comment appended.
+
+## The 7 Epistemic Categories:
+1. AMBIGUITY - Terms with multiple valid readings
+2. PRESUPPOSITION - What's treated as "given" without justification
+3. PARADIGM_DEPENDENCY - Where different epistemes produce different conclusions
+4. LIKELY_MISREADING - Common ways this could be misunderstood
+5. GRAY_ZONE - Boundary cases where application is uncertain
+6. UNFILLED_SLOT - Placeholder structures awaiting elaboration
+7. UNCONFRONTED_CHALLENGE - Objections not yet addressed
 
 Consider:
 1. What aspect does the user want emphasized or changed?
-2. Is this correctly categorized (gap vs tension vs question)?
+2. Is this correctly categorized? Should it be a different epistemic category?
 3. Is it at the right level of abstraction?
-4. Does it capture a genuinely productive area for exploration?
+4. Does it genuinely help surface the user's epistemic positioning?
 
 Return as JSON:
 {{
-    "regenerated_tension": {{
-        "type": "gap|tension|question",
+    "regenerated_blind_spot": {{
+        "category": "ambiguity|presupposition|paradigm_dependency|likely_misreading|gray_zone|unfilled_slot|unconfronted_challenge",
         "description": "Regenerated description based on feedback",
-        "pole_a": "For tensions: one side. For gaps/questions: the unclear aspect",
-        "pole_b": "For tensions: opposing side. For gaps/questions: what clarification would provide",
-        "productive_potential": "Why exploring this would help develop the concept"
+        "what_unclear": "The specific aspect that needs clarification",
+        "what_would_help": "What kind of clarification would surface the user's positioning",
+        "productive_potential": "Why exploring this helps the user articulate their priors"
     }},
     "regeneration_note": "Brief note about what was changed based on feedback"
 }}
 
-Generate an item that reflects the user's feedback while maintaining theoretical rigor."""
+Generate an item that reflects the user's feedback while maintaining theoretical rigor.
+Remember: These are EPISTEMIC (about the user's positioning) not ONTOLOGICAL (about the object itself)."""
+
+# Legacy alias for backward compatibility
+REGENERATE_TENSION_PROMPT = REGENERATE_BLIND_SPOT_PROMPT
 
 
 # =============================================================================
@@ -2222,8 +2324,10 @@ async def regenerate_understanding(request: RegenerateUnderstandingRequest):
             notes_analysis = analysis_data.get("notes_analysis", {})
             prefilled_answers = analysis_data.get("prefilled_answers", [])
             questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
-            # Support both new (gaps_tensions_questions) and old (potential_tensions) field names
-            gaps_tensions_questions = analysis_data.get("gaps_tensions_questions", analysis_data.get("potential_tensions", []))
+            # Support new (epistemic_blind_spots), intermediate (gaps_tensions_questions), and old (potential_tensions) field names
+            epistemic_blind_spots = analysis_data.get("epistemic_blind_spots",
+                analysis_data.get("gaps_tensions_questions",
+                    analysis_data.get("potential_tensions", [])))
             changes_made = analysis_data.get("changes_made", [])
 
             # Build questions with pre-filled values
@@ -2255,7 +2359,8 @@ async def regenerate_understanding(request: RegenerateUnderstandingRequest):
                     'stage_title': 'Genesis & Problem Space',
                     'stage_description': "I've revised my understanding based on your feedback.",
                     'notes_analysis': notes_analysis,
-                    'gaps_tensions_questions': gaps_tensions_questions,
+                    'epistemic_blind_spots': epistemic_blind_spots,
+                    'gaps_tensions_questions': epistemic_blind_spots,  # Legacy alias for frontend compatibility
                     'changes_made': changes_made,
                     'questions': questions,
                     'regenerated': True
@@ -2408,15 +2513,17 @@ async def generate_tensions(request: GenerateTensionsRequest):
                         response_text = block.text
                         break
 
-            # Parse response
-            tensions_data = parse_wizard_response(response_text)
-            generated_tensions = tensions_data.get("generated_tensions", [])
-            generation_note = tensions_data.get("generation_note", "")
+            # Parse response - support both new and old field names
+            blind_spots_data = parse_wizard_response(response_text)
+            generated_blind_spots = blind_spots_data.get("generated_blind_spots",
+                blind_spots_data.get("generated_tensions", []))
+            generation_note = blind_spots_data.get("generation_note", "")
 
             complete_data = {
                 'type': 'complete',
                 'data': {
-                    'generated_tensions': generated_tensions,
+                    'generated_blind_spots': generated_blind_spots,
+                    'generated_tensions': generated_blind_spots,  # Legacy alias for frontend compatibility
                     'generation_note': generation_note
                 }
             }
@@ -2484,15 +2591,17 @@ async def regenerate_tension(request: RegenerateTensionRequest):
                         response_text = block.text
                         break
 
-            # Parse response
-            tension_data = parse_wizard_response(response_text)
-            regenerated_tension = tension_data.get("regenerated_tension", {})
-            regeneration_note = tension_data.get("regeneration_note", "")
+            # Parse response - support both new and old field names
+            blind_spot_data = parse_wizard_response(response_text)
+            regenerated_blind_spot = blind_spot_data.get("regenerated_blind_spot",
+                blind_spot_data.get("regenerated_tension", {}))
+            regeneration_note = blind_spot_data.get("regeneration_note", "")
 
             complete_data = {
                 'type': 'complete',
                 'data': {
-                    'regenerated_tension': regenerated_tension,
+                    'regenerated_blind_spot': regenerated_blind_spot,
+                    'regenerated_tension': regenerated_blind_spot,  # Legacy alias for frontend compatibility
                     'regeneration_note': regeneration_note
                 }
             }
@@ -2973,8 +3082,10 @@ async def get_stage1_questions(request: StartWizardRequest):
             notes_analysis = analysis_data.get("notes_analysis", {})
             prefilled_answers = analysis_data.get("prefilled_answers", [])
             questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
-            # Support both new (gaps_tensions_questions) and old (potential_tensions) field names
-            gaps_tensions_questions = analysis_data.get("gaps_tensions_questions", analysis_data.get("potential_tensions", []))
+            # Support new (epistemic_blind_spots), intermediate (gaps_tensions_questions), and old (potential_tensions) field names
+            epistemic_blind_spots = analysis_data.get("epistemic_blind_spots",
+                analysis_data.get("gaps_tensions_questions",
+                    analysis_data.get("potential_tensions", [])))
 
             # Extract new card types for card-based review flow
             hypothesis_cards = analysis_data.get("hypothesis_cards", [])
@@ -3027,7 +3138,8 @@ async def get_stage1_questions(request: StartWizardRequest):
                     'stage_title': 'Review Generated Hypotheses',
                     'stage_description': "We've extracted these claims from your notes. Approve, reject, or transform each card.",
                     'notes_analysis': notes_analysis,
-                    'gaps_tensions_questions': gaps_tensions_questions,
+                    'epistemic_blind_spots': epistemic_blind_spots,
+                    'gaps_tensions_questions': epistemic_blind_spots,  # Legacy alias for frontend compatibility
 
                     # New card-based data
                     'hypothesis_cards': hypothesis_cards,

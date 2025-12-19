@@ -3647,6 +3647,97 @@ textarea {
   font-size: 0.9rem;
 }
 
+/* ====== BLIND SPOTS SECTION ====== */
+.uv-blind-spots {
+  border-color: #8b5cf6 !important;
+}
+
+.blind-spot-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.blind-spot-category {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.blind-spot-text {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.blind-spot-clarification {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.blind-spot-clarification .what-unclear {
+  color: #f59e0b;
+  font-style: italic;
+}
+
+.blind-spot-clarification .vs {
+  color: #6b7280;
+  margin: 0 0.5rem;
+}
+
+.blind-spot-clarification .what-would-help {
+  color: #10b981;
+}
+
+/* Light theme adjustments for blind spots */
+[data-theme="light"] .uv-blind-spots {
+  border-color: #7c3aed !important;
+}
+
+[data-theme="light"] .blind-spot-clarification {
+  background: rgba(124, 58, 237, 0.1);
+}
+
+[data-theme="light"] .blind-spot-clarification .what-unclear {
+  color: #d97706;
+}
+
+[data-theme="light"] .blind-spot-clarification .what-would-help {
+  color: #059669;
+}
+
+/* Blind spot badges in interim analysis */
+.blind-spot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+}
+
+.blind-spot-card {
+  border-left: 3px solid #8b5cf6;
+}
+
+.blind-spots-list .tension-card {
+  background: linear-gradient(135deg, #161b22 0%, #1a1625 100%);
+}
+
+[data-theme="light"] .blind-spots-list .tension-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+}
+
 /* ====== GENEALOGY SECTION ====== */
 .uv-genealogy {
   border-color: #8957e5 !important;
