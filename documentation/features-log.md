@@ -6,6 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-19: Curator-Sharpener Two-Stage Questioning System
 
+**Commit:** `69c2382`
 **Branch:** `main`
 
 ### Description
