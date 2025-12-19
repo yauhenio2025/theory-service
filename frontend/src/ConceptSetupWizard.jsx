@@ -636,6 +636,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       questions,
       currentQuestionIndex,
       interimAnalysis,
+      blindSpotsQueue,
+      curatorAllocation,
       savedAt: new Date().toISOString()
     }
 
@@ -659,7 +661,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         clearTimeout(serverSaveTimeoutRef.current)
       }
     }
-  }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex, interimAnalysis])
+  }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex, interimAnalysis, blindSpotsQueue, curatorAllocation])
 
   // Restore from localStorage
   const restoreSession = () => {
@@ -696,6 +698,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
   // Apply session data to state (shared between local and server restore)
   const applySessionData = (parsed) => {
+    console.log('[Session Restore] Restoring stage:', parsed.stage, 'blindSpotsQueue:', parsed.blindSpotsQueue)
     setStage(parsed.stage)
     setConceptName(parsed.conceptName)
     setNotes(parsed.notes || '')
@@ -709,6 +712,13 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setQuestions(parsed.questions || [])
     setCurrentQuestionIndex(parsed.currentQuestionIndex || 0)
     setInterimAnalysis(parsed.interimAnalysis || null)
+    // Restore blind spots questioning state
+    if (parsed.blindSpotsQueue) {
+      setBlindSpotsQueue(parsed.blindSpotsQueue)
+    }
+    if (parsed.curatorAllocation) {
+      setCuratorAllocation(parsed.curatorAllocation)
+    }
   }
 
   // Delete server session
@@ -754,6 +764,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       questions,
       currentQuestionIndex,
       interimAnalysis,
+      blindSpotsQueue,
+      curatorAllocation,
       savedAt: new Date().toISOString(),
       isManualCheckpoint: true
     }
@@ -999,6 +1011,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
    * Start the Curator service to analyze notes and allocate blind spot questions
    */
   const startCurator = async () => {
+    console.log('[Curator] Starting curator service...')
+    console.log('[Curator] conceptName:', conceptName, 'notes length:', notes?.length, 'sessionKey:', currentSessionKey)
     setStage(STAGES.BLIND_SPOTS_CURATING)
     setIsCurating(true)
     setProgress({ stage: 3, total: 11, label: 'Analyzing blind spots...' })
@@ -1016,6 +1030,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           setThinking(prev => prev + content)
         },
         onCuratorComplete: (data) => {
+          console.log('[Curator] Complete! Received allocation:', data.curator_allocation?.total_slots, 'slots')
+          console.log('[Curator] Queue:', data.blind_spots_queue?.slots?.length, 'questions')
           setCuratorAllocation(data.curator_allocation)
           setBlindSpotsQueue(data.blind_spots_queue)
           setStage(STAGES.BLIND_SPOTS_QUESTIONING)
@@ -4056,7 +4072,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <button
                   className="btn btn-primary"
                   onClick={() => {
-                    // Start blind spots curation
+                    console.log('[UI] Button clicked: Accept & Continue to Blind Spots')
                     startCurator()
                   }}
                 >
@@ -4097,6 +4113,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <p>Answer these questions to make your assumptions, boundaries, and commitments more explicit.</p>
               </div>
 
+              {/* Check if queue is loaded */}
+              {(!blindSpotsQueue.slots || blindSpotsQueue.slots.length === 0) ? (
+                <div className="blind-spots-loading">
+                  <p>Loading questions... If this persists, please go back and click "Accept & Continue to Blind Spots" again.</p>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setStage(STAGES.UNDERSTANDING_VALIDATION)}
+                  >
+                    ← Back to Understanding
+                  </button>
+                </div>
+              ) : (
+                <>
               {/* Progress Bar */}
               <div className="blind-spots-progress">
                 <div className="progress-bar">
@@ -4107,7 +4136,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 </div>
                 <div className="progress-text">
                   {blindSpotsQueue.completedCount} of {blindSpotsQueue.slots.length} answered
-                  {blindSpotsQueue.sharpenerPending.length > 0 && (
+                  {blindSpotsQueue.sharpenerPending?.length > 0 && (
                     <span className="sharpening-indicator">
                       (+{blindSpotsQueue.sharpenerPending.length} generating...)
                     </span>
@@ -4216,6 +4245,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     ))}
                   </div>
                 </details>
+              )}
+                </>
               )}
             </div>
           )}
