@@ -5,18 +5,112 @@
 }
 
 :root {
+  /* Core theme colors */
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
+  --primary-light: #3b82f6;
   --secondary: #64748b;
   --success: #22c55e;
+  --success-dark: #16a34a;
   --warning: #f59e0b;
   --danger: #ef4444;
+
+  /* Background colors */
   --bg: #f8fafc;
   --bg-card: #ffffff;
+  --bg-surface: #f1f5f9;
+  --bg-elevated: #e2e8f0;
+
+  /* Panel/wizard specific backgrounds */
+  --panel-bg: #ffffff;
+  --panel-bg-alt: #f8fafc;
+  --panel-surface: #f1f5f9;
+  --panel-elevated: #e2e8f0;
+  --panel-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+
+  /* Text colors */
   --text: #1e293b;
   --text-muted: #64748b;
+  --text-heading: #0f172a;
+  --text-body: #334155;
+  --text-secondary: #64748b;
+
+  /* Accent text colors for headings in panels */
+  --accent-blue: #2563eb;
+  --accent-blue-muted: #3b82f6;
+
+  /* Border colors */
   --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --border-strong: #cbd5e1;
+
+  /* Code/thinking block backgrounds */
+  --code-bg: #f1f5f9;
+  --code-border: #e2e8f0;
+  --code-text: #334155;
+
+  /* Shadow */
   --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+
+  /* Interactive elements */
+  --hover-bg: rgba(0,0,0,0.04);
+  --active-bg: rgba(0,0,0,0.08);
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  /* Core theme colors - brighter for dark mode */
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-light: #60a5fa;
+  --secondary: #94a3b8;
+  --success: #22c55e;
+  --success-dark: #16a34a;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* Background colors */
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-surface: #1c2128;
+  --bg-elevated: #21262d;
+
+  /* Panel/wizard specific backgrounds */
+  --panel-bg: #0d1117;
+  --panel-bg-alt: #161b22;
+  --panel-surface: #1c2128;
+  --panel-elevated: #21262d;
+  --panel-gradient: linear-gradient(135deg, #1a1f2e 0%, #1c2128 100%);
+
+  /* Text colors */
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-heading: #f0f6fc;
+  --text-body: #c9d1d9;
+  --text-secondary: #8b949e;
+
+  /* Accent text colors for headings in panels */
+  --accent-blue: #58a6ff;
+  --accent-blue-muted: #79c0ff;
+
+  /* Border colors */
+  --border: #30363d;
+  --border-light: #21262d;
+  --border-strong: #484f58;
+
+  /* Code/thinking block backgrounds */
+  --code-bg: #161b22;
+  --code-border: #30363d;
+  --code-text: #c9d1d9;
+
+  /* Shadow - more subtle in dark mode */
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4);
+
+  /* Interactive elements */
+  --hover-bg: rgba(255,255,255,0.06);
+  --active-bg: rgba(255,255,255,0.1);
 }
 
 body {
@@ -1314,7 +1408,8 @@ header h1 {
 
 /* Thinking Panel */
 .thinking-panel {
-  background: #1e293b;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow: hidden;
   margin-top: 1.5rem;
@@ -1325,22 +1420,22 @@ header h1 {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  background: #0f172a;
-  border-bottom: 1px solid #334155;
+  background: var(--panel-surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .thinking-indicator {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.875rem;
 }
 
 .pulse {
   width: 8px;
   height: 8px;
-  background: #22c55e;
+  background: var(--success);
   border-radius: 50%;
   animation: pulse 1.5s infinite;
 }
@@ -1357,7 +1452,7 @@ header h1 {
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
   font-size: 0.8125rem;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: var(--code-text);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1367,11 +1462,11 @@ header h1 {
 }
 
 .thinking-content::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: var(--code-bg);
 }
 
 .thinking-content::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: var(--border-strong);
   border-radius: 3px;
 }
 
@@ -2081,8 +2176,8 @@ header h1 {
 
 /* Interim Analysis Panel */
 .interim-panel {
-  background: linear-gradient(135deg, #161b22 0%, #1c2128 100%);
-  border: 1px solid #30363d;
+  background: var(--panel-gradient);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -2100,15 +2195,15 @@ header h1 {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #8b949e;
+  color: var(--text-muted);
   margin: 0 0 0.75rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border);
 }
 
 .interim-summary {
   font-size: 1.1rem;
-  color: #e6edf3;
+  color: var(--text-heading);
   line-height: 1.6;
 }
 
@@ -2122,11 +2217,11 @@ header h1 {
 .commitment-badge {
   display: inline-block;
   padding: 0.35rem 0.75rem;
-  background: rgba(35, 134, 54, 0.2);
-  border: 1px solid #238636;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid var(--success);
   border-radius: 16px;
   font-size: 0.85rem;
-  color: #3fb950;
+  color: var(--success-dark);
 }
 
 /* Tensions List */
@@ -2137,8 +2232,8 @@ header h1 {
 }
 
 .tension-card {
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -2146,16 +2241,16 @@ header h1 {
 .tension-badge {
   display: inline-block;
   padding: 0.2rem 0.5rem;
-  background: rgba(163, 113, 247, 0.2);
+  background: rgba(139, 92, 246, 0.15);
   border-radius: 4px;
   font-size: 0.75rem;
-  color: #a371f7;
+  color: #7c3aed;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
 .tension-card p {
-  color: #e6edf3;
+  color: var(--text-heading);
   margin: 0.5rem 0;
 }
 
@@ -2168,46 +2263,46 @@ header h1 {
 
 .tension-poles .pole {
   padding: 0.25rem 0.5rem;
-  background: #21262d;
+  background: var(--panel-surface);
   border-radius: 4px;
   font-size: 0.85rem;
-  color: #e6edf3;
+  color: var(--text-heading);
 }
 
 .tension-poles .vs {
-  color: #8b949e;
+  color: var(--text-muted);
   font-size: 0.8rem;
   font-style: italic;
 }
 
 /* New tensions from Stage 1 answers (distinct from notes) */
 .tensions-intro {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   font-size: 0.85rem;
   margin-bottom: 0.75rem;
 }
 
 .tension-card.new-tension {
-  background: rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
 .tension-badge.new {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
 }
 
 .tension-source {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-light);
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
 }
 
 .tension-source .source-label {
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
 }
 
 /* Gaps List */
@@ -2222,30 +2317,30 @@ header h1 {
   align-items: flex-start;
   gap: 0.5rem;
   padding: 0.5rem 0;
-  color: #e6edf3;
+  color: var(--text-heading);
 }
 
 .gap-item::before {
   content: "→";
-  color: #f0883e;
+  color: var(--warning);
   font-weight: bold;
 }
 
 /* Preliminary Definition */
 .preliminary-def {
   padding: 1rem;
-  background: #0d1117;
-  border-left: 3px solid #1f6feb;
+  background: var(--panel-surface);
+  border-left: 3px solid var(--primary);
   border-radius: 0 6px 6px 0;
-  color: #e6edf3;
+  color: var(--text-heading);
   line-height: 1.6;
   font-style: italic;
 }
 
 /* Implications Panel */
 .implications-panel {
-  background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
-  border: 1px solid #30363d;
+  background: var(--panel-gradient);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -2263,18 +2358,18 @@ header h1 {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #8b949e;
+  color: var(--text-muted);
   margin: 0 0 0.75rem 0;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border);
 }
 
 .trajectory {
   font-size: 1.1rem;
-  color: #e6edf3;
+  color: var(--text-heading);
   line-height: 1.6;
   padding: 1rem;
-  background: #0d1117;
+  background: var(--panel-surface);
   border-left: 3px solid #58a6ff;
   border-radius: 0 6px 6px 0;
 }
@@ -2504,8 +2599,8 @@ header h1 {
 
 /* Notes Analysis Panel - shows extracted understanding from user's notes */
 .notes-analysis-panel {
-  background: linear-gradient(135deg, #1a1f2e 0%, #252b3d 100%);
-  border: 1px solid #3d4663;
+  background: var(--panel-gradient);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.25rem;
   margin-bottom: 1.5rem;
@@ -2521,54 +2616,54 @@ header h1 {
 .notes-analysis-header h4 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #f0f4ff;
+  color: var(--text-heading);
   margin: 0;
 }
 
 .notes-analysis-subtitle {
   font-size: 0.85rem;
-  color: #8b949e;
+  color: var(--text-muted);
 }
 
 .notes-analysis-content {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--panel-surface);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
 }
 
 .notes-summary {
-  color: #c9d1d9;
+  color: var(--text-body);
   font-size: 0.95rem;
   line-height: 1.6;
   margin-bottom: 1rem;
 }
 
 .notes-analysis-content .preliminary-def {
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border);
   padding-top: 0.75rem;
   margin-top: 0.75rem;
 }
 
 .notes-analysis-content .preliminary-def strong {
-  color: #58a6ff;
+  color: var(--accent-blue);
   font-weight: 500;
 }
 
 .notes-analysis-content .preliminary-def p {
-  color: #c9d1d9;
+  color: var(--text-body);
   font-style: italic;
   margin-top: 0.5rem;
 }
 
 .key-insights {
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border);
   padding-top: 0.75rem;
   margin-top: 0.75rem;
 }
 
 .key-insights strong {
-  color: #58a6ff;
+  color: var(--accent-blue);
   font-weight: 500;
   display: block;
   margin-bottom: 0.5rem;
@@ -2581,7 +2676,7 @@ header h1 {
 }
 
 .key-insights li {
-  color: #c9d1d9;
+  color: var(--text-body);
   font-size: 0.9rem;
   padding: 0.25rem 0 0.25rem 1.25rem;
   position: relative;
@@ -2589,7 +2684,7 @@ header h1 {
 
 .key-insights li::before {
   content: "•";
-  color: #238636;
+  color: var(--success);
   position: absolute;
   left: 0;
   font-weight: bold;
@@ -2597,7 +2692,7 @@ header h1 {
 
 .notes-analysis-note {
   font-size: 0.85rem;
-  color: #8b949e;
+  color: var(--text-muted);
   font-style: italic;
   text-align: center;
   margin: 0;
@@ -2605,7 +2700,7 @@ header h1 {
 
 /* Validation note badge - shown when feedback was incorporated */
 .validation-note-badge {
-  background: linear-gradient(135deg, #238636 0%, #196c2e 100%);
+  background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
   color: #fff;
   padding: 0.5rem 1rem;
   border-radius: 6px;
@@ -2617,13 +2712,13 @@ header h1 {
 
 /* Approved tensions section */
 .approved-tensions {
-  border-top: 1px solid #3d4663;
+  border-top: 1px solid var(--border);
   padding-top: 0.75rem;
   margin-top: 0.75rem;
 }
 
 .approved-tensions strong {
-  color: #f0883e;
+  color: var(--warning);
   font-weight: 500;
   display: block;
   margin-bottom: 0.5rem;
@@ -2636,7 +2731,7 @@ header h1 {
 }
 
 .approved-tensions li {
-  color: #c9d1d9;
+  color: var(--text-body);
   font-size: 0.9rem;
   padding: 0.25rem 0 0.25rem 1.25rem;
   position: relative;
@@ -2894,8 +2989,8 @@ textarea {
 
 /* Understanding Validation Panel */
 .understanding-validation-panel {
-  background: linear-gradient(135deg, #1a1f2e 0%, #1c2128 100%);
-  border: 1px solid #30363d;
+  background: var(--panel-gradient);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -2907,12 +3002,12 @@ textarea {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border);
 }
 
 .understanding-header h4 {
   font-size: 1.1rem;
-  color: #e6edf3;
+  color: var(--text-heading);
   margin: 0;
 }
 
@@ -2928,9 +3023,9 @@ textarea {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem;
-  background: #0d1117;
+  background: var(--panel-bg);
   border-radius: 6px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
 }
 
 .understanding-status {
@@ -2938,9 +3033,9 @@ textarea {
   flex-shrink: 0;
 }
 
-.understanding-status.good { color: #3fb950; }
-.understanding-status.partial { color: #d29922; }
-.understanding-status.unclear { color: #8b949e; }
+.understanding-status.good { color: var(--success); }
+.understanding-status.partial { color: var(--warning); }
+.understanding-status.unclear { color: var(--text-muted); }
 
 .understanding-content {
   flex: 1;
@@ -2948,13 +3043,13 @@ textarea {
 
 .understanding-dimension {
   font-weight: 500;
-  color: #e6edf3;
+  color: var(--text-heading);
   margin-bottom: 0.25rem;
 }
 
 .understanding-text {
   font-size: 0.9rem;
-  color: #8b949e;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -2962,13 +3057,13 @@ textarea {
 .understanding-rating {
   margin: 1rem 0;
   padding: 1rem;
-  background: #0d1117;
+  background: var(--panel-bg);
   border-radius: 6px;
   text-align: center;
 }
 
 .rating-label {
-  color: #8b949e;
+  color: var(--text-muted);
   font-size: 0.9rem;
   margin-bottom: 0.5rem;
 }
@@ -2982,7 +3077,7 @@ textarea {
 .rating-star {
   font-size: 1.75rem;
   cursor: pointer;
-  color: #30363d;
+  color: var(--border-strong);
   transition: color 0.15s, transform 0.15s;
 }
 
@@ -2995,7 +3090,7 @@ textarea {
 }
 
 .rating-star.hovered {
-  color: #d29922;
+  color: var(--warning);
 }
 
 /* Correction textarea */
@@ -3005,7 +3100,7 @@ textarea {
 
 .correction-section label {
   display: block;
-  color: #8b949e;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
 }
@@ -3014,10 +3109,10 @@ textarea {
   width: 100%;
   min-height: 80px;
   padding: 0.75rem;
-  background: #0d1117 !important;
-  border: 1px solid #30363d;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #c9d1d9 !important;
+  color: var(--text-body);
   font-size: 0.9rem;
   font-family: inherit;
   resize: vertical;
@@ -3025,7 +3120,7 @@ textarea {
 
 .correction-textarea:focus {
   outline: none;
-  border-color: #58a6ff;
+  border-color: var(--accent-blue);
 }
 
 .validation-actions {
@@ -3034,20 +3129,20 @@ textarea {
   gap: 0.75rem;
   margin-top: 1.25rem;
   padding-top: 1rem;
-  border-top: 1px solid #30363d;
+  border-top: 1px solid var(--border);
 }
 
 /* Enhanced Understanding Validation - UV sections */
 .uv-section {
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--panel-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
 }
 
 .uv-section h4 {
-  color: #58a6ff;
+  color: var(--accent-blue);
   font-size: 0.9rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
@@ -3056,18 +3151,18 @@ textarea {
 }
 
 .uv-summary-text {
-  color: #e6edf3;
+  color: var(--text-heading);
   font-size: 1rem;
   line-height: 1.6;
 }
 
 .uv-definition-text {
-  color: #c9d1d9;
+  color: var(--text-body);
   font-size: 0.95rem;
   line-height: 1.6;
   padding: 0.75rem;
-  background: #161b22;
-  border-left: 3px solid #58a6ff;
+  background: var(--panel-bg-alt);
+  border-left: 3px solid var(--accent-blue);
   border-radius: 0 4px 4px 0;
   font-style: italic;
 }
@@ -3079,11 +3174,11 @@ textarea {
 }
 
 .uv-insights-list li {
-  color: #c9d1d9;
+  color: var(--text-body);
   padding: 0.5rem 0;
   padding-left: 1.5rem;
   position: relative;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .uv-insights-list li:last-child {
@@ -5639,8 +5734,8 @@ textarea {
 .cards-review-section {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-  border: 1px solid #30363d;
+  background: var(--panel-gradient);
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 
@@ -5649,13 +5744,13 @@ textarea {
 }
 
 .cards-review-header h3 {
-  color: #58a6ff;
+  color: var(--accent-blue);
   font-size: 1.3rem;
   margin-bottom: 0.5rem;
 }
 
 .cards-review-header p {
-  color: #8b949e;
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
@@ -5675,8 +5770,8 @@ textarea {
 }
 
 .accept-all-btn {
-  background: #238636 !important;
-  border-color: #238636 !important;
+  background: var(--success) !important;
+  border-color: var(--success) !important;
   color: white !important;
   font-weight: 500;
   padding: 0.5rem 1rem;
@@ -5685,8 +5780,8 @@ textarea {
 }
 
 .accept-all-btn:hover:not(:disabled) {
-  background: #2ea043 !important;
-  border-color: #2ea043 !important;
+  background: var(--success-dark) !important;
+  border-color: var(--success-dark) !important;
 }
 
 .accept-all-btn:disabled {
@@ -5696,10 +5791,10 @@ textarea {
 
 .card-stage-tab {
   padding: 0.6rem 1rem;
-  background: #21262d;
-  border: 1px solid #30363d;
+  background: var(--panel-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  color: #8b949e;
+  color: var(--text-muted);
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -5709,18 +5804,18 @@ textarea {
 }
 
 .card-stage-tab:hover {
-  background: #30363d;
-  color: #c9d1d9;
+  background: var(--panel-elevated);
+  color: var(--text-body);
 }
 
 .card-stage-tab.active {
-  background: #1f6feb;
-  border-color: #1f6feb;
+  background: var(--primary);
+  border-color: var(--primary);
   color: #ffffff;
 }
 
 .card-stage-tab .approved-count {
-  background: #238636;
+  background: var(--success);
   color: white;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
@@ -5738,26 +5833,26 @@ textarea {
 
 /* Hypothesis Card */
 .hypothesis-card {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 1rem;
   transition: all 0.2s ease;
 }
 
 .hypothesis-card:hover {
-  border-color: #58a6ff;
-  box-shadow: 0 0 15px rgba(88, 166, 255, 0.1);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
 }
 
 .hypothesis-card.approved {
-  border-color: #238636;
-  background: linear-gradient(135deg, #161b22 0%, rgba(35, 134, 54, 0.1) 100%);
+  border-color: var(--success);
+  background: linear-gradient(135deg, var(--panel-bg) 0%, rgba(34, 197, 94, 0.08) 100%);
 }
 
 .hypothesis-card.rejected {
-  border-color: #da3633;
-  background: linear-gradient(135deg, #161b22 0%, rgba(218, 54, 51, 0.1) 100%);
+  border-color: var(--danger);
+  background: linear-gradient(135deg, var(--panel-bg) 0%, rgba(239, 68, 68, 0.08) 100%);
   opacity: 0.7;
 }
 
@@ -5774,50 +5869,50 @@ textarea {
   text-transform: uppercase;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  background: #21262d;
-  color: #8b949e;
+  background: var(--panel-surface);
+  color: var(--text-muted);
 }
 
 .hypothesis-card .card-type.thesis {
-  background: rgba(31, 111, 235, 0.2);
-  color: #58a6ff;
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--primary);
 }
 
 .hypothesis-card .card-type.assumption {
-  background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
 }
 
 .hypothesis-card .card-type.tension {
-  background: rgba(139, 92, 246, 0.2);
-  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.15);
+  color: #7c3aed;
 }
 
 .hypothesis-card .card-type.methodological {
-  background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
 }
 
 .hypothesis-card .card-type.normative {
-  background: rgba(236, 72, 153, 0.2);
-  color: #ec4899;
+  background: rgba(236, 72, 153, 0.15);
+  color: #db2777;
 }
 
 .hypothesis-card .card-confidence {
   font-size: 0.8rem;
-  color: #8b949e;
+  color: var(--text-muted);
 }
 
 .hypothesis-card .card-confidence.high {
-  color: #22c55e;
+  color: var(--success);
 }
 
 .hypothesis-card .card-confidence.low {
-  color: #6e7681;
+  color: var(--text-secondary);
 }
 
 .hypothesis-card .card-content {
-  color: #c9d1d9;
+  color: var(--text-body);
   font-size: 1rem;
   line-height: 1.5;
   margin-bottom: 0.75rem;
@@ -5825,10 +5920,10 @@ textarea {
 
 .hypothesis-card .card-rationale {
   font-size: 0.85rem;
-  color: #8b949e;
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
   padding-left: 0.75rem;
-  border-left: 2px solid #30363d;
+  border-left: 2px solid var(--border);
 }
 
 .hypothesis-card .card-excerpts {
