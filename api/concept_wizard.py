@@ -167,6 +167,119 @@ class EpistemicBlindSpot(BaseModel):
 NewTensionFromAnswers = EpistemicBlindSpot
 
 
+# =============================================================================
+# CURATOR-SHARPENER TWO-STAGE QUESTIONING SYSTEM
+# =============================================================================
+
+class BlindSpotSlot(BaseModel):
+    """A single question slot in the blind spots queue."""
+    slot_id: str  # e.g., "slot_01"
+    category: str  # One of 7 epistemic categories
+    depth: int = 1  # 1=initial, 2=follow-up, 3=deep-dive
+    question: Optional[str] = None
+    status: str = "pending"  # pending, active, answered, skipped
+    answer: Optional[str] = None
+    generated_by: str = "curator"  # curator or sharpener
+    parent_slot_id: Optional[str] = None  # For follow-ups (links to answered slot)
+    blind_spot_ref: Optional[str] = None  # Reference to identified blind spot
+
+
+class CuratorAllocation(BaseModel):
+    """Curator's analysis and slot allocation plan."""
+    total_slots: int  # Max 16
+    category_weights: Dict[str, float]  # e.g., {"ambiguity": 0.25, "presupposition": 0.3}
+    slot_sequence: List[str]  # Interleaved category order
+    emphasis_rationale: str  # Why this allocation
+    identified_blind_spots: List[EpistemicBlindSpot]  # All detected blind spots
+    slots: List[BlindSpotSlot]  # Pre-generated initial questions
+
+
+class BlindSpotsQueue(BaseModel):
+    """The full question queue with dynamic updates."""
+    slots: List[BlindSpotSlot]
+    current_index: int = 0
+    sharpener_pending: List[str] = []  # Slot IDs being generated
+    completed_count: int = 0
+    skipped_count: int = 0
+
+
+class CurateBlindSpotsRequest(BaseModel):
+    """Request to curate blind spots from notes."""
+    concept_name: str
+    notes: str
+    notes_understanding: Optional[Dict[str, Any]] = None  # From notes preprocessing
+    session_id: Optional[str] = None
+
+
+class SharpenQuestionRequest(BaseModel):
+    """Request to generate a deeper follow-up question."""
+    session_id: str
+    slot_id: str  # The slot that was just answered
+    answer: str  # User's answer
+    concept_name: str
+    notes_context: Optional[str] = None
+    previous_answers: Optional[List[Dict[str, Any]]] = None  # Context from other answers
+
+
+class SubmitBlindSpotAnswerRequest(BaseModel):
+    """Request to submit an answer to a blind spot question."""
+    session_id: str
+    slot_id: str
+    answer: str
+    skip: bool = False  # True if user skipped this question
+
+
+class FinishBlindSpotsRequest(BaseModel):
+    """Request to finish blind spots questioning early."""
+    session_id: str
+
+
+# Validity thresholds for graceful completion
+MINIMUM_ANSWERS_FOR_VALIDITY = 3
+IDEAL_ANSWERS_FOR_QUALITY = 8
+
+QUALITY_MESSAGES = {
+    'insufficient': "You've answered fewer than 3 questions. Consider answering a few more to help clarify your concept's epistemic positioning.",
+    'minimal': "You've provided enough answers for a basic understanding. More answers would help refine the analysis.",
+    'adequate': "Good coverage. We have enough to work with for meaningful blind spot analysis.",
+    'comprehensive': "Excellent! Comprehensive answers will enable deep epistemic analysis."
+}
+
+
+def assess_completion_quality(queue: BlindSpotsQueue) -> str:
+    """Returns: 'insufficient', 'minimal', 'adequate', 'comprehensive'"""
+    answered = queue.completed_count
+    if answered < 3:
+        return 'insufficient'
+    elif answered < 6:
+        return 'minimal'
+    elif answered < 10:
+        return 'adequate'
+    else:
+        return 'comprehensive'
+
+
+def interleave_slots(category_counts: Dict[str, int]) -> List[str]:
+    """
+    Distribute categories evenly across the sequence.
+    Uses round-robin with remainder distribution.
+
+    Example: {"ambiguity": 3, "presupposition": 2} ->
+             ["ambiguity", "presupposition", "ambiguity", "presupposition", "ambiguity"]
+    """
+    result = []
+    remaining = {k: v for k, v in category_counts.items() if v > 0}
+
+    while remaining:
+        for cat in list(remaining.keys()):
+            result.append(cat)
+            remaining[cat] -= 1
+            if remaining[cat] == 0:
+                del remaining[cat]
+
+    return result
+
+
 class InterimAnalysis(BaseModel):
     """Intermediate understanding shown between stages.
 
@@ -2209,6 +2322,214 @@ Return your analysis as JSON:
     ],
     "validation_note": "Brief note about what feedback was incorporated"
 }}"""
+
+
+# =============================================================================
+# CURATOR-SHARPENER PROMPTS
+# =============================================================================
+
+EPISTEMIC_CATEGORIES_REGISTRY = """
+## The 7 Epistemic Categories
+
+These categories surface gaps in the USER'S epistemic positioning (not the object itself).
+
+### 1. AMBIGUITY
+Terms/phrases with multiple valid readings that the user hasn't explicitly resolved.
+- What to probe: "Do you mean X or Y when you say Z?"
+- Derived from: Brandomian perspectival content, Blumenberg metaphor theory
+- Example: "Sovereignty" could mean territorial, decisionist, or popular - which?
+
+### 2. PRESUPPOSITION
+What's being treated as "given" without justification.
+- What to probe: "You seem to assume X - what's your basis for this?"
+- Derived from: Sellarsian givenness critique, Deleuzian plane assumptions
+- Example: "You assume digital platforms tend toward monopoly - this requires argument"
+
+### 3. PARADIGM_DEPENDENCY
+Where different intellectual traditions would produce different conclusions.
+- What to probe: "A [tradition] reading would see X, but you're implying Y - which frame are you using?"
+- Derived from: Hacking reasoning styles, Bachelardian regional rationality
+- Example: "Marxist vs Foucauldian reading of power dynamics here"
+
+### 4. LIKELY_MISREADING
+Common ways this concept could be misunderstood by others.
+- What to probe: "Readers might confuse this with X - how do you distinguish?"
+- Derived from: Brandomian de dicto/de re, Carey incommensurability
+- Example: "This might be confused with Polanyi's embedded economy"
+
+### 5. GRAY_ZONE
+Boundary cases where application is uncertain.
+- What to probe: "Does this apply to [edge case]? Where does it stop?"
+- Derived from: Quinean web tensions, Canguilhem milieu boundaries
+- Example: "Does your concept apply to pre-digital platform capitalism?"
+
+### 6. UNFILLED_SLOT
+Placeholder structures awaiting elaboration.
+- What to probe: "You mention X modes but only explain two - what's the third?"
+- Derived from: Carey placeholder structures, Quinean missing inferences
+- Example: "You identify causes but not mechanisms"
+
+### 7. UNCONFRONTED_CHALLENGE
+Objections or problems the user hasn't yet addressed.
+- What to probe: "What would [critic] say to this? How would you respond?"
+- Derived from: Bachelardian epistemological obstacles
+- Example: "Critics would say this reduces to mere economics - your response?"
+"""
+
+CURATOR_PROMPT = """You are an epistemic curator analyzing concept notes to identify blind spots and allocate questioning slots.
+
+{categories_registry}
+
+## User's Concept: {concept_name}
+
+## User's Notes:
+{notes}
+
+{notes_understanding_section}
+
+## Your Task
+
+1. **Analyze the notes** against each of the 7 epistemic categories
+2. **Identify specific blind spots** - concrete instances where user positioning is unclear
+3. **Determine category weights** - which categories are most important for THIS concept
+4. **Allocate question slots** (maximum 16 total) based on weights
+5. **Generate initial questions** for each allocated slot
+6. **Design an INTERLEAVED sequence** - distribute categories across the session
+
+## Allocation Guidelines
+
+- Total slots: 8-16 depending on complexity
+- Minimum 1 slot per relevant category
+- Maximum 4 slots per category
+- Categories with more identified blind spots get more slots
+- Weights should sum to 1.0
+
+## Interleaving Rule (CRITICAL)
+
+Questions must be DISTRIBUTED, not clustered by category.
+
+If allocating 3 ambiguity slots and 2 presupposition slots:
+- BAD: [amb, amb, amb, pre, pre]
+- GOOD: [amb, pre, amb, pre, amb]
+
+This prevents user fatigue and allows reflection between similar questions.
+
+## Question Generation Guidelines
+
+For each slot, generate a question that:
+- Is specific to the user's concept (not generic)
+- Can be answered in 2-3 sentences
+- Focuses on ARTICULATION, not RESOLUTION
+- Helps the user make their positioning explicit
+- References specific content from their notes
+
+DO NOT ask questions whose answers are obvious from the notes.
+
+## Output Format
+
+Return valid JSON:
+{{
+    "total_slots": 12,
+    "category_weights": {{
+        "ambiguity": 0.25,
+        "presupposition": 0.2,
+        "paradigm_dependency": 0.15,
+        "likely_misreading": 0.1,
+        "gray_zone": 0.15,
+        "unfilled_slot": 0.1,
+        "unconfronted_challenge": 0.05
+    }},
+    "emphasis_rationale": "Why this allocation - e.g., 'The concept heavily relies on contested terms (ambiguity) and makes strong assumptions about market dynamics (presupposition)'",
+    "identified_blind_spots": [
+        {{
+            "category": "ambiguity",
+            "description": "The term 'sovereignty' appears 12 times but could mean different things",
+            "what_unclear": "Whether sovereignty here is territorial, decisionist, or popular",
+            "what_would_help": "Explicit statement of which sovereignty tradition is being drawn from"
+        }}
+    ],
+    "slots": [
+        {{
+            "slot_id": "slot_01",
+            "category": "ambiguity",
+            "depth": 1,
+            "question": "When you write about 'technological sovereignty', do you mean control over infrastructure (territorial), authority to make technology decisions (decisionist), or collective technological self-determination (popular)?",
+            "status": "pending",
+            "generated_by": "curator",
+            "blind_spot_ref": "The term 'sovereignty' appears 12 times..."
+        }},
+        {{
+            "slot_id": "slot_02",
+            "category": "presupposition",
+            "depth": 1,
+            "question": "You seem to assume that states can meaningfully regulate transnational tech platforms. What's the basis for this assumption given platform mobility?",
+            "status": "pending",
+            "generated_by": "curator",
+            "blind_spot_ref": "Assumes state regulatory capacity..."
+        }}
+    ],
+    "slot_sequence": ["ambiguity", "presupposition", "paradigm_dependency", "ambiguity", "gray_zone", "presupposition", "unfilled_slot", "ambiguity", "likely_misreading", "gray_zone", "unconfronted_challenge", "presupposition"]
+}}
+
+Generate thoughtful, specific questions that will genuinely help the user articulate their epistemic positioning."""
+
+SHARPENER_PROMPT = """You are an epistemic sharpener generating deeper follow-up questions.
+
+{categories_registry}
+
+## Context
+
+**Concept:** {concept_name}
+
+**Original Question (depth {depth}):**
+{original_question}
+
+**User's Answer:**
+{user_answer}
+
+**Category:** {category}
+
+**Original Notes (for grounding):**
+{notes_context}
+
+**Other Answers So Far:**
+{context_answers}
+
+## Your Task
+
+Generate ONE follow-up question that:
+
+1. **Builds directly on their specific answer** - reference their actual words
+2. **Probes ONE level deeper** into this epistemic gap
+3. **Helps them articulate what's still implicit** in their response
+4. **Does NOT repeat** what's already been explored
+5. **Remains within the same category** ({category})
+
+## Depth Guidelines
+
+- Depth 1 (initial): Surface-level clarification
+- Depth 2 (follow-up): Probing assumptions behind their answer
+- Depth 3 (deep-dive): Connecting to broader commitments or implications
+
+You are generating a depth {next_depth} question.
+
+## Question Style
+
+- Be specific to THEIR answer (quote them if relevant)
+- 1-2 sentences maximum
+- Focus on ARTICULATION not RESOLUTION
+- Answerable in 2-3 sentences
+
+## Output Format
+
+Return valid JSON:
+{{
+    "question": "Your follow-up question here",
+    "rationale": "Why this probes deeper - what it will reveal",
+    "connects_to": "What aspect of their answer this builds on"
+}}
+
+Generate a question that genuinely advances their epistemic self-understanding."""
 
 
 # =============================================================================
@@ -5101,4 +5422,446 @@ async def update_session_status(
     except Exception as e:
         logger.error(f"Error updating session status: {e}", exc_info=True)
         await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# CURATOR-SHARPENER ENDPOINTS
+# =============================================================================
+
+# In-memory storage for sharpener tasks (in production, use Redis)
+_sharpener_tasks: Dict[str, Dict[str, Any]] = {}
+
+
+@router.post("/curate-blind-spots")
+async def curate_blind_spots(request: CurateBlindSpotsRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Curator Service: Analyzes notes against 7-category registry.
+    Returns allocation plan with initial questions.
+    """
+    async def stream_curator_response():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'curating_blind_spots'})}\n\n"
+
+            # Build notes understanding section if provided
+            notes_understanding_section = ""
+            if request.notes_understanding:
+                notes_understanding_section = f"""
+## Notes Understanding (from previous analysis):
+{json.dumps(request.notes_understanding, indent=2)}
+"""
+
+            # Format the prompt
+            prompt = CURATOR_PROMPT.format(
+                categories_registry=EPISTEMIC_CATEGORIES_REGISTRY,
+                concept_name=request.concept_name,
+                notes=request.notes,
+                notes_understanding_section=notes_understanding_section
+            )
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'calling_claude'})}\n\n"
+
+            client = get_claude_client()
+
+            # Use streaming for extended thinking
+            allocation_data = None
+            thinking_content = ""
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                full_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == 'content_block_delta':
+                            if hasattr(event.delta, 'thinking'):
+                                thinking_content += event.delta.thinking
+                            elif hasattr(event.delta, 'text'):
+                                full_text += event.delta.text
+
+                # Parse JSON from response
+                if full_text:
+                    # Find JSON in response
+                    json_start = full_text.find('{')
+                    json_end = full_text.rfind('}') + 1
+                    if json_start >= 0 and json_end > json_start:
+                        json_str = full_text[json_start:json_end]
+                        allocation_data = json.loads(json_str)
+
+            if not allocation_data:
+                raise ValueError("Failed to parse curator response")
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'processing_allocation'})}\n\n"
+
+            # Validate and structure the response
+            total_slots = allocation_data.get('total_slots', 12)
+            category_weights = allocation_data.get('category_weights', {})
+            emphasis_rationale = allocation_data.get('emphasis_rationale', '')
+            identified_blind_spots = allocation_data.get('identified_blind_spots', [])
+            slots = allocation_data.get('slots', [])
+            slot_sequence = allocation_data.get('slot_sequence', [])
+
+            # Use our interleaving algorithm if LLM didn't follow the rule well
+            if slots:
+                # Count categories in slots
+                category_counts = {}
+                for slot in slots:
+                    cat = slot.get('category', 'ambiguity')
+                    category_counts[cat] = category_counts.get(cat, 0) + 1
+
+                # Generate proper interleaved sequence
+                proper_sequence = interleave_slots(category_counts)
+
+                # Reorder slots to match interleaved sequence
+                slots_by_category: Dict[str, List[Dict]] = {}
+                for slot in slots:
+                    cat = slot.get('category', 'ambiguity')
+                    if cat not in slots_by_category:
+                        slots_by_category[cat] = []
+                    slots_by_category[cat].append(slot)
+
+                # Rebuild slots in interleaved order
+                reordered_slots = []
+                category_indices = {cat: 0 for cat in slots_by_category}
+                for cat in proper_sequence:
+                    if cat in slots_by_category and category_indices[cat] < len(slots_by_category[cat]):
+                        slot = slots_by_category[cat][category_indices[cat]]
+                        slot['slot_id'] = f"slot_{len(reordered_slots) + 1:02d}"
+                        reordered_slots.append(slot)
+                        category_indices[cat] += 1
+
+                slots = reordered_slots
+                slot_sequence = proper_sequence
+
+            # Build the response
+            curator_allocation = {
+                'total_slots': total_slots,
+                'category_weights': category_weights,
+                'slot_sequence': slot_sequence,
+                'emphasis_rationale': emphasis_rationale,
+                'identified_blind_spots': identified_blind_spots,
+                'slots': slots
+            }
+
+            # Build the initial queue
+            blind_spots_queue = {
+                'slots': slots,
+                'current_index': 0,
+                'sharpener_pending': [],
+                'completed_count': 0,
+                'skipped_count': 0
+            }
+
+            # If session_id provided, save to database
+            if request.session_id:
+                try:
+                    result = await db.execute(
+                        select(WizardSession).where(WizardSession.session_key == request.session_id)
+                    )
+                    session = result.scalar_one_or_none()
+                    if session:
+                        session_state = session.session_state or {}
+                        session_state['curator_allocation'] = curator_allocation
+                        session_state['blind_spots_queue'] = blind_spots_queue
+                        session.session_state = session_state
+                        await db.commit()
+                except Exception as e:
+                    logger.error(f"Error saving curator state: {e}")
+
+            yield f"data: {json.dumps({'type': 'curator_complete', 'data': {'curator_allocation': curator_allocation, 'blind_spots_queue': blind_spots_queue}})}\n\n"
+            yield "data: [DONE]\n\n"
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parse error in curator: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': f'Failed to parse curator response: {str(e)}'})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Curator error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_curator_response(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/submit-blind-spot-answer")
+async def submit_blind_spot_answer(request: SubmitBlindSpotAnswerRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Submit an answer to a blind spot question.
+    Updates queue state and triggers sharpener if appropriate.
+    """
+    try:
+        # Load session
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == request.session_id)
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        session_state = session.session_state or {}
+        queue = session_state.get('blind_spots_queue', {})
+        slots = queue.get('slots', [])
+
+        # Find and update the slot
+        slot_found = False
+        answered_slot = None
+        for slot in slots:
+            if slot.get('slot_id') == request.slot_id:
+                slot_found = True
+                answered_slot = slot
+                if request.skip:
+                    slot['status'] = 'skipped'
+                    queue['skipped_count'] = queue.get('skipped_count', 0) + 1
+                else:
+                    slot['status'] = 'answered'
+                    slot['answer'] = request.answer
+                    queue['completed_count'] = queue.get('completed_count', 0) + 1
+                break
+
+        if not slot_found:
+            raise HTTPException(status_code=404, detail="Slot not found")
+
+        # Move to next slot
+        queue['current_index'] = queue.get('current_index', 0) + 1
+
+        # Save updated state
+        session_state['blind_spots_queue'] = queue
+        session.session_state = session_state
+        await db.commit()
+
+        # Determine if we should trigger sharpener
+        should_sharpen = False
+        if not request.skip and answered_slot:
+            depth = answered_slot.get('depth', 1)
+            if depth < 3:  # Max depth is 3
+                should_sharpen = True
+
+        # Check completion status
+        quality = assess_completion_quality(BlindSpotsQueue(**queue))
+        is_complete = queue['current_index'] >= len(slots)
+
+        response = {
+            'status': 'answer_received',
+            'slot_id': request.slot_id,
+            'skipped': request.skip,
+            'queue_state': queue,
+            'should_sharpen': should_sharpen,
+            'is_complete': is_complete,
+            'quality': quality if is_complete else None
+        }
+
+        # If sharpener should run, include the context needed
+        if should_sharpen:
+            response['sharpener_context'] = {
+                'slot_id': request.slot_id,
+                'category': answered_slot.get('category'),
+                'depth': answered_slot.get('depth', 1),
+                'question': answered_slot.get('question'),
+                'answer': request.answer
+            }
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting answer: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sharpen-question")
+async def sharpen_question(request: SharpenQuestionRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Sharpener Service: Generates a deeper follow-up question.
+    Called asynchronously while user answers other questions.
+    """
+    async def stream_sharpener_response():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'sharpening'})}\n\n"
+
+            # Load session for context
+            result = await db.execute(
+                select(WizardSession).where(WizardSession.session_key == request.session_id)
+            )
+            session = result.scalar_one_or_none()
+
+            session_state = session.session_state if session else {}
+            queue = session_state.get('blind_spots_queue', {})
+            slots = queue.get('slots', [])
+
+            # Find the original slot
+            original_slot = None
+            for slot in slots:
+                if slot.get('slot_id') == request.slot_id:
+                    original_slot = slot
+                    break
+
+            if not original_slot:
+                yield f"data: {json.dumps({'type': 'error', 'error': 'Original slot not found'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            # Gather context from other answers
+            context_answers = []
+            for slot in slots:
+                if slot.get('status') == 'answered' and slot.get('slot_id') != request.slot_id:
+                    context_answers.append({
+                        'category': slot.get('category'),
+                        'question': slot.get('question'),
+                        'answer': slot.get('answer')
+                    })
+
+            context_answers_str = json.dumps(context_answers, indent=2) if context_answers else "No other answers yet."
+
+            # Get notes context
+            notes_context = request.notes_context or session_state.get('notes', '') or "Notes not available."
+
+            current_depth = original_slot.get('depth', 1)
+            next_depth = current_depth + 1
+
+            # Format the sharpener prompt
+            prompt = SHARPENER_PROMPT.format(
+                categories_registry=EPISTEMIC_CATEGORIES_REGISTRY,
+                concept_name=request.concept_name,
+                original_question=original_slot.get('question', ''),
+                user_answer=request.answer,
+                category=original_slot.get('category', 'ambiguity'),
+                depth=current_depth,
+                next_depth=next_depth,
+                notes_context=notes_context[:2000],  # Truncate if too long
+                context_answers=context_answers_str[:3000]  # Truncate if too long
+            )
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'calling_claude'})}\n\n"
+
+            client = get_claude_client()
+
+            # Use a smaller model for faster response (or same model with less thinking)
+            sharpener_result = None
+
+            with client.messages.stream(
+                model=SONNET_MODEL,  # Use Sonnet for speed
+                max_tokens=4000,
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                full_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == 'content_block_delta':
+                            if hasattr(event.delta, 'text'):
+                                full_text += event.delta.text
+
+                # Parse JSON from response
+                if full_text:
+                    json_start = full_text.find('{')
+                    json_end = full_text.rfind('}') + 1
+                    if json_start >= 0 and json_end > json_start:
+                        json_str = full_text[json_start:json_end]
+                        sharpener_result = json.loads(json_str)
+
+            if not sharpener_result:
+                yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to parse sharpener response'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            # Create new slot for the follow-up question
+            new_slot_id = f"slot_{len(slots) + 1:02d}"
+            new_slot = {
+                'slot_id': new_slot_id,
+                'category': original_slot.get('category', 'ambiguity'),
+                'depth': next_depth,
+                'question': sharpener_result.get('question', ''),
+                'status': 'pending',
+                'generated_by': 'sharpener',
+                'parent_slot_id': request.slot_id,
+                'blind_spot_ref': sharpener_result.get('connects_to', '')
+            }
+
+            # Determine insert position (after current position but not immediately)
+            current_index = queue.get('current_index', 0)
+            # Insert 2-3 slots ahead to give user variety
+            insert_position = min(current_index + 2, len(slots))
+
+            # Update session state with new slot
+            if session:
+                slots.insert(insert_position, new_slot)
+                queue['slots'] = slots
+                session_state['blind_spots_queue'] = queue
+                session.session_state = session_state
+                await db.commit()
+
+            yield f"data: {json.dumps({'type': 'sharpener_complete', 'data': {'new_slot': new_slot, 'insert_position': insert_position, 'queue_length': len(slots), 'rationale': sharpener_result.get('rationale', '')}})}\n\n"
+            yield "data: [DONE]\n\n"
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parse error in sharpener: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': f'Failed to parse sharpener response: {str(e)}'})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Sharpener error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_sharpener_response(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/finish-blind-spots")
+async def finish_blind_spots(request: FinishBlindSpotsRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Finish blind spots questioning early.
+    Returns completion assessment.
+    """
+    try:
+        # Load session
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == request.session_id)
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        session_state = session.session_state or {}
+        queue_data = session_state.get('blind_spots_queue', {})
+        queue = BlindSpotsQueue(**queue_data)
+
+        # Assess completion quality
+        quality = assess_completion_quality(queue)
+
+        # Mark remaining slots as skipped
+        for slot in queue_data.get('slots', []):
+            if slot.get('status') == 'pending':
+                slot['status'] = 'skipped'
+
+        # Update session
+        session_state['blind_spots_queue'] = queue_data
+        session_state['blind_spots_completed'] = True
+        session_state['blind_spots_quality'] = quality
+        session.session_state = session_state
+        await db.commit()
+
+        return {
+            'status': 'finished',
+            'quality': quality,
+            'answered_count': queue.completed_count,
+            'skipped_count': queue.skipped_count,
+            'total_slots': len(queue.slots),
+            'message': QUALITY_MESSAGES.get(quality, '')
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error finishing blind spots: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

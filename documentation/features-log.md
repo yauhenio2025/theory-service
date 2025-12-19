@@ -4,6 +4,46 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-19: Curator-Sharpener Two-Stage Questioning System
+
+**Branch:** `main`
+
+### Description
+Implemented a dynamic two-stage questioning system for blind spots exploration:
+- **Curator Service**: Analyzes notes against 7-category epistemic registry, allocates question slots (max 16), determines emphasis, generates interleaved question sequence
+- **Sharpener Service**: Runs asynchronously while user answers questions, generates deeper follow-ups based on answers, dynamically injects new questions into the queue
+
+### Key Features
+- **Temporal Category Dispersion**: Questions interleaved across categories (not clustered) to prevent fatigue
+- **Graceful Partial Completion**: Even 3/16 answers is valid - system works with what it gets
+- **Interaction Time as Computation Budget**: Uses answer time to generate deeper follow-ups
+- **Dynamic Queue Injection**: Sharpened questions inserted 2-3 slots ahead for variety
+
+### New Models
+- `BlindSpotSlot` - Individual question slot with depth tracking (1-3)
+- `CuratorAllocation` - Curator's analysis and allocation plan
+- `BlindSpotsQueue` - Full queue with dynamic updates and sharpener pending tracking
+
+### New Endpoints
+- `POST /concepts/wizard/curate-blind-spots` - Curator service
+- `POST /concepts/wizard/sharpen-question` - Sharpener service (SSE streaming)
+- `POST /concepts/wizard/submit-blind-spot-answer` - Answer submission
+- `POST /concepts/wizard/finish-blind-spots` - Early termination
+
+### Frontend
+- Progress bar with sharpening indicator animation
+- Question card with category badges and depth indicators
+- Early finish option after minimum 3 answers
+- Allocation rationale disclosure panel
+
+### Principles Embodied
+- `prn_graceful_partial_completion_validity` - System works with partial inputs
+- `prn_temporal_category_dispersion` - Questions spread across categories
+- `prn_strategic_structure_before_tactical_content` - Curator decides allocation before Sharpener generates
+- `prn_interaction_time_as_computation_budget` - Uses wait time for generation
+
+---
+
 ## 2025-12-19: Epistemic Blind Spots Refactoring
 
 **Commit:** `b6784bd`

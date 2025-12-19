@@ -97,6 +97,53 @@ Each of the 9 philosophical dimensions provides a different lens for identifying
 
 ---
 
+### prn_graceful_partial_completion_validity
+**"Systems should produce valid outputs from partial inputs - even 3 out of 16 answers is sufficient for meaningful analysis."**
+
+The blind spots questioning system:
+- Works with as few as 3 answers (though more is better)
+- Assesses completion quality: insufficient (<3), minimal (3-5), adequate (6-9), comprehensive (10+)
+- Allows early termination at any point with quality feedback
+
+**Implementation:** `assess_completion_quality()` function and early finish button.
+
+---
+
+### prn_temporal_category_dispersion
+**"When surfacing multiple categories of issues, distribute them temporally rather than clustering by type."**
+
+The Curator service interleaves question categories across the session:
+- Prevents user fatigue from repeated similar questions
+- Allows reflection between questions on the same theme
+- Uses round-robin algorithm for fair distribution
+
+**Implementation:** `interleave_slots()` algorithm ensures questions like [ambiguity, presupposition, paradigm, ambiguity, gray_zone...] rather than [ambiguity, ambiguity, ambiguity, presupposition, presupposition...].
+
+---
+
+### prn_interaction_time_as_computation_budget
+**"Use the time users spend on one task to generate content for subsequent tasks."**
+
+The Sharpener service runs asynchronously while users answer questions:
+- After each answer, triggers follow-up generation in background
+- New questions appear 2-3 slots ahead (not immediately)
+- Frontend shows "generating..." indicator for pending sharpener tasks
+
+**Implementation:** `triggerSharpener()` runs in background, results injected via SSE events.
+
+---
+
+### prn_strategic_structure_before_tactical_content
+**"Determine the strategic allocation and structure before generating tactical content."**
+
+The two-stage system separates:
+- **Curator (strategic)**: Analyzes notes, determines category weights, allocates slots, designs interleaved sequence
+- **Sharpener (tactical)**: Generates specific follow-up questions based on actual answers
+
+**Implementation:** Curator runs first with full notes context; Sharpener runs incrementally with answer context.
+
+---
+
 ## Future Directions
 
 As the Theory Service evolves, consider:

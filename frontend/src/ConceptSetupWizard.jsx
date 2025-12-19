@@ -27,6 +27,8 @@ const STAGES = {
   UNDERSTANDING_VALIDATION: 'understanding_validation',  // New: validate LLM's understanding
   DOCUMENT_UPLOAD: 'document_upload',  // Optional: upload supporting documents
   ANALYZING_DOCUMENT: 'analyzing_document',  // Analyzing uploaded document
+  BLIND_SPOTS_CURATING: 'blind_spots_curating',  // Curator analyzing notes for blind spots
+  BLIND_SPOTS_QUESTIONING: 'blind_spots_questioning',  // Dynamic questioning with sharpener
   STAGE1: 'stage1',
   ANALYZING_STAGE1: 'analyzing_stage1',
   INTERIM_ANALYSIS: 'interim_analysis',
@@ -51,16 +53,17 @@ const STAGES = {
 const STAGE_NAV = [
   { id: STAGES.NOTES, label: 'Start', shortLabel: '1', navigable: true },
   { id: STAGES.UNDERSTANDING_VALIDATION, label: 'Validate Understanding', shortLabel: '2', navigable: true },
-  { id: STAGES.DOCUMENT_UPLOAD, label: 'Documents', shortLabel: '3', navigable: true },
-  { id: STAGES.INTERIM_ANALYSIS, label: 'Interim Review', shortLabel: '4', navigable: true },
-  { id: STAGES.STAGE2, label: 'Differentiation', shortLabel: '5', navigable: true },
-  { id: STAGES.IMPLICATIONS_PREVIEW, label: 'Implications', shortLabel: '6', navigable: true },
-  { id: STAGES.STAGE3, label: 'Methodology', shortLabel: '7', navigable: true },
-  { id: STAGES.GENEALOGY, label: 'Genealogy', shortLabel: '8', navigable: true },
-  { id: STAGES.DEEP_COMMITMENTS, label: 'Philosophy P1', shortLabel: '9a', navigable: true },
-  { id: STAGES.DEEP_COMMITMENTS_PHASE2, label: 'Philosophy P2', shortLabel: '9b', navigable: true },
-  { id: STAGES.DEEP_COMMITMENTS_PHASE3, label: 'Philosophy P3', shortLabel: '9c', navigable: true },
-  { id: STAGES.COMPLETE, label: 'Complete', shortLabel: '10', navigable: true }
+  { id: STAGES.BLIND_SPOTS_QUESTIONING, label: 'Blind Spots', shortLabel: '3', navigable: true },
+  { id: STAGES.DOCUMENT_UPLOAD, label: 'Documents', shortLabel: '4', navigable: true },
+  { id: STAGES.INTERIM_ANALYSIS, label: 'Interim Review', shortLabel: '5', navigable: true },
+  { id: STAGES.STAGE2, label: 'Differentiation', shortLabel: '6', navigable: true },
+  { id: STAGES.IMPLICATIONS_PREVIEW, label: 'Implications', shortLabel: '7', navigable: true },
+  { id: STAGES.STAGE3, label: 'Methodology', shortLabel: '8', navigable: true },
+  { id: STAGES.GENEALOGY, label: 'Genealogy', shortLabel: '9', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS, label: 'Philosophy P1', shortLabel: '10a', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS_PHASE2, label: 'Philosophy P2', shortLabel: '10b', navigable: true },
+  { id: STAGES.DEEP_COMMITMENTS_PHASE3, label: 'Philosophy P3', shortLabel: '10c', navigable: true },
+  { id: STAGES.COMPLETE, label: 'Complete', shortLabel: '11', navigable: true }
 ]
 
 // Map any stage to its nearest navigable checkpoint
@@ -69,6 +72,8 @@ const getNavCheckpoint = (stage) => {
     [STAGES.NOTES]: STAGES.NOTES,
     [STAGES.ANALYZING_NOTES]: STAGES.NOTES,
     [STAGES.UNDERSTANDING_VALIDATION]: STAGES.UNDERSTANDING_VALIDATION,
+    [STAGES.BLIND_SPOTS_CURATING]: STAGES.BLIND_SPOTS_QUESTIONING,
+    [STAGES.BLIND_SPOTS_QUESTIONING]: STAGES.BLIND_SPOTS_QUESTIONING,
     [STAGES.DOCUMENT_UPLOAD]: STAGES.DOCUMENT_UPLOAD,
     [STAGES.ANALYZING_DOCUMENT]: STAGES.DOCUMENT_UPLOAD,
     [STAGES.STAGE1]: STAGES.DOCUMENT_UPLOAD,  // Stage 1 is now skipped, so map to doc upload
@@ -502,6 +507,20 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [userAddedInfluences, setUserAddedInfluences] = useState([])  // User-added influences
   const [isGeneratingGenealogy, setIsGeneratingGenealogy] = useState(false)
   const [newInfluenceInput, setNewInfluenceInput] = useState({ name: '', type: 'thinker', connection: '' })
+
+  // Curator-Sharpener Blind Spots Questioning state
+  const [blindSpotsQueue, setBlindSpotsQueue] = useState({
+    slots: [],
+    currentIndex: 0,
+    sharpenerPending: [],
+    completedCount: 0,
+    skippedCount: 0
+  })
+  const [curatorAllocation, setCuratorAllocation] = useState(null)
+  const [currentBlindSpotAnswer, setCurrentBlindSpotAnswer] = useState('')
+  const [isCurating, setIsCurating] = useState(false)
+  const [isSharpening, setIsSharpening] = useState(false)
+  const [blindSpotsQuality, setBlindSpotsQuality] = useState(null)
 
   // Session persistence state
   const [hasSavedSession, setHasSavedSession] = useState(false)
@@ -940,6 +959,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 handlers.onInterimComplete?.(event.data)
               } else if (event.type === 'complete') {
                 handlers.onComplete?.(event.data)
+              } else if (event.type === 'curator_complete') {
+                handlers.onCuratorComplete?.(event.data)
+              } else if (event.type === 'sharpener_complete') {
+                handlers.onSharpenerComplete?.(event.data)
+              } else if (event.type === 'sharpener_started') {
+                handlers.onSharpenerStarted?.(event.data)
               } else if (event.type === 'error') {
                 const errMsg = typeof event.message === 'string'
                   ? event.message
@@ -964,6 +989,150 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       setLoading(false)
       setCurrentPhase(null)
     }
+  }
+
+  // =========================================================================
+  // CURATOR-SHARPENER BLIND SPOTS QUESTIONING
+  // =========================================================================
+
+  /**
+   * Start the Curator service to analyze notes and allocate blind spot questions
+   */
+  const startCurator = async () => {
+    setStage(STAGES.BLIND_SPOTS_CURATING)
+    setIsCurating(true)
+    setProgress({ stage: 3, total: 11, label: 'Analyzing blind spots...' })
+
+    await streamWizardRequest(
+      '/concepts/wizard/curate-blind-spots',
+      {
+        concept_name: conceptName,
+        notes: notes,
+        notes_understanding: notesUnderstanding,
+        session_id: currentSessionKey
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onCuratorComplete: (data) => {
+          setCuratorAllocation(data.curator_allocation)
+          setBlindSpotsQueue(data.blind_spots_queue)
+          setStage(STAGES.BLIND_SPOTS_QUESTIONING)
+          setIsCurating(false)
+        }
+      }
+    )
+  }
+
+  /**
+   * Submit an answer to a blind spot question
+   */
+  const submitBlindSpotAnswer = async (skip = false) => {
+    const currentSlot = blindSpotsQueue.slots[blindSpotsQueue.currentIndex]
+    if (!currentSlot) return
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/submit-blind-spot-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: currentSessionKey,
+          slot_id: currentSlot.slot_id,
+          answer: skip ? '' : currentBlindSpotAnswer,
+          skip: skip
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to submit answer')
+      const data = await response.json()
+
+      // Update local queue state
+      setBlindSpotsQueue(data.queue_state)
+      setCurrentBlindSpotAnswer('')
+
+      // Check if complete
+      if (data.is_complete) {
+        setBlindSpotsQuality(data.quality)
+        setStage(STAGES.DOCUMENT_UPLOAD)
+        return
+      }
+
+      // Trigger sharpener if recommended
+      if (data.should_sharpen && data.sharpener_context) {
+        triggerSharpener(data.sharpener_context)
+      }
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  /**
+   * Trigger the Sharpener service to generate a follow-up question
+   * Runs in background while user answers other questions
+   */
+  const triggerSharpener = async (context) => {
+    setIsSharpening(true)
+
+    // Add to pending list
+    setBlindSpotsQueue(prev => ({
+      ...prev,
+      sharpenerPending: [...prev.sharpenerPending, context.slot_id]
+    }))
+
+    await streamWizardRequest(
+      '/concepts/wizard/sharpen-question',
+      {
+        session_id: currentSessionKey,
+        slot_id: context.slot_id,
+        answer: context.answer,
+        concept_name: conceptName,
+        notes_context: notes
+      },
+      {
+        onSharpenerComplete: (data) => {
+          // Insert new slot into queue
+          setBlindSpotsQueue(prev => {
+            const newSlots = [...prev.slots]
+            newSlots.splice(data.insert_position, 0, data.new_slot)
+            return {
+              ...prev,
+              slots: newSlots,
+              sharpenerPending: prev.sharpenerPending.filter(id => id !== context.slot_id)
+            }
+          })
+          setIsSharpening(false)
+        }
+      }
+    )
+  }
+
+  /**
+   * Finish blind spots questioning early
+   */
+  const finishBlindSpotsEarly = async () => {
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/finish-blind-spots`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: currentSessionKey })
+      })
+
+      if (!response.ok) throw new Error('Failed to finish')
+      const data = await response.json()
+
+      setBlindSpotsQuality(data.quality)
+      setStage(STAGES.DOCUMENT_UPLOAD)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  /**
+   * Get the current blind spot question slot
+   */
+  const getCurrentBlindSpotSlot = () => {
+    return blindSpotsQueue.slots[blindSpotsQueue.currentIndex] || null
   }
 
   /**
@@ -3887,14 +4056,167 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <button
                   className="btn btn-primary"
                   onClick={() => {
-                    // Go to document upload stage (optional)
-                    setProgress({ stage: 3, total: 11, label: 'Upload Supporting Documents (Optional)' })
-                    setStage(STAGES.DOCUMENT_UPLOAD)
+                    // Start blind spots curation
+                    startCurator()
                   }}
                 >
-                  Accept & Continue →
+                  Accept & Continue to Blind Spots →
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* STAGE: Blind Spots Curating */}
+          {stage === STAGES.BLIND_SPOTS_CURATING && (
+            <div className="wizard-stage blind-spots-curating">
+              <div className="stage-header">
+                <h3>🔍 Analyzing Your Epistemic Blind Spots...</h3>
+                <p>The curator is examining your notes to identify areas where your positioning could be made more explicit.</p>
+              </div>
+              <div className="analyzing-animation">
+                <div className="spinner-large" />
+                <p className="analyzing-status">{currentPhase || 'Analyzing notes against 7 epistemic categories...'}</p>
+              </div>
+              {thinking && thinkingVisible && (
+                <div className="thinking-panel">
+                  <div className="thinking-header">
+                    <span>Claude's Analysis</span>
+                    <button onClick={() => setThinkingVisible(false)} className="btn-icon">×</button>
+                  </div>
+                  <pre className="thinking-content" ref={thinkingRef}>{thinking}</pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STAGE: Blind Spots Questioning */}
+          {stage === STAGES.BLIND_SPOTS_QUESTIONING && (
+            <div className="wizard-stage blind-spots-questioning">
+              <div className="stage-header">
+                <h3>🎯 Clarify Your Epistemic Positioning</h3>
+                <p>Answer these questions to make your assumptions, boundaries, and commitments more explicit.</p>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="blind-spots-progress">
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${(blindSpotsQueue.completedCount / blindSpotsQueue.slots.length) * 100}%` }}
+                  />
+                </div>
+                <div className="progress-text">
+                  {blindSpotsQueue.completedCount} of {blindSpotsQueue.slots.length} answered
+                  {blindSpotsQueue.sharpenerPending.length > 0 && (
+                    <span className="sharpening-indicator">
+                      (+{blindSpotsQueue.sharpenerPending.length} generating...)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Current Question */}
+              {(() => {
+                const currentSlot = getCurrentBlindSpotSlot()
+                if (!currentSlot) return null
+
+                const categoryConfig = {
+                  ambiguity: { icon: '🔀', label: 'Ambiguity', color: '#6366f1' },
+                  presupposition: { icon: '🎯', label: 'Presupposition', color: '#f59e0b' },
+                  paradigm_dependency: { icon: '🔭', label: 'Paradigm', color: '#8b5cf6' },
+                  likely_misreading: { icon: '⚠️', label: 'Misreading Risk', color: '#ef4444' },
+                  gray_zone: { icon: '🌫️', label: 'Gray Zone', color: '#6b7280' },
+                  unfilled_slot: { icon: '📝', label: 'Unfilled', color: '#3b82f6' },
+                  unconfronted_challenge: { icon: '❓', label: 'Challenge', color: '#ec4899' }
+                }
+
+                const config = categoryConfig[currentSlot.category] || categoryConfig.ambiguity
+
+                return (
+                  <div className={`blind-spot-question-card depth-${currentSlot.depth}`}>
+                    <div className="question-header">
+                      <span
+                        className="category-badge"
+                        style={{ backgroundColor: config.color }}
+                      >
+                        {config.icon} {config.label}
+                      </span>
+                      {currentSlot.depth > 1 && (
+                        <span className="depth-badge">Follow-up (depth {currentSlot.depth})</span>
+                      )}
+                      {currentSlot.generated_by === 'sharpener' && (
+                        <span className="sharpener-badge">✨ Sharpened</span>
+                      )}
+                    </div>
+
+                    <p className="question-text">{currentSlot.question}</p>
+
+                    <textarea
+                      className="blind-spot-answer"
+                      placeholder="Your answer (2-3 sentences)..."
+                      value={currentBlindSpotAnswer}
+                      onChange={(e) => setCurrentBlindSpotAnswer(e.target.value)}
+                      rows={4}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.metaKey && currentBlindSpotAnswer.trim()) {
+                          submitBlindSpotAnswer(false)
+                        }
+                      }}
+                    />
+
+                    <div className="question-actions">
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => submitBlindSpotAnswer(true)}
+                      >
+                        Skip
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => submitBlindSpotAnswer(false)}
+                        disabled={!currentBlindSpotAnswer.trim()}
+                      >
+                        Answer (⌘↵)
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Early Finish Option */}
+              {blindSpotsQueue.completedCount >= 3 && (
+                <div className="early-finish-section">
+                  <p className="early-finish-hint">
+                    You've answered {blindSpotsQueue.completedCount} questions.
+                    {blindSpotsQueue.completedCount < 6
+                      ? ' A few more would strengthen the analysis.'
+                      : blindSpotsQueue.completedCount < 10
+                        ? ' Good progress! Continue or finish when ready.'
+                        : ' Excellent coverage!'}
+                  </p>
+                  <button
+                    className="btn btn-outline"
+                    onClick={finishBlindSpotsEarly}
+                  >
+                    Finish with Current Answers
+                  </button>
+                </div>
+              )}
+
+              {/* Allocation Rationale (collapsible) */}
+              {curatorAllocation && (
+                <details className="allocation-details">
+                  <summary>Why these questions?</summary>
+                  <p>{curatorAllocation.emphasis_rationale}</p>
+                  <div className="category-weights">
+                    {Object.entries(curatorAllocation.category_weights || {}).map(([cat, weight]) => (
+                      <span key={cat} className="weight-tag">
+                        {cat}: {Math.round(weight * 100)}%
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           )}
 
