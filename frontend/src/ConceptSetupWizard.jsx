@@ -712,9 +712,16 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     setQuestions(parsed.questions || [])
     setCurrentQuestionIndex(parsed.currentQuestionIndex || 0)
     setInterimAnalysis(parsed.interimAnalysis || null)
-    // Restore blind spots questioning state
+    // Restore blind spots questioning state (normalize in case of snake_case from old sessions)
     if (parsed.blindSpotsQueue) {
-      setBlindSpotsQueue(parsed.blindSpotsQueue)
+      const queue = parsed.blindSpotsQueue
+      setBlindSpotsQueue({
+        slots: queue.slots || [],
+        currentIndex: queue.current_index ?? queue.currentIndex ?? 0,
+        sharpenerPending: queue.sharpener_pending || queue.sharpenerPending || [],
+        completedCount: queue.completed_count ?? queue.completedCount ?? 0,
+        skippedCount: queue.skipped_count ?? queue.skippedCount ?? 0
+      })
     }
     if (parsed.curatorAllocation) {
       setCuratorAllocation(parsed.curatorAllocation)
@@ -1008,6 +1015,17 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   // =========================================================================
 
   /**
+   * Helper to normalize snake_case queue from backend to camelCase for frontend
+   */
+  const normalizeQueueState = (queue) => ({
+    slots: queue?.slots || [],
+    currentIndex: queue?.current_index ?? queue?.currentIndex ?? 0,
+    sharpenerPending: queue?.sharpener_pending || queue?.sharpenerPending || [],
+    completedCount: queue?.completed_count ?? queue?.completedCount ?? 0,
+    skippedCount: queue?.skipped_count ?? queue?.skippedCount ?? 0
+  })
+
+  /**
    * Start the Curator service to analyze notes and allocate blind spot questions
    */
   const startCurator = async () => {
@@ -1032,8 +1050,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         onCuratorComplete: (data) => {
           console.log('[Curator] Complete! Received allocation:', data.curator_allocation?.total_slots, 'slots')
           console.log('[Curator] Queue:', data.blind_spots_queue?.slots?.length, 'questions')
+          console.log('[Curator] First slot:', data.blind_spots_queue?.slots?.[0])
           setCuratorAllocation(data.curator_allocation)
-          setBlindSpotsQueue(data.blind_spots_queue)
+          // Normalize snake_case from backend to camelCase for frontend
+          setBlindSpotsQueue(normalizeQueueState(data.blind_spots_queue))
           setStage(STAGES.BLIND_SPOTS_QUESTIONING)
           setIsCurating(false)
         }
@@ -1063,8 +1083,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       if (!response.ok) throw new Error('Failed to submit answer')
       const data = await response.json()
 
-      // Update local queue state
-      setBlindSpotsQueue(data.queue_state)
+      // Update local queue state (normalize snake_case to camelCase)
+      setBlindSpotsQueue(normalizeQueueState(data.queue_state))
       setCurrentBlindSpotAnswer('')
 
       // Check if complete
