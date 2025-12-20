@@ -4,6 +4,41 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-20: Write-In Type Qualification Dropdown
+
+**Commit:** `d92dcbd`
+**Branch:** `main`
+
+### Description
+When users provide write-in text alongside selected options, a dropdown appears asking them to qualify what type of input they're providing.
+
+### The Problem
+When users write in their own text, the LLM doesn't know how to interpret it:
+- Is it elaborating on selected answers?
+- Is it a completely different alternative?
+- Is it commentary on the question itself?
+
+### The Solution
+Add a dropdown that appears when write-in text is detected:
+- "Elaboration on my selected answer(s)"
+- "A new alternative answer"
+- "A comment on this question itself"
+
+The combined answer now includes labeled sections:
+- `[Selected from options]:` for chosen multi-choice items
+- `[Elaboration/Alternative/Comment]:` for write-in based on type
+
+### Implementation
+- `writeInType` state tracks selected type
+- Dropdown appears conditionally when `writeInAddition.trim()` is truthy
+- `buildCombinedAnswer()` includes type labels in the output
+
+### Principles Embodied
+- `prn_input_qualification_for_context` - Help LLM understand input intent
+- Inspired by essay-flow's Guided Reframing modal
+
+---
+
 ## 2025-12-20: Background Pre-Generation of Answer Options
 
 **Commit:** `e7568c5`
