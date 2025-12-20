@@ -29,6 +29,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from sqlalchemy.orm import attributes
 from anthropic import Anthropic
 
 from .database import get_db, AsyncSessionLocal
@@ -5562,13 +5563,15 @@ async def save_session(
             existing.concept_name = request.concept_name
             # MERGE session_state instead of overwrite to preserve curator/sharpener data
             # This prevents frontend debounced saves from wiping out blind_spots_queue
-            merged_state = existing.session_state or {}
-            new_state = request.session_state or {}
+            merged_state = dict(existing.session_state or {})
+            new_state = dict(request.session_state or {})
             # Preserve backend-generated fields that frontend doesn't track
             for key in ['curator_allocation', 'blind_spots_queue', 'sharpener_results']:
                 if key in merged_state and key not in new_state:
                     new_state[key] = merged_state[key]
             existing.session_state = new_state
+            # Explicitly flag the JSON column as modified
+            attributes.flag_modified(existing, 'session_state')
             existing.stage = request.stage
             existing.source_id = request.source_id
             existing.last_accessed_at = datetime.utcnow()
@@ -5806,12 +5809,15 @@ async def curate_blind_spots(request: CurateBlindSpotsRequest, db: AsyncSession 
                         )
                         session = result.scalar_one_or_none()
                         if session:
-                            session_state = session.session_state or {}
+                            # Create a NEW dict to ensure SQLAlchemy detects the change
+                            session_state = dict(session.session_state or {})
                             session_state['curator_allocation'] = curator_allocation
                             session_state['blind_spots_queue'] = blind_spots_queue
                             session.session_state = session_state
+                            # Explicitly flag the JSON column as modified
+                            attributes.flag_modified(session, 'session_state')
                             await db_session.commit()
-                            logger.info(f"Saved curator state for session {request.session_id}")
+                            logger.info(f"Saved curator state for session {request.session_id} with {len(slots)} slots")
                         else:
                             logger.warning(f"Session not found for session_id: {request.session_id}")
                 except Exception as e:
@@ -5842,17 +5848,23 @@ async def submit_blind_spot_answer(request: SubmitBlindSpotAnswerRequest, db: As
     Updates queue state and triggers sharpener if appropriate.
     """
     try:
+        logger.info(f"[submit-blind-spot-answer] session_id={request.session_id}, slot_id={request.slot_id}")
+
         # Load session
         result = await db.execute(
             select(WizardSession).where(WizardSession.session_key == request.session_id)
         )
         session = result.scalar_one_or_none()
         if not session:
+            logger.error(f"[submit-blind-spot-answer] Session not found: {request.session_id}")
             raise HTTPException(status_code=404, detail="Session not found")
 
         session_state = session.session_state or {}
+        logger.info(f"[submit-blind-spot-answer] session_state keys: {list(session_state.keys())}")
+
         queue = session_state.get('blind_spots_queue', {})
         slots = queue.get('slots', [])
+        logger.info(f"[submit-blind-spot-answer] queue has {len(slots)} slots")
 
         # Find and update the slot
         slot_found = False
@@ -5871,7 +5883,9 @@ async def submit_blind_spot_answer(request: SubmitBlindSpotAnswerRequest, db: As
                 break
 
         if not slot_found:
-            raise HTTPException(status_code=404, detail="Slot not found")
+            available_ids = [s.get('slot_id') for s in slots]
+            logger.error(f"[submit-blind-spot-answer] Slot not found. Requested: {request.slot_id}, Available: {available_ids}")
+            raise HTTPException(status_code=404, detail=f"Slot not found. Requested: {request.slot_id}, Available: {available_ids}")
 
         # Move to next slot
         queue['current_index'] = queue.get('current_index', 0) + 1
@@ -5879,6 +5893,7 @@ async def submit_blind_spot_answer(request: SubmitBlindSpotAnswerRequest, db: As
         # Save updated state
         session_state['blind_spots_queue'] = queue
         session.session_state = session_state
+        attributes.flag_modified(session, 'session_state')
         await db.commit()
 
         # Determine if we should trigger sharpener
