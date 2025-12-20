@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from anthropic import Anthropic
 
-from .database import get_db
+from .database import get_db, AsyncSessionLocal
 from .models import WizardSession
 
 # PDF extraction (optional - graceful fallback)
@@ -5583,20 +5583,25 @@ async def curate_blind_spots(request: CurateBlindSpotsRequest, db: AsyncSession 
             }
 
             # If session_id provided, save to database
+            # Use fresh session inside generator (db from Depends may be closed)
             if request.session_id:
                 try:
-                    result = await db.execute(
-                        select(WizardSession).where(WizardSession.session_key == request.session_id)
-                    )
-                    session = result.scalar_one_or_none()
-                    if session:
-                        session_state = session.session_state or {}
-                        session_state['curator_allocation'] = curator_allocation
-                        session_state['blind_spots_queue'] = blind_spots_queue
-                        session.session_state = session_state
-                        await db.commit()
+                    async with AsyncSessionLocal() as db_session:
+                        result = await db_session.execute(
+                            select(WizardSession).where(WizardSession.session_key == request.session_id)
+                        )
+                        session = result.scalar_one_or_none()
+                        if session:
+                            session_state = session.session_state or {}
+                            session_state['curator_allocation'] = curator_allocation
+                            session_state['blind_spots_queue'] = blind_spots_queue
+                            session.session_state = session_state
+                            await db_session.commit()
+                            logger.info(f"Saved curator state for session {request.session_id}")
+                        else:
+                            logger.warning(f"Session not found for session_id: {request.session_id}")
                 except Exception as e:
-                    logger.error(f"Error saving curator state: {e}")
+                    logger.error(f"Error saving curator state: {e}", exc_info=True)
 
             yield f"data: {json.dumps({'type': 'curator_complete', 'data': {'curator_allocation': curator_allocation, 'blind_spots_queue': blind_spots_queue}})}\n\n"
             yield "data: [DONE]\n\n"
