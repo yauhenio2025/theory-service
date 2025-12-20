@@ -3650,7 +3650,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     <span className="session-count">{serverSessions.length} active session{serverSessions.length !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="server-sessions-list">
-                    {serverSessions.map(session => (
+                    {serverSessions.slice(0, 3).map(session => (
                       <div key={session.session_key} className="server-session-item">
                         <div className="session-info">
                           <span className="session-concept">{session.concept_name}</span>
@@ -3677,6 +3677,11 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                       </div>
                     ))}
                   </div>
+                  {serverSessions.length > 3 && (
+                    <p className="more-sessions-hint">
+                      + {serverSessions.length - 3} more session{serverSessions.length - 3 !== 1 ? 's' : ''} available
+                    </p>
+                  )}
                 </div>
               )}
 
