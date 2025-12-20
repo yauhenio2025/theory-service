@@ -6573,6 +6573,71 @@ textarea {
   text-align: center;
 }
 
+/* Light mode overrides for server sessions */
+[data-theme="light"] .server-sessions-banner {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border-color: #22c55e;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
+}
+
+[data-theme="light"] .server-sessions-header {
+  border-bottom-color: #d1d5db;
+}
+
+[data-theme="light"] .server-sessions-header strong {
+  color: #16a34a;
+}
+
+[data-theme="light"] .session-count {
+  color: #6b7280;
+}
+
+[data-theme="light"] .server-session-item {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: #d1d5db;
+}
+
+[data-theme="light"] .server-session-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #22c55e;
+}
+
+[data-theme="light"] .session-concept {
+  color: #2563eb;
+}
+
+[data-theme="light"] .session-stage {
+  color: #16a34a;
+}
+
+[data-theme="light"] .session-time {
+  color: #6b7280;
+}
+
+[data-theme="light"] .session-actions .btn-danger {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+[data-theme="light"] .session-actions .btn-danger:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+[data-theme="light"] .more-sessions-hint {
+  border-top-color: rgba(0, 0, 0, 0.1);
+  color: #6b7280;
+}
+
+[data-theme="light"] .resume-session-banner.local-session {
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  border-color: #9ca3af;
+}
+
+[data-theme="light"] .resume-session-banner.local-session .resume-info strong {
+  color: #6b7280;
+}
+
 /* =========================================================================
    STAGE NAVIGATION BREADCRUMB
    ========================================================================= */
