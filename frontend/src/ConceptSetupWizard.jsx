@@ -519,6 +519,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [curatorAllocation, setCuratorAllocation] = useState(null)
   const [currentBlindSpotAnswer, setCurrentBlindSpotAnswer] = useState('')
   const [answerOptions, setAnswerOptions] = useState(null)  // Generated multiple choice options
+  const [selectedOptionIds, setSelectedOptionIds] = useState([])  // Track multi-select
+  const [writeInAddition, setWriteInAddition] = useState('')  // Additional write-in text
   const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const [isCurating, setIsCurating] = useState(false)
   const [isSharpening, setIsSharpening] = useState(false)
@@ -1070,6 +1072,17 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     const currentSlot = blindSpotsQueue.slots[blindSpotsQueue.currentIndex]
     if (!currentSlot) return
 
+    // Build the answer: use combined options + write-in if using options mode,
+    // otherwise use the regular textarea answer
+    let finalAnswer = ''
+    if (!skip) {
+      if (answerOptions && (selectedOptionIds.length > 0 || writeInAddition.trim())) {
+        finalAnswer = buildCombinedAnswer()
+      } else {
+        finalAnswer = currentBlindSpotAnswer
+      }
+    }
+
     try {
       const response = await fetch(`${API_URL}/concepts/wizard/submit-blind-spot-answer`, {
         method: 'POST',
@@ -1077,7 +1090,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         body: JSON.stringify({
           session_id: currentSessionKey,
           slot_id: currentSlot.slot_id,
-          answer: skip ? '' : currentBlindSpotAnswer,
+          answer: finalAnswer,
           skip: skip
         })
       })
@@ -1089,6 +1102,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       setBlindSpotsQueue(normalizeQueueState(data.queue_state))
       setCurrentBlindSpotAnswer('')
       setAnswerOptions(null)  // Clear options for next question
+      setSelectedOptionIds([])  // Clear multi-select
+      setWriteInAddition('')  // Clear write-in
 
       // Check if complete
       if (data.is_complete) {
@@ -1148,11 +1163,56 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   }
 
   /**
-   * Select an answer option and populate the textarea
+   * Toggle selection of an answer option
+   * Handles both mutually exclusive (single select) and non-exclusive (multi-select) modes
    */
-  const selectAnswerOption = (option) => {
-    setCurrentBlindSpotAnswer(option.text)
-    // Keep options visible so user can switch if needed
+  const toggleAnswerOption = (option) => {
+    const isMutuallyExclusive = answerOptions?.mutually_exclusive ?? true
+
+    if (isMutuallyExclusive) {
+      // Single select mode - replace selection
+      if (selectedOptionIds.includes(option.id)) {
+        setSelectedOptionIds([])
+      } else {
+        setSelectedOptionIds([option.id])
+      }
+    } else {
+      // Multi-select mode - toggle in array
+      setSelectedOptionIds(prev =>
+        prev.includes(option.id)
+          ? prev.filter(id => id !== option.id)
+          : [...prev, option.id]
+      )
+    }
+  }
+
+  /**
+   * Build combined answer from selected options + write-in
+   */
+  const buildCombinedAnswer = () => {
+    const parts = []
+
+    // Add selected option texts
+    if (answerOptions && selectedOptionIds.length > 0) {
+      const selectedTexts = answerOptions.options
+        .filter(opt => selectedOptionIds.includes(opt.id))
+        .map(opt => opt.text)
+      parts.push(...selectedTexts)
+    }
+
+    // Add write-in if present
+    if (writeInAddition.trim()) {
+      parts.push(writeInAddition.trim())
+    }
+
+    return parts.join('\n\n')
+  }
+
+  /**
+   * Check if we have a valid answer (from options or write-in or both)
+   */
+  const hasValidAnswer = () => {
+    return selectedOptionIds.length > 0 || writeInAddition.trim() || currentBlindSpotAnswer.trim()
   }
 
   /**
@@ -4141,42 +4201,93 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                     {/* Generated answer options */}
                     {answerOptions && (
                       <div className="answer-options-container">
-                        <p className="options-guidance">{answerOptions.guidance}</p>
+                        <div className="options-header">
+                          <p className="options-guidance">{answerOptions.guidance}</p>
+                          <span className={`select-mode-badge ${answerOptions.mutually_exclusive ? 'exclusive' : 'multi'}`}>
+                            {answerOptions.mutually_exclusive ? '⚫ Pick one' : '✅ Select multiple'}
+                          </span>
+                        </div>
+                        {answerOptions.exclusivity_reason && (
+                          <p className="exclusivity-reason">{answerOptions.exclusivity_reason}</p>
+                        )}
                         <div className="answer-options-grid">
                           {answerOptions.options.map((option) => (
                             <button
                               key={option.id}
-                              className={`answer-option-card ${currentBlindSpotAnswer === option.text ? 'selected' : ''}`}
-                              onClick={() => selectAnswerOption(option)}
+                              className={`answer-option-card ${selectedOptionIds.includes(option.id) ? 'selected' : ''}`}
+                              onClick={() => toggleAnswerOption(option)}
                             >
-                              <span className={`stance-badge stance-${option.stance}`}>
-                                {option.stance}
-                              </span>
-                              <p className="option-text">{option.text}</p>
+                              <div className="option-select-indicator">
+                                {answerOptions.mutually_exclusive ? (
+                                  <span className={`radio-indicator ${selectedOptionIds.includes(option.id) ? 'checked' : ''}`}>
+                                    {selectedOptionIds.includes(option.id) ? '●' : '○'}
+                                  </span>
+                                ) : (
+                                  <span className={`checkbox-indicator ${selectedOptionIds.includes(option.id) ? 'checked' : ''}`}>
+                                    {selectedOptionIds.includes(option.id) ? '☑' : '☐'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="option-content">
+                                <span className={`stance-badge stance-${option.stance}`}>
+                                  {option.stance}
+                                </span>
+                                <p className="option-text">{option.text}</p>
+                              </div>
                             </button>
                           ))}
                         </div>
-                        <button
-                          className="btn btn-text dismiss-options"
-                          onClick={() => setAnswerOptions(null)}
-                        >
-                          Dismiss options
-                        </button>
+
+                        {/* Write-in addition - always available */}
+                        <div className="write-in-section">
+                          <label className="write-in-label">
+                            ✏️ Add your own thoughts {selectedOptionIds.length > 0 ? '(optional)' : ''}
+                          </label>
+                          <textarea
+                            className="write-in-textarea"
+                            placeholder="Write your own answer or add to the selected options..."
+                            value={writeInAddition}
+                            onChange={(e) => setWriteInAddition(e.target.value)}
+                            rows={3}
+                          />
+                        </div>
+
+                        <div className="options-footer">
+                          <button
+                            className="btn btn-text dismiss-options"
+                            onClick={() => {
+                              setAnswerOptions(null)
+                              setSelectedOptionIds([])
+                              setWriteInAddition('')
+                            }}
+                          >
+                            Dismiss options
+                          </button>
+                          {(selectedOptionIds.length > 0 || writeInAddition.trim()) && (
+                            <span className="selection-summary">
+                              {selectedOptionIds.length} selected
+                              {writeInAddition.trim() ? ' + write-in' : ''}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
 
-                    <textarea
-                      className="blind-spot-answer"
-                      placeholder={answerOptions ? "Selected option above, or edit/write your own..." : "Your answer (2-3 sentences)..."}
-                      value={currentBlindSpotAnswer}
-                      onChange={(e) => setCurrentBlindSpotAnswer(e.target.value)}
-                      rows={4}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.metaKey && currentBlindSpotAnswer.trim()) {
-                          submitBlindSpotAnswer(false)
-                        }
-                      }}
-                    />
+                    {/* Regular textarea - only show when NOT using options mode */}
+                    {!answerOptions && (
+                      <textarea
+                        className="blind-spot-answer"
+                        placeholder="Your answer (2-3 sentences)..."
+                        value={currentBlindSpotAnswer}
+                        onChange={(e) => setCurrentBlindSpotAnswer(e.target.value)}
+                        rows={4}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && e.metaKey && currentBlindSpotAnswer.trim()) {
+                            submitBlindSpotAnswer(false)
+                          }
+                        }}
+                      />
+                    )}
 
                     <div className="question-actions">
                       <button
@@ -4188,7 +4299,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                       <button
                         className="btn btn-primary"
                         onClick={() => submitBlindSpotAnswer(false)}
-                        disabled={!currentBlindSpotAnswer.trim()}
+                        disabled={!hasValidAnswer()}
                       >
                         Answer (⌘↵)
                       </button>

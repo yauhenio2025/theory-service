@@ -4182,15 +4182,48 @@ header h1 {
   border-color: #30363d;
 }
 
+.options-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
 .options-guidance {
   font-size: 0.85rem;
   color: #57606a;
-  margin-bottom: 0.75rem;
+  margin: 0;
   font-style: italic;
+  flex: 1;
 }
 
 [data-theme="dark"] .options-guidance {
   color: #8b949e;
+}
+
+.select-mode-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.select-mode-badge.exclusive {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.select-mode-badge.multi {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.exclusivity-reason {
+  font-size: 0.8rem;
+  color: #8b949e;
+  margin: 0 0 0.75rem 0;
 }
 
 .answer-options-grid {
@@ -4208,9 +4241,9 @@ header h1 {
 
 .answer-option-card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.75rem;
   padding: 0.75rem;
   background: #ffffff;
   border: 2px solid #e1e4e8;
@@ -4283,6 +4316,91 @@ header h1 {
 
 [data-theme="dark"] .option-text {
   color: #e6edf3;
+}
+
+/* Selection indicators for multi-select */
+.option-select-indicator {
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+.radio-indicator,
+.checkbox-indicator {
+  color: #8b949e;
+  transition: color 0.2s;
+}
+
+.radio-indicator.checked,
+.checkbox-indicator.checked {
+  color: #6366f1;
+}
+
+.option-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Write-in section */
+.write-in-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e1e4e8;
+}
+
+[data-theme="dark"] .write-in-section {
+  border-top-color: #30363d;
+}
+
+.write-in-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #57606a;
+  margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .write-in-label {
+  color: #8b949e;
+}
+
+.write-in-textarea {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  color: #24292f;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.write-in-textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+[data-theme="dark"] .write-in-textarea {
+  background: #161b22;
+  border-color: #30363d;
+  color: #e6edf3;
+}
+
+/* Options footer */
+.options-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.selection-summary {
+  font-size: 0.8rem;
+  color: #6366f1;
+  font-weight: 500;
 }
 
 .dismiss-options {

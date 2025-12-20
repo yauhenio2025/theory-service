@@ -153,9 +153,12 @@ Users arrive at blind spots questions with different levels of clarity:
 
 Forcing all users through a single flow either frustrates those who know what they want or overwhelms those who need scaffolding.
 
-**Implementation:** (Planned) Add a toggle or dual-mode for blind spots answers:
-- Free text entry mode (default)
-- "Help me articulate" mode that generates multiple choice options based on the question context
+**Implementation:** "Help me articulate" button generates 4 stance-based options:
+- LLM determines if options are mutually exclusive or can be combined
+- Multi-select enabled when options are compatible (checkboxes)
+- Single-select when options are contradictory (radio buttons)
+- Write-in always available - users can add their own text alongside selections
+- Final answer combines selected options + write-in for richer context
 
 ---
 
@@ -166,5 +169,4 @@ As the Theory Service evolves, consider:
 - Visualizing blind spot patterns across concepts
 - Connecting blind spots to dialectics when appropriate
 - Using blind spot history to improve initial identification
-- Implement `prn_intent_formation_state_bifurcation` with response mode toggle
 

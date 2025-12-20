@@ -6,7 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-20: Dual Response Mode for Blind Spots Questioning
 
-**Commit:** `257374a`
+**Commit:** `257374a` (initial), updated with multi-select
 **Branch:** `main`
 
 ### Description
@@ -22,8 +22,11 @@ Forcing all users through a single flow frustrates both groups.
 ### The Solution
 - "Help me articulate" button generates 4 stance-based answer options
 - Each option represents a different epistemic stance: assertive, exploratory, qualified, provocative
-- Clicking an option populates the textarea (still editable)
-- Users can dismiss options and write their own
+- **Multi-select support**: LLM determines if options are mutually exclusive
+  - If NOT mutually exclusive: checkboxes allow selecting multiple options
+  - If mutually exclusive: radio buttons allow only one selection
+- **Write-in always available**: Users can add their own text alongside any selected options
+- **Combined answers**: Final submission merges selected options + write-in for richer context
 
 ### New Endpoint
 - `POST /concepts/wizard/generate-answer-options` - Generates 4 stance-based answer options
@@ -31,13 +34,15 @@ Forcing all users through a single flow frustrates both groups.
 ### New Models
 - `GenerateAnswerOptionsRequest` - Request with question context
 - `AnswerOption` - Individual option with id, text, stance
-- `GenerateAnswerOptionsResponse` - Response with options and guidance
+- `GenerateAnswerOptionsResponse` - Response with options, guidance, mutually_exclusive flag, exclusivity_reason
 
 ### Frontend
 - "Help me articulate" button with loading state
-- 2x2 grid of selectable option cards
+- 2x2 grid of selectable option cards with checkboxes/radio indicators
+- Select mode badge ("Pick one" vs "Select multiple")
 - Stance badges (assertive, exploratory, qualified, provocative)
-- Selected state highlighting
+- Write-in textarea always visible below options
+- Selection summary showing count + write-in status
 - Dismiss options button
 
 ### Principles Embodied

@@ -254,6 +254,8 @@ class GenerateAnswerOptionsResponse(BaseModel):
     """Response with generated answer options."""
     options: List[AnswerOption]
     guidance: str  # Brief guidance on how to use/interpret options
+    mutually_exclusive: bool = True  # If True, user can only select one; if False, multi-select allowed
+    exclusivity_reason: Optional[str] = None  # Why options are/aren't mutually exclusive
 
 
 # Validity thresholds for graceful completion
@@ -5912,6 +5914,18 @@ Generate 4 distinct answer options that the user might choose from. Each option 
 3. **Qualified**: A nuanced position with caveats. "In some contexts X, but in others Y..."
 4. **Provocative**: A counterintuitive or challenging take. "Against common intuition, I think X..."
 
+## Mutual Exclusivity Analysis
+Determine whether these options are MUTUALLY EXCLUSIVE or can be combined:
+- **mutually_exclusive: true** = Options represent incompatible positions (e.g., "X is true" vs "X is false")
+- **mutually_exclusive: false** = Options can be held together, user might select multiple to give richer context
+
+For blind spots questions, options are often NOT mutually exclusive because:
+- User might hold multiple partial views
+- User might see merit in several framings
+- Selecting multiple gives us richer epistemic context
+
+Default to mutually_exclusive: false unless the options are logically contradictory.
+
 ## Output Format
 Return valid JSON:
 {{
@@ -5921,7 +5935,9 @@ Return valid JSON:
     {{"id": "opt_3", "text": "...", "stance": "qualified"}},
     {{"id": "opt_4", "text": "...", "stance": "provocative"}}
   ],
-  "guidance": "Brief note on how these options differ and what choosing each would signal about the user's position."
+  "guidance": "Brief note on how these options differ and what choosing each would signal about the user's position.",
+  "mutually_exclusive": false,
+  "exclusivity_reason": "Brief explanation of why options can/cannot be combined"
 }}
 
 Generate options that are genuinely distinct and would help the user discover which resonates with their actual thinking."""
@@ -5973,7 +5989,9 @@ async def generate_answer_options(request: GenerateAnswerOptionsRequest):
             parsed = json.loads(json_match.group())
             return GenerateAnswerOptionsResponse(
                 options=[AnswerOption(**opt) for opt in parsed.get('options', [])],
-                guidance=parsed.get('guidance', 'Choose the option that best resonates with your thinking, or use it as a starting point to write your own.')
+                guidance=parsed.get('guidance', 'Choose the option that best resonates with your thinking, or use it as a starting point to write your own.'),
+                mutually_exclusive=parsed.get('mutually_exclusive', False),
+                exclusivity_reason=parsed.get('exclusivity_reason', None)
             )
         else:
             # Fallback if parsing fails
@@ -5984,7 +6002,9 @@ async def generate_answer_options(request: GenerateAnswerOptionsRequest):
                     AnswerOption(id="opt_3", text="My position depends on the specific context or framing.", stance="qualified"),
                     AnswerOption(id="opt_4", text="I want to challenge the premise of this question.", stance="provocative")
                 ],
-                guidance="Select the stance that feels closest to your position, then refine the text."
+                guidance="Select the stance that feels closest to your position, then refine the text.",
+                mutually_exclusive=False,
+                exclusivity_reason="These stances can be combined for a richer response."
             )
 
     except Exception as e:
