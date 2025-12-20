@@ -6,7 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-20: Dual Response Mode for Blind Spots Questioning
 
-**Commit:** (pending)
+**Commit:** `257374a`
 **Branch:** `main`
 
 ### Description
