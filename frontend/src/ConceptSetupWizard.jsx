@@ -1038,10 +1038,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
   /**
    * Start the Curator service to analyze notes and allocate blind spot questions
+   * @param {string} sessionKey - Optional session key (use when currentSessionKey state may not be updated yet)
    */
-  const startCurator = async () => {
+  const startCurator = async (sessionKey = null) => {
+    const effectiveSessionKey = sessionKey || currentSessionKey
     console.log('[Curator] Starting curator service...')
-    console.log('[Curator] conceptName:', conceptName, 'notes length:', notes?.length, 'sessionKey:', currentSessionKey)
+    console.log('[Curator] conceptName:', conceptName, 'notes length:', notes?.length, 'sessionKey:', effectiveSessionKey)
     setStage(STAGES.BLIND_SPOTS_CURATING)
     setIsCurating(true)
     setProgress({ stage: 3, total: 11, label: 'Analyzing blind spots...' })
@@ -1052,7 +1054,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         concept_name: conceptName,
         notes: notes,
         notes_understanding: notesUnderstanding,
-        session_id: currentSessionKey
+        session_id: effectiveSessionKey
       },
       {
         onThinking: (content) => {
@@ -1560,8 +1562,24 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           // NEW FLOW: Cards are generated AFTER blind spots questioning
           // Go to blind spots exploration first (prn_epistemic_grounding_before_thesis_generation)
           setThinking('')
-          // Start the curator service - this sets stage to BLIND_SPOTS_CURATING and makes the API call
-          startCurator()
+
+          // Save session immediately (bypassing debounce) to ensure we have a session key
+          // before starting curator - the debounced save may not have run yet
+          const sessionData = {
+            conceptName,
+            notes,
+            stage: STAGES.BLIND_SPOTS_CURATING,
+            notesUnderstanding: understanding,
+            stageData: { stage1: { questions: data.questions || [], notesAnalysis: data.notes_analysis || null } }
+          }
+          const saved = await saveToServer(sessionData)
+          const sessionKey = saved?.session_key || currentSessionKey
+          if (saved?.session_key) {
+            setCurrentSessionKey(saved.session_key)
+          }
+
+          // Start the curator service - pass session key explicitly since state may not be updated yet
+          startCurator(sessionKey)
         }
       }
     )
