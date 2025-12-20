@@ -1489,7 +1489,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         onThinking: (content) => {
           setThinking(prev => prev + content)
         },
-        onComplete: (data) => {
+        onComplete: async (data) => {
           // Store questions and analysis for later use
           setQuestions(data.questions || [])
           // Support both new (gaps_tensions_questions) and old (potential_tensions) field names
