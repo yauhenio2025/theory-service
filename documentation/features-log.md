@@ -6,7 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-20: Blind Spots Before Hypotheses Flow
 
-**Commit:** `pending`
+**Commit:** `3f17dd5`
 **Branch:** `main`
 
 ### Description
