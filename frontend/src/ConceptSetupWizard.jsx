@@ -521,6 +521,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [answerOptions, setAnswerOptions] = useState(null)  // Generated multiple choice options
   const [selectedOptionIds, setSelectedOptionIds] = useState([])  // Track multi-select
   const [writeInAddition, setWriteInAddition] = useState('')  // Additional write-in text
+  const [preGeneratedOptionsCache, setPreGeneratedOptionsCache] = useState({})  // Cache: {slotIndex: options}
+  const [preGeneratingSlots, setPreGeneratingSlots] = useState(new Set())  // Currently generating slots
   const [isCurating, setIsCurating] = useState(false)
   const [isSharpening, setIsSharpening] = useState(false)
   const [blindSpotsQuality, setBlindSpotsQuality] = useState(null)
@@ -1056,9 +1058,15 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           console.log('[Curator] First slot:', data.blind_spots_queue?.slots?.[0])
           setCuratorAllocation(data.curator_allocation)
           // Normalize snake_case from backend to camelCase for frontend
-          setBlindSpotsQueue(normalizeQueueState(data.blind_spots_queue))
+          const normalizedQueue = normalizeQueueState(data.blind_spots_queue)
+          setBlindSpotsQueue(normalizedQueue)
           setStage(STAGES.BLIND_SPOTS_QUESTIONING)
           setIsCurating(false)
+
+          // Pre-generate options for first 2 questions immediately (illusion of spontaneity)
+          // Pass queue directly since state won't be updated yet
+          console.log('[PreGen] Starting initial pre-generation for first 2 slots')
+          triggerPreGeneration(0, 2, normalizedQueue)
         }
       }
     )
@@ -1098,7 +1106,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       const data = await response.json()
 
       // Update local queue state (normalize snake_case to camelCase)
-      setBlindSpotsQueue(normalizeQueueState(data.queue_state))
+      const normalizedQueue = normalizeQueueState(data.queue_state)
+      setBlindSpotsQueue(normalizedQueue)
       setCurrentBlindSpotAnswer('')
       setAnswerOptions(null)  // Clear options for next question
       setSelectedOptionIds([])  // Clear multi-select
@@ -1110,6 +1119,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         setStage(STAGES.DOCUMENT_UPLOAD)
         return
       }
+
+      // Pre-generate options for next 2-3 questions in background
+      // This creates illusion of spontaneity - options ready when user clicks
+      const nextIndex = normalizedQueue.currentIndex
+      console.log('[PreGen] After answer, pre-generating for slots starting at', nextIndex)
+      triggerPreGeneration(nextIndex, 3, normalizedQueue)
 
       // Trigger sharpener if recommended
       if (data.should_sharpen && data.sharpener_context) {
@@ -1123,16 +1138,27 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   /**
    * Generate multiple choice answer options for the current question
    * Implements prn_intent_formation_state_bifurcation - guided discovery for unformed intent
+   * Implements prn_background_pregeneration_illusion - checks cache first for instant response
    */
   const generateAnswerOptions = async () => {
-    const currentSlot = blindSpotsQueue.slots[blindSpotsQueue.currentIndex]
+    const currentIndex = blindSpotsQueue.currentIndex
+    const currentSlot = blindSpotsQueue.slots[currentIndex]
     if (!currentSlot) return
+
+    // Check if we have pre-generated options for this slot (illusion of spontaneity!)
+    if (preGeneratedOptionsCache[currentIndex]) {
+      console.log('[PreGen] Using cached options for slot', currentIndex)
+      setAnswerOptions(preGeneratedOptionsCache[currentIndex])
+      // Trigger pre-generation for next few slots now that user is engaged
+      triggerPreGeneration(currentIndex + 1, 2)
+      return
+    }
 
     setIsGeneratingOptions(true)
     setAnswerOptions(null)
 
     try {
-      // Gather previous answers for context
+      // Gather previous answers for context (include full answer history)
       const previousAnswers = blindSpotsQueue.slots
         .filter(s => s.status === 'answered' && s.answer)
         .map(s => ({ question: s.question, answer: s.answer }))
@@ -1153,11 +1179,97 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       const data = await response.json()
 
       setAnswerOptions(data)
+
+      // Trigger pre-generation for next few slots while user thinks
+      triggerPreGeneration(currentIndex + 1, 2)
     } catch (err) {
       console.error('Error generating answer options:', err)
       setError('Failed to generate answer options. Try writing your own answer.')
     } finally {
       setIsGeneratingOptions(false)
+    }
+  }
+
+  /**
+   * Pre-generate options for a specific slot in the background
+   * Implements prn_background_pregeneration_illusion - generate while user is occupied
+   */
+  const preGenerateOptionsForSlot = async (slotIndex, queueSnapshot) => {
+    const slot = queueSnapshot.slots[slotIndex]
+    if (!slot || slot.status !== 'pending') return null
+
+    // Skip if already cached or currently generating
+    if (preGeneratedOptionsCache[slotIndex]) return null
+    if (preGeneratingSlots.has(slotIndex)) return null
+
+    // Mark as generating
+    setPreGeneratingSlots(prev => new Set([...prev, slotIndex]))
+    console.log('[PreGen] Starting background generation for slot', slotIndex)
+
+    try {
+      // Gather ALL previous answers including rejected options for full context
+      const previousAnswers = queueSnapshot.slots
+        .filter((s, idx) => idx < slotIndex && s.status === 'answered' && s.answer)
+        .map(s => ({ question: s.question, answer: s.answer }))
+
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-answer-options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: slot.question,
+          category: slot.category,
+          concept_name: conceptName,
+          notes_context: notes,
+          previous_answers: previousAnswers
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to pre-generate options')
+      const data = await response.json()
+
+      // Cache the result
+      setPreGeneratedOptionsCache(prev => ({ ...prev, [slotIndex]: data }))
+      console.log('[PreGen] Cached options for slot', slotIndex)
+      return data
+    } catch (err) {
+      console.error('[PreGen] Error pre-generating for slot', slotIndex, err)
+      return null
+    } finally {
+      setPreGeneratingSlots(prev => {
+        const next = new Set(prev)
+        next.delete(slotIndex)
+        return next
+      })
+    }
+  }
+
+  /**
+   * Trigger pre-generation for multiple upcoming slots
+   * Called after curator completes and after each answer submission
+   * @param startIndex - First slot index to generate
+   * @param count - Number of slots to generate
+   * @param queueData - Optional queue data (for when state isn't updated yet)
+   */
+  const triggerPreGeneration = (startIndex, count, queueData = null) => {
+    const queueSnapshot = queueData || blindSpotsQueue
+    if (!queueSnapshot?.slots?.length) return
+
+    const slotsToGenerate = []
+
+    for (let i = 0; i < count; i++) {
+      const idx = startIndex + i
+      if (idx < queueSnapshot.slots.length &&
+          queueSnapshot.slots[idx]?.status === 'pending' &&
+          !preGeneratedOptionsCache[idx] &&
+          !preGeneratingSlots.has(idx)) {
+        slotsToGenerate.push(idx)
+      }
+    }
+
+    if (slotsToGenerate.length > 0) {
+      console.log('[PreGen] Triggering background generation for slots:', slotsToGenerate)
+      // Generate in parallel but don't await - let it happen in background
+      slotsToGenerate.forEach(idx => preGenerateOptionsForSlot(idx, queueSnapshot))
     }
   }
 
