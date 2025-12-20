@@ -3986,10 +3986,14 @@ header h1 {
 
 .blind-spots-progress .progress-bar {
   height: 8px;
-  background: #21262d;
+  background: #e1e4e8;
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .blind-spots-progress .progress-bar {
+  background: #21262d;
 }
 
 .blind-spots-progress .progress-fill {
@@ -4000,10 +4004,14 @@ header h1 {
 
 .blind-spots-progress .progress-text {
   font-size: 0.85rem;
-  color: #8b949e;
+  color: #57606a;
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+[data-theme="dark"] .blind-spots-progress .progress-text {
+  color: #8b949e;
 }
 
 .blind-spots-progress .sharpening-indicator {
@@ -4017,11 +4025,16 @@ header h1 {
 }
 
 .blind-spot-question-card {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1rem;
+}
+
+[data-theme="dark"] .blind-spot-question-card {
+  background: #161b22;
+  border-color: #30363d;
 }
 
 .blind-spot-question-card.depth-2 {
@@ -4070,18 +4083,22 @@ header h1 {
 .blind-spot-question-card .question-text {
   font-size: 1.05rem;
   line-height: 1.6;
-  color: #e6edf3;
+  color: #24292f;
   margin-bottom: 1rem;
+}
+
+[data-theme="dark"] .blind-spot-question-card .question-text {
+  color: #e6edf3;
 }
 
 .blind-spot-answer {
   width: 100%;
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
   border-radius: 8px;
   padding: 0.875rem;
   font-size: 0.95rem;
-  color: #e6edf3;
+  color: #24292f;
   resize: vertical;
   min-height: 100px;
   transition: border-color 0.2s;
@@ -4090,6 +4107,12 @@ header h1 {
 .blind-spot-answer:focus {
   outline: none;
   border-color: #6366f1;
+}
+
+[data-theme="dark"] .blind-spot-answer {
+  background: #0d1117;
+  border-color: #30363d;
+  color: #e6edf3;
 }
 
 .blind-spot-question-card .question-actions {
@@ -4103,37 +4126,61 @@ header h1 {
   text-align: center;
   padding: 1rem;
   margin-top: 1rem;
-  border-top: 1px solid #21262d;
+  border-top: 1px solid #d0d7de;
+}
+
+[data-theme="dark"] .early-finish-section {
+  border-top-color: #21262d;
 }
 
 .early-finish-hint {
   font-size: 0.9rem;
-  color: #8b949e;
+  color: #57606a;
   margin-bottom: 0.75rem;
+}
+
+[data-theme="dark"] .early-finish-hint {
+  color: #8b949e;
 }
 
 .allocation-details {
   margin-top: 1.5rem;
   padding: 1rem;
-  background: #0d1117;
+  background: #f6f8fa;
   border-radius: 8px;
   font-size: 0.9rem;
 }
 
+[data-theme="dark"] .allocation-details {
+  background: #0d1117;
+}
+
 .allocation-details summary {
   cursor: pointer;
-  color: #8b949e;
+  color: #57606a;
   margin-bottom: 0.5rem;
 }
 
 .allocation-details summary:hover {
+  color: #24292f;
+}
+
+[data-theme="dark"] .allocation-details summary {
+  color: #8b949e;
+}
+
+[data-theme="dark"] .allocation-details summary:hover {
   color: #e6edf3;
 }
 
 .allocation-details p {
-  color: #8b949e;
+  color: #57606a;
   line-height: 1.5;
   margin-bottom: 0.75rem;
+}
+
+[data-theme="dark"] .allocation-details p {
+  color: #8b949e;
 }
 
 .category-weights {
@@ -4144,47 +4191,15 @@ header h1 {
 
 .weight-tag {
   font-size: 0.75rem;
-  background: #21262d;
+  background: #e1e4e8;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  color: #8b949e;
-}
-
-/* Light theme for blind spots questioning */
-[data-theme="light"] .blind-spots-progress .progress-bar {
-  background: #e1e4e8;
-}
-
-[data-theme="light"] .blind-spot-question-card {
-  background: #ffffff;
-  border-color: #d0d7de;
-}
-
-[data-theme="light"] .blind-spot-question-card .question-text {
-  color: #24292f;
-}
-
-[data-theme="light"] .blind-spot-answer {
-  background: #f6f8fa;
-  border-color: #d0d7de;
-  color: #24292f;
-}
-
-[data-theme="light"] .blind-spot-answer:focus {
-  border-color: #6366f1;
-}
-
-[data-theme="light"] .early-finish-section {
-  border-top-color: #d0d7de;
-}
-
-[data-theme="light"] .allocation-details {
-  background: #f6f8fa;
-}
-
-[data-theme="light"] .weight-tag {
-  background: #e1e4e8;
   color: #57606a;
+}
+
+[data-theme="dark"] .weight-tag {
+  background: #21262d;
+  color: #8b949e;
 }
 
 /* ====== GENEALOGY SECTION ====== */
