@@ -4,6 +4,47 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-20: Dual Response Mode for Blind Spots Questioning
+
+**Commit:** (pending)
+**Branch:** `main`
+
+### Description
+Added "Help me articulate" feature that offers users a choice between free text entry and LLM-generated multiple choice options. Implements `prn_intent_formation_state_bifurcation` principle.
+
+### The Problem
+Users arrive at blind spots questions with different levels of intent clarity:
+- Some know what they want to say → need free text entry
+- Some need scaffolding to discover their position → need guided options
+
+Forcing all users through a single flow frustrates both groups.
+
+### The Solution
+- "Help me articulate" button generates 4 stance-based answer options
+- Each option represents a different epistemic stance: assertive, exploratory, qualified, provocative
+- Clicking an option populates the textarea (still editable)
+- Users can dismiss options and write their own
+
+### New Endpoint
+- `POST /concepts/wizard/generate-answer-options` - Generates 4 stance-based answer options
+
+### New Models
+- `GenerateAnswerOptionsRequest` - Request with question context
+- `AnswerOption` - Individual option with id, text, stance
+- `GenerateAnswerOptionsResponse` - Response with options and guidance
+
+### Frontend
+- "Help me articulate" button with loading state
+- 2x2 grid of selectable option cards
+- Stance badges (assertive, exploratory, qualified, provocative)
+- Selected state highlighting
+- Dismiss options button
+
+### Principles Embodied
+- `prn_intent_formation_state_bifurcation` - Bifurcate pathways based on user's intent-formation state
+
+---
+
 ## 2025-12-19: Curator-Sharpener Two-Stage Questioning System
 
 **Commit:** `69c2382`

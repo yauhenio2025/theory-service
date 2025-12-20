@@ -518,6 +518,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   })
   const [curatorAllocation, setCuratorAllocation] = useState(null)
   const [currentBlindSpotAnswer, setCurrentBlindSpotAnswer] = useState('')
+  const [answerOptions, setAnswerOptions] = useState(null)  // Generated multiple choice options
+  const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const [isCurating, setIsCurating] = useState(false)
   const [isSharpening, setIsSharpening] = useState(false)
   const [blindSpotsQuality, setBlindSpotsQuality] = useState(null)
@@ -1086,6 +1088,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       // Update local queue state (normalize snake_case to camelCase)
       setBlindSpotsQueue(normalizeQueueState(data.queue_state))
       setCurrentBlindSpotAnswer('')
+      setAnswerOptions(null)  // Clear options for next question
 
       // Check if complete
       if (data.is_complete) {
@@ -1101,6 +1104,55 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  /**
+   * Generate multiple choice answer options for the current question
+   * Implements prn_intent_formation_state_bifurcation - guided discovery for unformed intent
+   */
+  const generateAnswerOptions = async () => {
+    const currentSlot = blindSpotsQueue.slots[blindSpotsQueue.currentIndex]
+    if (!currentSlot) return
+
+    setIsGeneratingOptions(true)
+    setAnswerOptions(null)
+
+    try {
+      // Gather previous answers for context
+      const previousAnswers = blindSpotsQueue.slots
+        .filter(s => s.status === 'answered' && s.answer)
+        .map(s => ({ question: s.question, answer: s.answer }))
+
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-answer-options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: currentSlot.question,
+          category: currentSlot.category,
+          concept_name: conceptName,
+          notes_context: notes,
+          previous_answers: previousAnswers
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to generate options')
+      const data = await response.json()
+
+      setAnswerOptions(data)
+    } catch (err) {
+      console.error('Error generating answer options:', err)
+      setError('Failed to generate answer options. Try writing your own answer.')
+    } finally {
+      setIsGeneratingOptions(false)
+    }
+  }
+
+  /**
+   * Select an answer option and populate the textarea
+   */
+  const selectAnswerOption = (option) => {
+    setCurrentBlindSpotAnswer(option.text)
+    // Keep options visible so user can switch if needed
   }
 
   /**
@@ -4066,9 +4118,56 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
                     <p className="question-text">{currentSlot.question}</p>
 
+                    {/* Help me articulate button - prn_intent_formation_state_bifurcation */}
+                    <div className="articulation-help">
+                      <button
+                        className="btn btn-outline articulate-btn"
+                        onClick={generateAnswerOptions}
+                        disabled={isGeneratingOptions}
+                      >
+                        {isGeneratingOptions ? (
+                          <>Generating options...</>
+                        ) : (
+                          <>💡 Help me articulate</>
+                        )}
+                      </button>
+                      {!answerOptions && !isGeneratingOptions && (
+                        <span className="articulate-hint">
+                          Not sure how to answer? Get suggested options.
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Generated answer options */}
+                    {answerOptions && (
+                      <div className="answer-options-container">
+                        <p className="options-guidance">{answerOptions.guidance}</p>
+                        <div className="answer-options-grid">
+                          {answerOptions.options.map((option) => (
+                            <button
+                              key={option.id}
+                              className={`answer-option-card ${currentBlindSpotAnswer === option.text ? 'selected' : ''}`}
+                              onClick={() => selectAnswerOption(option)}
+                            >
+                              <span className={`stance-badge stance-${option.stance}`}>
+                                {option.stance}
+                              </span>
+                              <p className="option-text">{option.text}</p>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          className="btn btn-text dismiss-options"
+                          onClick={() => setAnswerOptions(null)}
+                        >
+                          Dismiss options
+                        </button>
+                      </div>
+                    )}
+
                     <textarea
                       className="blind-spot-answer"
-                      placeholder="Your answer (2-3 sentences)..."
+                      placeholder={answerOptions ? "Selected option above, or edit/write your own..." : "Your answer (2-3 sentences)..."}
                       value={currentBlindSpotAnswer}
                       onChange={(e) => setCurrentBlindSpotAnswer(e.target.value)}
                       rows={4}

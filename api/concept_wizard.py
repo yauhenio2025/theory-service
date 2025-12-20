@@ -234,6 +234,28 @@ class FinishBlindSpotsRequest(BaseModel):
     session_id: str
 
 
+class GenerateAnswerOptionsRequest(BaseModel):
+    """Request to generate multiple choice answer options for a blind spot question."""
+    question: str
+    category: str  # One of 7 epistemic categories
+    concept_name: str
+    notes_context: Optional[str] = None
+    previous_answers: Optional[List[Dict[str, Any]]] = None
+
+
+class AnswerOption(BaseModel):
+    """A single answer option for multiple choice."""
+    id: str  # e.g., "opt_1"
+    text: str  # The answer text
+    stance: str  # Brief label: "assertive", "exploratory", "qualified", "provocative"
+
+
+class GenerateAnswerOptionsResponse(BaseModel):
+    """Response with generated answer options."""
+    options: List[AnswerOption]
+    guidance: str  # Brief guidance on how to use/interpret options
+
+
 # Validity thresholds for graceful completion
 MINIMUM_ANSWERS_FOR_VALIDITY = 3
 IDEAL_ANSWERS_FOR_QUALITY = 8
@@ -5864,4 +5886,107 @@ async def finish_blind_spots(request: FinishBlindSpotsRequest, db: AsyncSession 
         raise
     except Exception as e:
         logger.error(f"Error finishing blind spots: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Prompt for generating answer options
+GENERATE_ANSWER_OPTIONS_PROMPT = """You are helping a user articulate their response to a question about their concept's epistemic blind spots.
+
+## Context
+Concept: {concept_name}
+Category: {category}
+Question: {question}
+
+{notes_context}
+{previous_answers_context}
+
+## Task
+Generate 4 distinct answer options that the user might choose from. Each option should:
+1. Be 2-3 sentences long
+2. Take a different STANCE toward the question
+3. Help the user discover and articulate their actual position
+
+## The 4 Stances
+1. **Assertive**: A confident, definitive position. "I believe X because Y."
+2. **Exploratory**: An open, questioning stance. "I'm uncertain about X, but I'm drawn to Y..."
+3. **Qualified**: A nuanced position with caveats. "In some contexts X, but in others Y..."
+4. **Provocative**: A counterintuitive or challenging take. "Against common intuition, I think X..."
+
+## Output Format
+Return valid JSON:
+{{
+  "options": [
+    {{"id": "opt_1", "text": "...", "stance": "assertive"}},
+    {{"id": "opt_2", "text": "...", "stance": "exploratory"}},
+    {{"id": "opt_3", "text": "...", "stance": "qualified"}},
+    {{"id": "opt_4", "text": "...", "stance": "provocative"}}
+  ],
+  "guidance": "Brief note on how these options differ and what choosing each would signal about the user's position."
+}}
+
+Generate options that are genuinely distinct and would help the user discover which resonates with their actual thinking."""
+
+
+@router.post("/generate-answer-options")
+async def generate_answer_options(request: GenerateAnswerOptionsRequest):
+    """
+    Generate multiple choice answer options for a blind spot question.
+    Implements prn_intent_formation_state_bifurcation - offering guided discovery
+    for users who need scaffolding to articulate their position.
+    """
+    try:
+        client = get_claude_client()
+
+        # Build context sections
+        notes_context = ""
+        if request.notes_context:
+            notes_context = f"## User's Notes (context)\n{request.notes_context[:2000]}..."
+
+        previous_answers_context = ""
+        if request.previous_answers:
+            answers_text = "\n".join([
+                f"- {a.get('question', 'Q')}: {a.get('answer', 'A')[:200]}"
+                for a in request.previous_answers[-3:]  # Last 3 answers for context
+            ])
+            previous_answers_context = f"## Previous Answers\n{answers_text}"
+
+        prompt = GENERATE_ANSWER_OPTIONS_PROMPT.format(
+            concept_name=request.concept_name,
+            category=request.category,
+            question=request.question,
+            notes_context=notes_context,
+            previous_answers_context=previous_answers_context
+        )
+
+        response = client.messages.create(
+            model="claude-sonnet-4-5-20250514",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        response_text = response.content[0].text.strip()
+
+        # Parse JSON from response
+        import re
+        json_match = re.search(r'\{[\s\S]*\}', response_text)
+        if json_match:
+            parsed = json.loads(json_match.group())
+            return GenerateAnswerOptionsResponse(
+                options=[AnswerOption(**opt) for opt in parsed.get('options', [])],
+                guidance=parsed.get('guidance', 'Choose the option that best resonates with your thinking, or use it as a starting point to write your own.')
+            )
+        else:
+            # Fallback if parsing fails
+            return GenerateAnswerOptionsResponse(
+                options=[
+                    AnswerOption(id="opt_1", text="I have a clear position on this that I can articulate.", stance="assertive"),
+                    AnswerOption(id="opt_2", text="I'm still exploring this area and don't have a fixed view yet.", stance="exploratory"),
+                    AnswerOption(id="opt_3", text="My position depends on the specific context or framing.", stance="qualified"),
+                    AnswerOption(id="opt_4", text="I want to challenge the premise of this question.", stance="provocative")
+                ],
+                guidance="Select the stance that feels closest to your position, then refine the text."
+            )
+
+    except Exception as e:
+        logger.error(f"Error generating answer options: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
