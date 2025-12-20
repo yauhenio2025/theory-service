@@ -5560,7 +5560,15 @@ async def save_session(
         if existing:
             # Update existing session
             existing.concept_name = request.concept_name
-            existing.session_state = request.session_state
+            # MERGE session_state instead of overwrite to preserve curator/sharpener data
+            # This prevents frontend debounced saves from wiping out blind_spots_queue
+            merged_state = existing.session_state or {}
+            new_state = request.session_state or {}
+            # Preserve backend-generated fields that frontend doesn't track
+            for key in ['curator_allocation', 'blind_spots_queue', 'sharpener_results']:
+                if key in merged_state and key not in new_state:
+                    new_state[key] = merged_state[key]
+            existing.session_state = new_state
             existing.stage = request.stage
             existing.source_id = request.source_id
             existing.last_accessed_at = datetime.utcnow()
