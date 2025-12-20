@@ -144,6 +144,21 @@ The two-stage system separates:
 
 ---
 
+### prn_intent_formation_state_bifurcation
+**"Systems gathering complex intent should bifurcate into distinct pathways based on user's intent-formation state—direct expression for users with formed intent versus guided discovery for users with unformed intent."**
+
+Users arrive at blind spots questions with different levels of clarity:
+- Some already know what they want to say → need **free text entry**
+- Some discover their answer through options → need **multiple choice / guided options**
+
+Forcing all users through a single flow either frustrates those who know what they want or overwhelms those who need scaffolding.
+
+**Implementation:** (Planned) Add a toggle or dual-mode for blind spots answers:
+- Free text entry mode (default)
+- "Help me articulate" mode that generates multiple choice options based on the question context
+
+---
+
 ## Future Directions
 
 As the Theory Service evolves, consider:
@@ -151,4 +166,5 @@ As the Theory Service evolves, consider:
 - Visualizing blind spot patterns across concepts
 - Connecting blind spots to dialectics when appropriate
 - Using blind spot history to improve initial identification
+- Implement `prn_intent_formation_state_bifurcation` with response mode toggle
 
