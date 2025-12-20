@@ -4,6 +4,35 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-20: Background Pre-Generation of Answer Options
+
+**Commit:** `e7568c5`
+**Branch:** `main`
+
+### Description
+Pre-generates multiple choice answer options in the background while users are occupied with other tasks, creating an illusion of instant response.
+
+### The Problem
+LLM calls take several seconds. When user clicks "Help me articulate", they must wait for generation. This friction discourages use of the guided discovery path.
+
+### The Solution
+Exploit "user occupied time" as free computation budget:
+- After curator completes: immediately pre-generate options for first 2 questions
+- After each answer: pre-generate options for next 3 upcoming questions
+- When user clicks "Help me articulate": check cache first → instant response if pre-generated
+
+### Implementation
+- `preGeneratedOptionsCache` state: `{slotIndex: optionsData}`
+- `preGeneratingSlots` state: Set of currently-generating slot indices
+- `preGenerateOptionsForSlot(slotIndex, queueSnapshot)` - Background generation
+- `triggerPreGeneration(startIndex, count, queueData)` - Trigger batch pre-generation
+
+### Principles Embodied
+- `prn_background_pregeneration_illusion` - Pre-generate while user is occupied
+- `prn_interaction_time_as_computation_budget` - Use wait time for generation
+
+---
+
 ## 2025-12-20: Dual Response Mode for Blind Spots Questioning
 
 **Commit:** `257374a` (initial), updated with multi-select

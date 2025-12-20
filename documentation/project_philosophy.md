@@ -162,6 +162,21 @@ Forcing all users through a single flow either frustrates those who know what th
 
 ---
 
+### prn_background_pregeneration_illusion
+**"Systems should pre-generate computationally expensive content in the background while users are occupied with other tasks, creating an illusion of instant, spontaneous response."**
+
+Users experience friction when they must wait for LLM generation. By anticipating what content they'll need next and generating it during natural interaction pauses (reading, thinking, answering), the system presents pre-computed results instantly.
+
+Key insight: "User occupied time" is free computation budget - exploit parallelism between user cognition and machine computation.
+
+**Implementation:** Answer options pre-generation:
+- After curator completes: pre-generate options for first 2 questions
+- After each answer: pre-generate options for next 3 upcoming questions
+- Cache in `preGeneratedOptionsCache` keyed by slot index
+- When "Help me articulate" clicked: check cache first → instant response if hit
+
+---
+
 ## Future Directions
 
 As the Theory Service evolves, consider:
