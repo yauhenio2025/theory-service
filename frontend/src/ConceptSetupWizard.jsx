@@ -521,6 +521,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [answerOptions, setAnswerOptions] = useState(null)  // Generated multiple choice options
   const [selectedOptionIds, setSelectedOptionIds] = useState([])  // Track multi-select
   const [writeInAddition, setWriteInAddition] = useState('')  // Additional write-in text
+  const [writeInType, setWriteInType] = useState('')  // Type of write-in: elaboration, alternative, comment
   const [preGeneratedOptionsCache, setPreGeneratedOptionsCache] = useState({})  // Cache: {slotIndex: options}
   const [preGeneratingSlots, setPreGeneratingSlots] = useState(new Set())  // Currently generating slots
   const [isCurating, setIsCurating] = useState(false)
@@ -1112,6 +1113,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       setAnswerOptions(null)  // Clear options for next question
       setSelectedOptionIds([])  // Clear multi-select
       setWriteInAddition('')  // Clear write-in
+      setWriteInType('')  // Clear write-in type
 
       // Check if complete
       if (data.is_complete) {
@@ -1299,6 +1301,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
   /**
    * Build combined answer from selected options + write-in
+   * Includes write-in type label for LLM context
    */
   const buildCombinedAnswer = () => {
     const parts = []
@@ -1308,12 +1311,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       const selectedTexts = answerOptions.options
         .filter(opt => selectedOptionIds.includes(opt.id))
         .map(opt => opt.text)
-      parts.push(...selectedTexts)
+      parts.push('[Selected from options]:', ...selectedTexts)
     }
 
-    // Add write-in if present
+    // Add write-in if present with type label
     if (writeInAddition.trim()) {
-      parts.push(writeInAddition.trim())
+      const typeLabels = {
+        'elaboration': '[Elaboration on selected answer(s)]',
+        'alternative': '[Alternative answer]',
+        'comment': '[Comment on the question]',
+        '': '[Additional input]'
+      }
+      const label = typeLabels[writeInType] || typeLabels['']
+      parts.push(`${label}:`, writeInAddition.trim())
     }
 
     return parts.join('\n\n')
@@ -4361,6 +4371,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                             onChange={(e) => setWriteInAddition(e.target.value)}
                             rows={3}
                           />
+                          {/* Write-in type qualification dropdown */}
+                          {writeInAddition.trim() && (
+                            <select
+                              className="write-in-type-select"
+                              value={writeInType}
+                              onChange={(e) => setWriteInType(e.target.value)}
+                            >
+                              <option value="">If you wrote something above, what is it?</option>
+                              <option value="elaboration">Elaboration on my selected answer(s)</option>
+                              <option value="alternative">A new alternative answer</option>
+                              <option value="comment">A comment on this question itself</option>
+                            </select>
+                          )}
                         </div>
 
                         <div className="options-footer">
@@ -4370,6 +4393,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                               setAnswerOptions(null)
                               setSelectedOptionIds([])
                               setWriteInAddition('')
+                              setWriteInType('')
                             }}
                           >
                             Dismiss options
