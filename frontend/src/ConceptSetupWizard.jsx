@@ -1559,9 +1559,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
           // NEW FLOW: Cards are generated AFTER blind spots questioning
           // Go to blind spots exploration first (prn_epistemic_grounding_before_thesis_generation)
-          setProgress({ stage: 2, total: 9, label: 'Exploring epistemic blind spots' })
-          setStage(STAGES.BLIND_SPOTS_CURATING)
           setThinking('')
+          // Start the curator service - this sets stage to BLIND_SPOTS_CURATING and makes the API call
+          startCurator()
         }
       }
     )
@@ -4248,11 +4248,11 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                 <button
                   className="btn btn-primary"
                   onClick={() => {
-                    console.log('[UI] Button clicked: Accept & Continue to Blind Spots')
-                    startCurator()
+                    console.log('[UI] Button clicked: Accept & Continue to Stage 1')
+                    acceptUnderstandingAndContinue()
                   }}
                 >
-                  Accept & Continue to Blind Spots →
+                  Accept & Continue to Questions →
                 </button>
               </div>
             </div>
