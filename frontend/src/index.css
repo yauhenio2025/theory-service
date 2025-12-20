@@ -6464,13 +6464,14 @@ textarea {
 /* =========================================================================
    SERVER SESSIONS BANNER
    ========================================================================= */
+/* Light mode (default) */
 .server-sessions-banner {
   padding: 1rem 1.5rem;
   margin-bottom: 1.5rem;
-  background: linear-gradient(135deg, #1a2332, #1e2d3d);
-  border: 1px solid #3fb950;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border: 1px solid #22c55e;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(63, 185, 80, 0.15);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
 
 .server-sessions-header {
@@ -6479,16 +6480,16 @@ textarea {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid #d1d5db;
 }
 
 .server-sessions-header strong {
-  color: #3fb950;
+  color: #16a34a;
   font-size: 1.1rem;
 }
 
 .session-count {
-  color: #8b949e;
+  color: #6b7280;
   font-size: 0.85rem;
 }
 
@@ -6503,14 +6504,14 @@ textarea {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 6px;
-  border: 1px solid #30363d;
+  border: 1px solid #d1d5db;
 }
 
 .server-session-item:hover {
-  background: rgba(0, 0, 0, 0.3);
-  border-color: #3fb950;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #22c55e;
 }
 
 .session-info {
@@ -6520,18 +6521,18 @@ textarea {
 }
 
 .session-concept {
-  color: #58a6ff;
+  color: #2563eb;
   font-weight: 500;
   font-size: 1rem;
 }
 
 .session-stage {
-  color: #7ee787;
+  color: #16a34a;
   font-size: 0.85rem;
 }
 
 .session-time {
-  color: #8b949e;
+  color: #6b7280;
   font-size: 0.8rem;
 }
 
@@ -6543,99 +6544,99 @@ textarea {
 
 .session-actions .btn-danger {
   background: transparent;
-  border: 1px solid #f85149;
-  color: #f85149;
+  border: 1px solid #dc2626;
+  color: #dc2626;
   padding: 0.4rem 0.6rem;
   font-size: 1rem;
   line-height: 1;
 }
 
 .session-actions .btn-danger:hover {
-  background: #f85149;
+  background: #dc2626;
   color: #fff;
 }
 
 .resume-session-banner.local-session {
-  border-color: #8b949e;
-  background: linear-gradient(135deg, #1a2332, #21262d);
+  border-color: #9ca3af;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
 }
 
 .resume-session-banner.local-session .resume-info strong {
-  color: #8b949e;
+  color: #6b7280;
 }
 
 .more-sessions-hint {
   margin: 0.75rem 0 0 0;
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  color: #6b7280;
   font-size: 0.85rem;
   text-align: center;
 }
 
-/* Light mode overrides for server sessions */
-[data-theme="light"] .server-sessions-banner {
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-  border-color: #22c55e;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
+/* Dark mode overrides for server sessions */
+[data-theme="dark"] .server-sessions-banner {
+  background: linear-gradient(135deg, #1a2332, #1e2d3d);
+  border-color: #3fb950;
+  box-shadow: 0 2px 8px rgba(63, 185, 80, 0.15);
 }
 
-[data-theme="light"] .server-sessions-header {
-  border-bottom-color: #d1d5db;
+[data-theme="dark"] .server-sessions-header {
+  border-bottom-color: #30363d;
 }
 
-[data-theme="light"] .server-sessions-header strong {
-  color: #16a34a;
+[data-theme="dark"] .server-sessions-header strong {
+  color: #3fb950;
 }
 
-[data-theme="light"] .session-count {
-  color: #6b7280;
+[data-theme="dark"] .session-count {
+  color: #8b949e;
 }
 
-[data-theme="light"] .server-session-item {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: #d1d5db;
+[data-theme="dark"] .server-session-item {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: #30363d;
 }
 
-[data-theme="light"] .server-session-item:hover {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: #22c55e;
+[data-theme="dark"] .server-session-item:hover {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: #3fb950;
 }
 
-[data-theme="light"] .session-concept {
-  color: #2563eb;
+[data-theme="dark"] .session-concept {
+  color: #58a6ff;
 }
 
-[data-theme="light"] .session-stage {
-  color: #16a34a;
+[data-theme="dark"] .session-stage {
+  color: #7ee787;
 }
 
-[data-theme="light"] .session-time {
-  color: #6b7280;
+[data-theme="dark"] .session-time {
+  color: #8b949e;
 }
 
-[data-theme="light"] .session-actions .btn-danger {
-  border-color: #dc2626;
-  color: #dc2626;
+[data-theme="dark"] .session-actions .btn-danger {
+  border-color: #f85149;
+  color: #f85149;
 }
 
-[data-theme="light"] .session-actions .btn-danger:hover {
-  background: #dc2626;
+[data-theme="dark"] .session-actions .btn-danger:hover {
+  background: #f85149;
   color: #fff;
 }
 
-[data-theme="light"] .more-sessions-hint {
-  border-top-color: rgba(0, 0, 0, 0.1);
-  color: #6b7280;
+[data-theme="dark"] .more-sessions-hint {
+  border-top-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
 }
 
-[data-theme="light"] .resume-session-banner.local-session {
-  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
-  border-color: #9ca3af;
+[data-theme="dark"] .resume-session-banner.local-session {
+  background: linear-gradient(135deg, #1a2332, #21262d);
+  border-color: #8b949e;
 }
 
-[data-theme="light"] .resume-session-banner.local-session .resume-info strong {
-  color: #6b7280;
+[data-theme="dark"] .resume-session-banner.local-session .resume-info strong {
+  color: #8b949e;
 }
 
 /* =========================================================================
