@@ -521,7 +521,6 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   const [answerOptions, setAnswerOptions] = useState(null)  // Generated multiple choice options
   const [selectedOptionIds, setSelectedOptionIds] = useState([])  // Track multi-select
   const [writeInAddition, setWriteInAddition] = useState('')  // Additional write-in text
-  const [isGeneratingOptions, setIsGeneratingOptions] = useState(false)
   const [isCurating, setIsCurating] = useState(false)
   const [isSharpening, setIsSharpening] = useState(false)
   const [blindSpotsQuality, setBlindSpotsQuality] = useState(null)
