@@ -258,6 +258,23 @@ class GenerateAnswerOptionsResponse(BaseModel):
     exclusivity_reason: Optional[str] = None  # Why options are/aren't mutually exclusive
 
 
+class BlindSpotAnswer(BaseModel):
+    """A single blind spot question with its answer."""
+    slot_id: str
+    category: str  # One of 7 epistemic categories
+    question: str
+    answer: str
+    depth: int = 1  # Question depth (1=original, 2=sharpened, 3=deep follow-up)
+
+
+class GenerateInformedHypothesesRequest(BaseModel):
+    """Request to generate hypothesis cards informed by blind spots answers."""
+    concept_name: str
+    notes: str
+    blind_spots_answers: List[BlindSpotAnswer]
+    session_id: Optional[str] = None
+
+
 # Validity thresholds for graceful completion
 MINIMUM_ANSWERS_FOR_VALIDITY = 3
 IDEAL_ANSWERS_FOR_QUALITY = 8
@@ -1152,6 +1169,240 @@ These show what the concept is NOT. Help user clarify by contrast.
 - Example: "Your concept is NOT surveillance capitalism (Zuboff) because you emphasize production/planning while Zuboff emphasizes extraction/prediction"
 
 REMEMBER: Cards are for user to APPROVE/REJECT/TRANSFORM - not questions to answer. Generate claims the user can validate."""
+
+
+# =============================================================================
+# INITIAL ANALYSIS PROMPT - Used before blind spots (no hypothesis cards)
+# =============================================================================
+INITIAL_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
+
+The user has provided initial notes about a concept they're developing called "{concept_name}". Your task is to:
+1. Extract what can be inferred from these notes
+2. Identify epistemic blind spots - where the user's positioning isn't yet explicit
+3. Prepare the ground for deeper questioning
+
+## User's Notes:
+{notes}
+
+## 9-DIMENSIONAL EXTRACTION INSTRUCTIONS:
+Extract preliminary signals for ALL 9 philosophical dimensions. Even if notes are sparse:
+- QUINEAN: Look for logical implications ("if X then Y", "X implies Y")
+- SELLARSIAN: Spot "givenness" language (obviously, naturally, clearly, of course)
+- BRANDOMIAN: What does using this concept commit you to? What does it entitle you to claim?
+- DELEUZIAN: What problem/tension does this navigate? What transformations enabled/blocked?
+- BACHELARDIAN: What is this BREAKING FROM? What's wrong with the old way?
+- CANGUILHEM: What values are embedded? Whose interests served? What excluded?
+- DAVIDSON: What reasoning style does this require? What becomes visible/invisible?
+- BLUMENBERG: Is there a root metaphor underlying the concept?
+- CAREY: What simpler concepts is this built from?
+
+Set confidence to "low" if you're inferring without explicit evidence.
+
+## EPISTEMIC BLIND SPOTS INSTRUCTIONS (CRITICAL - Surface User's Positioning):
+These are NOT problems with the concept itself, but places where the USER'S epistemic positioning isn't yet explicit.
+The goal is to help users articulate their priors, confront structural limits of their framing, and grasp conditions of possibility.
+
+Generate 3-6 epistemic blind spots across these 7 categories (use the 9D analysis to inform):
+
+1. **AMBIGUITY** - Terms/phrases with multiple valid readings
+   - Look for key terms that could mean different things in different contexts
+   - Source: Brandomian (perspectival content), Blumenberg (metaphors that do conceptual work)
+
+2. **PRESUPPOSITION** - What's being treated as "given" that isn't justified
+   - Look for Sellarsian markers: "obviously," "naturally," "clearly," "of course"
+   - What's assumed without argument? What's the "plane" enabling this thinking?
+   - Source: Sellarsian (givenness), Deleuzian (plane assumptions)
+
+3. **PARADIGM_DEPENDENCY** - Where different epistemes would produce different conclusions
+   - What reasoning style is being used? What would a different tradition see?
+   - Source: Hacking (reasoning styles), Bachelardian (regional rationality)
+
+4. **LIKELY_MISREADING** - Common ways this concept could be misunderstood
+   - What de dicto/de re confusions might arise? What incommensurabilities exist?
+   - Source: Brandomian (perspectival content), Carey (incommensurability)
+
+5. **GRAY_ZONE** - Boundary cases where application is uncertain
+   - Where are the edges of the concept's applicability?
+   - Source: Quinean (web tensions), Canguilhem (milieu boundaries)
+
+6. **UNFILLED_SLOT** - Placeholder structures awaiting elaboration
+   - What conceptual slots haven't been filled in yet?
+   - Source: Carey (placeholder structures), Quinean (missing inferences)
+
+7. **UNCONFRONTED_CHALLENGE** - Objections/problems not yet addressed
+   - What obvious objections could be raised? What obstacles might block understanding?
+   - Source: Brandomian (challenges), Bachelardian (epistemological obstacles)
+
+IMPORTANT: These are EPISTEMIC (about the user's grasp/positioning) not ONTOLOGICAL (about the object itself being indeterminate).
+
+Analyze the notes and produce a JSON response:
+{{
+    "notes_analysis": {{
+        "summary": "Brief summary of what the user is trying to articulate (2-3 sentences)",
+        "key_insights": ["Main ideas extracted from the notes"],
+        "preliminary_definition": "A working definition extracted/synthesized from the notes"
+    }},
+    "epistemic_blind_spots": [
+        {{
+            "category": "ambiguity|presupposition|paradigm_dependency|likely_misreading|gray_zone|unfilled_slot|unconfronted_challenge",
+            "description": "Description of this epistemic gap - what the user hasn't yet made explicit",
+            "what_unclear": "The specific aspect that needs clarification",
+            "what_would_help": "What kind of clarification would help surface the user's positioning",
+            "productive_potential": "Why exploring this would help the user articulate their priors"
+        }}
+    ],
+    "dimensional_signals": {{
+        "quinean": {{
+            "inferences_detected": ["Any 'if X then Y' patterns in notes"],
+            "centrality_hint": "core|intermediate|peripheral|unknown",
+            "confidence": "high|medium|low"
+        }},
+        "sellarsian": {{
+            "givenness_markers": ["Phrases like 'obviously', 'naturally', 'clearly' that suggest treating as given"],
+            "hidden_assumptions": ["Assumptions not argued for"],
+            "confidence": "high|medium|low"
+        }},
+        "brandomian": {{
+            "implicit_commitments": ["What using this concept commits one to"],
+            "implicit_entitlements": ["What claims the concept enables"],
+            "confidence": "high|medium|low"
+        }},
+        "deleuzian": {{
+            "problem_addressed": "Core tension/problem the concept navigates",
+            "tension_poles": ["Pole A", "Pole B"],
+            "becomings_enabled": ["Transformations the concept enables"],
+            "becomings_blocked": ["Transformations foreclosed"],
+            "confidence": "high|medium|low"
+        }},
+        "bachelardian": {{
+            "breaking_from": "What framework/concept is being ruptured",
+            "why_inadequate": "What's wrong with the old way",
+            "obstacle_risk": "Could this concept become an obstacle itself?",
+            "confidence": "high|medium|low"
+        }},
+        "canguilhem": {{
+            "values_embedded": ["Values implicit in the concept"],
+            "whose_interests": "Who benefits from this concept",
+            "what_excluded": "What gets marked as abnormal",
+            "confidence": "high|medium|low"
+        }},
+        "davidson": {{
+            "reasoning_style": "quantitative|historical|structural|phenomenological|dialectical|mixed",
+            "makes_visible": ["What this lens reveals"],
+            "makes_invisible": ["What it might obscure"],
+            "confidence": "high|medium|low"
+        }},
+        "blumenberg": {{
+            "root_metaphor": "Any underlying metaphor detected",
+            "source_domain": "Where the metaphor comes from",
+            "metaphor_work": "Conceptual work being done",
+            "confidence": "high|medium|low"
+        }},
+        "carey": {{
+            "component_concepts": ["Simpler concepts this is built from"],
+            "combination_type": "aggregation|interaction|emergence|unknown",
+            "what_emerges": "What's new beyond the components",
+            "confidence": "high|medium|low"
+        }}
+    }}
+}}
+
+Be thorough with epistemic blind spots - they will inform the questioning phase that follows.
+The goal is to surface what needs to be explored with the user, not to generate hypotheses yet."""
+
+
+# =============================================================================
+# INFORMED HYPOTHESIS GENERATION PROMPT - Used AFTER blind spots questioning
+# =============================================================================
+INFORMED_HYPOTHESIS_GENERATION_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
+
+The user has provided initial notes about their concept "{concept_name}" and has completed a round of epistemic blind spots questioning. Based on their answers to blind spots questions, you now have insight into their actual theoretical agenda.
+
+Your task: Generate hypothesis, genealogy, and differentiation cards INFORMED by what the user revealed through their blind spots answers.
+
+## User's Original Notes:
+{notes}
+
+## Blind Spots Questions and User's Answers (CRITICAL CONTEXT):
+{blind_spots_context}
+
+## What This Reveals About the User's Theoretical Agenda:
+Based on their answers, pay attention to:
+- Which blind spots they found most relevant (reveals what they care about)
+- Positions they articulated (reveals their actual commitments)
+- Tensions they acknowledged (reveals dialectics they're navigating)
+- Presuppositions they confirmed or rejected (reveals their epistemic stance)
+
+## GENEALOGY INFERENCE (Use User's Revealed Positions):
+You are Claude Opus 4.5 with extensive knowledge of intellectual history.
+USE THIS KNOWLEDGE to HYPOTHESIZE the likely genealogy - but now INFORMED by what the user actually cares about.
+
+Based on their blind spots answers, you know more about:
+- What traditions they're drawing from (from their presupposition responses)
+- What distinctions matter to them (from their ambiguity responses)
+- What challenges they recognize (from their unconfronted_challenge responses)
+
+Generate a JSON response:
+{{
+    "hypothesis_cards": [
+        {{
+            "id": "hyp_001",
+            "content": "A specific thesis/claim that addresses what the user revealed they care about",
+            "type": "thesis|assumption|tension|methodological|normative",
+            "source_excerpts": ["Direct quotes from notes that support this"],
+            "informed_by": "Which blind spot answer(s) helped refine this hypothesis",
+            "confidence": "high|medium|low",
+            "rationale": "Why this is a central claim based on both notes AND blind spots answers"
+        }}
+    ],
+
+    "genealogy_cards": [
+        {{
+            "id": "gen_001",
+            "thinker": "Specific Thinker Name (e.g., Karl Polanyi, not 'political economists')",
+            "tradition": "Specific tradition this thinker belongs to",
+            "connection": "Your concept [X] resembles/extends/builds on [thinker's] idea of [specific concept] because [specific reason]",
+            "informed_by": "How user's blind spot answers informed this genealogical connection",
+            "source_excerpts": ["Quote from notes if explicitly mentioned, or null if inferred"],
+            "confidence": "high|medium|low",
+            "why_relevant": "Why this genealogical connection matters for what the user is trying to do"
+        }}
+    ],
+
+    "differentiation_cards": [
+        {{
+            "id": "diff_001",
+            "your_concept": "The user's concept name",
+            "contrasted_with": "Specific adjacent concept/framework to differentiate from",
+            "thinker_associated": "Who is most associated with the adjacent concept",
+            "difference": "Your concept is NOT [X] because [specific difference]",
+            "informed_by": "Which blind spot responses help clarify this distinction",
+            "source_excerpts": ["Quote from notes that supports this differentiation"],
+            "confidence": "high|medium|low"
+        }}
+    ],
+
+    "genealogy_questions": [
+        {{
+            "id": "primary_tradition",
+            "question": "Question about intellectual tradition, refined by what we learned",
+            "type": "multiple_choice",
+            "options": [
+                {{"value": "tradition_1", "label": "Tradition Name", "description": "Brief explanation"}}
+            ],
+            "rationale": "Why you're asking this based on what the user revealed"
+        }}
+    ]
+}}
+
+CRITICAL INSTRUCTIONS:
+1. Generate 5-8 hypothesis cards that address what the user REVEALED they care about
+2. Generate 3-5 genealogy cards linking to SPECIFIC thinkers relevant to user's revealed agenda
+3. Generate 4-6 differentiation cards that clarify distinctions the user is navigating
+4. Each card should reference how blind spots answers informed it
+5. Be SPECIFIC - use the user's actual terminology and concerns from their answers
+
+The cards should feel tailored to this specific user's project, not generic philosophical categories."""
 
 
 INTERIM_ANALYSIS_PROMPT = """You are an expert in conceptual analysis helping a user articulate a novel theoretical concept.
@@ -3377,15 +3628,16 @@ async def save_concept(request: SaveConceptRequest, db: AsyncSession = Depends(g
 @router.post("/stage1")
 async def get_stage1_questions(request: StartWizardRequest):
     """
-    Pre-process user notes with Claude, then return Stage 1 questions
-    with pre-filled answers where the notes provide enough information.
+    Pre-process user notes with Claude - initial analysis only.
+    Hypothesis/genealogy/differentiation cards are generated AFTER blind spots questioning.
     """
     async def stream_notes_analysis():
         try:
-            # Phase 1: Analyzing notes
+            # Phase 1: Analyzing notes (initial analysis only - no cards yet)
             yield f"data: {json.dumps({'type': 'phase', 'phase': 'analyzing_notes'})}\n\n"
 
-            prompt = NOTES_PREPROCESSING_PROMPT.format(
+            # Use INITIAL_ANALYSIS_PROMPT - generates blind spots but NOT hypothesis cards
+            prompt = INITIAL_ANALYSIS_PROMPT.format(
                 concept_name=request.concept_name,
                 notes=request.notes
             )
@@ -3393,7 +3645,6 @@ async def get_stage1_questions(request: StartWizardRequest):
             # Call Claude with extended thinking to analyze notes
             client = get_claude_client()
             notes_analysis = {}
-            prefilled_answers = []
 
             with client.messages.stream(
                 model=MODEL,
@@ -3425,75 +3676,30 @@ async def get_stage1_questions(request: StartWizardRequest):
             # Parse the analysis
             analysis_data = parse_wizard_response(response_text)
             notes_analysis = analysis_data.get("notes_analysis", {})
-            prefilled_answers = analysis_data.get("prefilled_answers", [])
-            questions_to_prioritize = analysis_data.get("questions_to_prioritize", [])
             # Support new (epistemic_blind_spots), intermediate (gaps_tensions_questions), and old (potential_tensions) field names
             epistemic_blind_spots = analysis_data.get("epistemic_blind_spots",
                 analysis_data.get("gaps_tensions_questions",
                     analysis_data.get("potential_tensions", [])))
-
-            # Extract new card types for card-based review flow
-            hypothesis_cards = analysis_data.get("hypothesis_cards", [])
-            genealogy_cards = analysis_data.get("genealogy_cards", [])
-            differentiation_cards = analysis_data.get("differentiation_cards", [])
             dimensional_signals = analysis_data.get("dimensional_signals", {})
 
-            # Ensure cards have proper status for UI
-            for card in hypothesis_cards:
-                card["status"] = "pending"
-                card["transformation_history"] = []
-
-            for card in genealogy_cards:
-                card["status"] = "pending"
-                card["transformation_history"] = []
-
-            for card in differentiation_cards:
-                card["status"] = "pending"
-                card["transformation_history"] = []
-
-            # Build questions with pre-filled values (legacy - keeping for backward compatibility)
-            questions = []
-            for q in STAGE1_QUESTIONS:
-                q_dict = q.model_dump()
-
-                # Find if we have a prefilled answer for this question
-                for prefill in prefilled_answers:
-                    if prefill.get("question_id") == q.id:
-                        q_dict["prefilled"] = {
-                            "value": prefill.get("suggested_value") or prefill.get("suggested_values"),
-                            "confidence": prefill.get("confidence", "low"),
-                            "reasoning": prefill.get("reasoning", ""),
-                            "source_excerpt": prefill.get("source_excerpt", "")
-                        }
-                        break
-
-                # Mark if this question needs priority attention
-                if q.id in questions_to_prioritize:
-                    q_dict["needs_clarification"] = True
-
-                questions.append(q_dict)
-
-            # Return complete response with analysis, cards, and questions
+            # Return analysis with blind spots - cards will be generated AFTER blind spots questioning
             complete_data = {
                 'type': 'complete',
                 'data': {
-                    'status': 'cards_ready',  # New status for card-based flow
+                    'status': 'analysis_ready',  # New flow: analysis ready, cards come later
                     'concept_name': request.concept_name,
                     'stage': 1,
-                    'stage_title': 'Review Generated Hypotheses',
-                    'stage_description': "We've extracted these claims from your notes. Approve, reject, or transform each card.",
+                    'stage_title': 'Initial Analysis Complete',
+                    'stage_description': "We've analyzed your notes and identified epistemic blind spots. Next: explore these blind spots to inform hypothesis generation.",
                     'notes_analysis': notes_analysis,
                     'epistemic_blind_spots': epistemic_blind_spots,
                     'gaps_tensions_questions': epistemic_blind_spots,  # Legacy alias for frontend compatibility
-
-                    # New card-based data
-                    'hypothesis_cards': hypothesis_cards,
-                    'genealogy_cards': genealogy_cards,
-                    'differentiation_cards': differentiation_cards,
                     'dimensional_signals': dimensional_signals,
 
-                    # Legacy questions (for fallback)
-                    'questions': questions
+                    # Cards are NOT generated here anymore - they come after blind spots
+                    'hypothesis_cards': [],
+                    'genealogy_cards': [],
+                    'differentiation_cards': []
                 }
             }
             yield f"data: {json.dumps(complete_data)}\n\n"
@@ -5894,6 +6100,130 @@ async def finish_blind_spots(request: FinishBlindSpotsRequest, db: AsyncSession 
     except Exception as e:
         logger.error(f"Error finishing blind spots: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def format_blind_spots_for_prompt(answers: List[BlindSpotAnswer]) -> str:
+    """Format blind spots answers for the informed hypothesis generation prompt."""
+    if not answers:
+        return "No blind spots answers provided."
+
+    # Group by category
+    by_category = {}
+    for ans in answers:
+        cat = ans.category
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append(ans)
+
+    formatted = []
+    for category, items in by_category.items():
+        formatted.append(f"\n### {category.upper().replace('_', ' ')}")
+        for item in items:
+            depth_label = ["", " (follow-up)", " (deep follow-up)"][min(item.depth - 1, 2)]
+            formatted.append(f"**Q{depth_label}:** {item.question}")
+            formatted.append(f"**A:** {item.answer}\n")
+
+    return "\n".join(formatted)
+
+
+@router.post("/generate-informed-hypotheses")
+async def generate_informed_hypotheses(request: GenerateInformedHypothesesRequest):
+    """
+    Generate hypothesis, genealogy, and differentiation cards INFORMED by blind spots answers.
+    This is called AFTER blind spots questioning to generate targeted cards.
+    """
+    async def stream_hypothesis_generation():
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'generating_hypotheses'})}\n\n"
+
+            # Format blind spots context
+            blind_spots_context = format_blind_spots_for_prompt(request.blind_spots_answers)
+
+            # Build the prompt
+            prompt = INFORMED_HYPOTHESIS_GENERATION_PROMPT.format(
+                concept_name=request.concept_name,
+                notes=request.notes,
+                blind_spots_context=blind_spots_context
+            )
+
+            # Call Claude with extended thinking
+            client = get_claude_client()
+
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_OUTPUT,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": THINKING_BUDGET
+                },
+                system="You are an expert in conceptual analysis helping articulate novel theoretical concepts.",
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                response_text = ""
+                for event in stream:
+                    if hasattr(event, 'type'):
+                        if event.type == "content_block_delta":
+                            if hasattr(event, 'delta'):
+                                if hasattr(event.delta, 'thinking'):
+                                    yield f"data: {json.dumps({'type': 'thinking', 'content': event.delta.thinking})}\n\n"
+                                elif hasattr(event.delta, 'text'):
+                                    response_text += event.delta.text
+
+                # Get final message
+                final_message = stream.get_final_message()
+                for block in final_message.content:
+                    if hasattr(block, 'text'):
+                        response_text = block.text
+                        break
+
+            # Parse the response
+            analysis_data = parse_wizard_response(response_text)
+
+            # Extract cards with status for UI
+            hypothesis_cards = analysis_data.get("hypothesis_cards", [])
+            genealogy_cards = analysis_data.get("genealogy_cards", [])
+            differentiation_cards = analysis_data.get("differentiation_cards", [])
+            genealogy_questions = analysis_data.get("genealogy_questions", [])
+
+            # Ensure cards have proper status for UI
+            for card in hypothesis_cards:
+                card["status"] = "pending"
+                card["transformation_history"] = []
+
+            for card in genealogy_cards:
+                card["status"] = "pending"
+                card["transformation_history"] = []
+
+            for card in differentiation_cards:
+                card["status"] = "pending"
+                card["transformation_history"] = []
+
+            # Return complete response
+            complete_data = {
+                'type': 'complete',
+                'data': {
+                    'status': 'cards_ready',
+                    'concept_name': request.concept_name,
+                    'stage_title': 'Review Generated Hypotheses',
+                    'stage_description': "Based on your blind spots exploration, we've generated these informed hypotheses. Approve, reject, or transform each card.",
+                    'hypothesis_cards': hypothesis_cards,
+                    'genealogy_cards': genealogy_cards,
+                    'differentiation_cards': differentiation_cards,
+                    'genealogy_questions': genealogy_questions
+                }
+            }
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error generating informed hypotheses: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_hypothesis_generation(),
+        media_type="text/event-stream"
+    )
 
 
 # Prompt for generating answer options

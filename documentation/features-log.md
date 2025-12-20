@@ -4,6 +4,46 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-20: Blind Spots Before Hypotheses Flow
+
+**Commit:** `pending`
+**Branch:** `main`
+
+### Description
+Major wizard flow reordering: Epistemic blind spots questioning now happens BEFORE hypothesis generation. This allows the system to generate theses informed by the user's revealed theoretical agenda rather than generic possibilities.
+
+### The Problem
+Previously, hypothesis cards were generated during initial notes analysis, before the user had a chance to explore their blind spots. This meant theses were based solely on what was in the notes, missing the user's actual theoretical concerns that only emerge through the blind spots questioning process.
+
+### The Solution
+Reorder the wizard flow:
+1. **Before:** Notes → Hypotheses → Blind Spots → ...
+2. **After:** Notes → Blind Spots → Informed Hypotheses → ...
+
+New flow:
+1. Notes analysis extracts blind spots but NOT hypothesis cards
+2. User explores blind spots through curator/sharpener questioning
+3. After blind spots completion, system generates hypothesis/genealogy/differentiation cards **informed by** user's answers
+4. User reviews the informed hypotheses in validate-understanding stage
+
+### Implementation
+
+**Backend:**
+- `INITIAL_ANALYSIS_PROMPT` - New prompt for stage1 that generates blind spots but not cards
+- `INFORMED_HYPOTHESIS_GENERATION_PROMPT` - New prompt that uses blind spots answers to generate targeted cards
+- `POST /generate-informed-hypotheses` - New endpoint called after blind spots completion
+
+**Frontend:**
+- New `GENERATING_HYPOTHESES` stage
+- Stage navigation reordered: Blind Spots → Validate Hypotheses
+- `generateInformedHypotheses()` function wires up the new endpoint
+- Both `finishBlindSpotsEarly` and `submitBlindSpotAnswer` completion now trigger hypothesis generation
+
+### Principles Embodied
+- `prn_epistemic_grounding_before_thesis_generation` - Gather epistemic position before generating theses
+
+---
+
 ## 2025-12-20: Write-In Type Qualification Dropdown
 
 **Commit:** `d92dcbd`

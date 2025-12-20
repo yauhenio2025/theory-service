@@ -24,12 +24,14 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://theory-api.onrender.com
 const STAGES = {
   NOTES: 'notes',
   ANALYZING_NOTES: 'analyzing_notes',
-  UNDERSTANDING_VALIDATION: 'understanding_validation',  // New: validate LLM's understanding
-  DOCUMENT_UPLOAD: 'document_upload',  // Optional: upload supporting documents
-  ANALYZING_DOCUMENT: 'analyzing_document',  // Analyzing uploaded document
+  // NEW FLOW: Blind spots BEFORE hypotheses (prn_epistemic_grounding_before_thesis_generation)
   BLIND_SPOTS_CURATING: 'blind_spots_curating',  // Curator analyzing notes for blind spots
   BLIND_SPOTS_QUESTIONING: 'blind_spots_questioning',  // Dynamic questioning with sharpener
-  STAGE1: 'stage1',
+  GENERATING_HYPOTHESES: 'generating_hypotheses',  // NEW: Generate hypotheses AFTER blind spots
+  UNDERSTANDING_VALIDATION: 'understanding_validation',  // Validate LLM's understanding (now informed by blind spots)
+  DOCUMENT_UPLOAD: 'document_upload',  // Optional: upload supporting documents
+  ANALYZING_DOCUMENT: 'analyzing_document',  // Analyzing uploaded document
+  STAGE1: 'stage1',  // Legacy - kept for backward compatibility
   ANALYZING_STAGE1: 'analyzing_stage1',
   INTERIM_ANALYSIS: 'interim_analysis',
   STAGE2: 'stage2',
@@ -49,11 +51,12 @@ const STAGES = {
 }
 
 // Stage navigation - defines the order and labels for breadcrumb navigation
+// NEW FLOW: Blind spots → Hypothesis Generation → Validate Understanding
 // Only "checkpoint" stages are navigable (not analyzing/processing stages)
 const STAGE_NAV = [
   { id: STAGES.NOTES, label: 'Start', shortLabel: '1', navigable: true },
-  { id: STAGES.UNDERSTANDING_VALIDATION, label: 'Validate Understanding', shortLabel: '2', navigable: true },
-  { id: STAGES.BLIND_SPOTS_QUESTIONING, label: 'Blind Spots', shortLabel: '3', navigable: true },
+  { id: STAGES.BLIND_SPOTS_QUESTIONING, label: 'Blind Spots', shortLabel: '2', navigable: true },
+  { id: STAGES.UNDERSTANDING_VALIDATION, label: 'Validate Hypotheses', shortLabel: '3', navigable: true },
   { id: STAGES.DOCUMENT_UPLOAD, label: 'Documents', shortLabel: '4', navigable: true },
   { id: STAGES.INTERIM_ANALYSIS, label: 'Interim Review', shortLabel: '5', navigable: true },
   { id: STAGES.STAGE2, label: 'Differentiation', shortLabel: '6', navigable: true },
@@ -67,16 +70,18 @@ const STAGE_NAV = [
 ]
 
 // Map any stage to its nearest navigable checkpoint
+// NEW FLOW: Notes → Blind Spots → Hypothesis Generation → Validate Hypotheses → ...
 const getNavCheckpoint = (stage) => {
   const checkpointMap = {
     [STAGES.NOTES]: STAGES.NOTES,
     [STAGES.ANALYZING_NOTES]: STAGES.NOTES,
-    [STAGES.UNDERSTANDING_VALIDATION]: STAGES.UNDERSTANDING_VALIDATION,
     [STAGES.BLIND_SPOTS_CURATING]: STAGES.BLIND_SPOTS_QUESTIONING,
     [STAGES.BLIND_SPOTS_QUESTIONING]: STAGES.BLIND_SPOTS_QUESTIONING,
+    [STAGES.GENERATING_HYPOTHESES]: STAGES.BLIND_SPOTS_QUESTIONING,  // Loading stage maps to blind spots
+    [STAGES.UNDERSTANDING_VALIDATION]: STAGES.UNDERSTANDING_VALIDATION,
     [STAGES.DOCUMENT_UPLOAD]: STAGES.DOCUMENT_UPLOAD,
     [STAGES.ANALYZING_DOCUMENT]: STAGES.DOCUMENT_UPLOAD,
-    [STAGES.STAGE1]: STAGES.DOCUMENT_UPLOAD,  // Stage 1 is now skipped, so map to doc upload
+    [STAGES.STAGE1]: STAGES.DOCUMENT_UPLOAD,  // Legacy stage maps to doc upload
     [STAGES.ANALYZING_STAGE1]: STAGES.DOCUMENT_UPLOAD,
     [STAGES.INTERIM_ANALYSIS]: STAGES.INTERIM_ANALYSIS,
     [STAGES.STAGE2]: STAGES.STAGE2,
@@ -1118,7 +1123,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       // Check if complete
       if (data.is_complete) {
         setBlindSpotsQuality(data.quality)
-        setStage(STAGES.DOCUMENT_UPLOAD)
+        // NEW FLOW: Generate hypotheses after blind spots (prn_epistemic_grounding_before_thesis_generation)
+        await generateInformedHypotheses()
         return
       }
 
@@ -1379,6 +1385,63 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
   /**
    * Finish blind spots questioning early
    */
+  /**
+   * Generate hypotheses informed by blind spots answers (prn_epistemic_grounding_before_thesis_generation)
+   * Called after blind spots questioning completes
+   */
+  const generateInformedHypotheses = async () => {
+    setStage(STAGES.GENERATING_HYPOTHESES)
+    setProgress({ stage: 3, total: 9, label: 'Generating informed hypotheses...' })
+    setThinking('')
+
+    // Build blind spots answers from queue for the API
+    const blindSpotsAnswers = blindSpotsQueue.slots
+      .filter(slot => slot.status === 'answered' && slot.answer)
+      .map(slot => ({
+        slot_id: slot.slot_id || slot.slotId,
+        category: slot.category,
+        question: slot.question,
+        answer: slot.answer,
+        depth: slot.depth || 1
+      }))
+
+    await streamWizardRequest(
+      '/concepts/wizard/generate-informed-hypotheses',
+      {
+        concept_name: conceptName,
+        notes: notes,
+        blind_spots_answers: blindSpotsAnswers,
+        session_id: currentSessionKey
+      },
+      {
+        onThinking: (content) => {
+          setThinking(prev => prev + content)
+        },
+        onComplete: (data) => {
+          // Store the informed hypothesis cards
+          if (data.hypothesis_cards && data.hypothesis_cards.length > 0) {
+            setHypothesisCards(data.hypothesis_cards)
+          }
+          if (data.genealogy_cards && data.genealogy_cards.length > 0) {
+            setGenealogyCards(data.genealogy_cards)
+          }
+          if (data.differentiation_cards && data.differentiation_cards.length > 0) {
+            setDifferentiationCards(data.differentiation_cards)
+          }
+
+          // Now go to understanding validation with the informed cards
+          setProgress({ stage: 3, total: 9, label: 'Validate informed hypotheses' })
+          setStage(STAGES.UNDERSTANDING_VALIDATION)
+          setThinking('')
+        },
+        onError: (err) => {
+          setError(`Error generating hypotheses: ${err}`)
+          setStage(STAGES.BLIND_SPOTS_QUESTIONING)
+        }
+      }
+    )
+  }
+
   const finishBlindSpotsEarly = async () => {
     try {
       const response = await fetch(`${API_URL}/concepts/wizard/finish-blind-spots`, {
@@ -1391,7 +1454,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       const data = await response.json()
 
       setBlindSpotsQuality(data.quality)
-      setStage(STAGES.DOCUMENT_UPLOAD)
+      // NEW FLOW: Generate hypotheses after blind spots (prn_epistemic_grounding_before_thesis_generation)
+      await generateInformedHypotheses()
     } catch (err) {
       setError(err.message)
     }
@@ -1493,20 +1557,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             setDimensionalSignals(data.dimensional_signals)
           }
 
-          // Store new card-based data from notes analysis
-          if (data.hypothesis_cards && data.hypothesis_cards.length > 0) {
-            setHypothesisCards(data.hypothesis_cards)
-          }
-          if (data.genealogy_cards && data.genealogy_cards.length > 0) {
-            setGenealogyCards(data.genealogy_cards)
-          }
-          if (data.differentiation_cards && data.differentiation_cards.length > 0) {
-            setDifferentiationCards(data.differentiation_cards)
-          }
-
-          // Go to understanding validation instead of directly to Stage 1
-          setProgress({ stage: 2, total: 9, label: 'Validate my understanding' })
-          setStage(STAGES.UNDERSTANDING_VALIDATION)
+          // NEW FLOW: Cards are generated AFTER blind spots questioning
+          // Go to blind spots exploration first (prn_epistemic_grounding_before_thesis_generation)
+          setProgress({ stage: 2, total: 9, label: 'Exploring epistemic blind spots' })
+          setStage(STAGES.BLIND_SPOTS_CURATING)
           setThinking('')
         }
       }
@@ -3995,11 +4049,13 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
           )}
 
           {/* STAGE: Analyzing (any analysis stage) */}
-          {(stage === STAGES.ANALYZING_NOTES || stage === STAGES.ANALYZING_STAGE1 || stage === STAGES.ANALYZING_STAGE2 || stage === STAGES.ANALYZING_DOCUMENT || stage === STAGES.ANALYZING_COMMITMENTS || stage === STAGES.PROCESSING) && (
+          {(stage === STAGES.ANALYZING_NOTES || stage === STAGES.ANALYZING_STAGE1 || stage === STAGES.ANALYZING_STAGE2 || stage === STAGES.ANALYZING_DOCUMENT || stage === STAGES.ANALYZING_COMMITMENTS || stage === STAGES.GENERATING_HYPOTHESES || stage === STAGES.PROCESSING) && (
             <div className="wizard-stage">
               <div className="stage-header">
                 <h3>
-                  {stage === STAGES.PROCESSING ? 'Creating Final Concept...' : 'Analyzing...'}
+                  {stage === STAGES.PROCESSING ? 'Creating Final Concept...' :
+                   stage === STAGES.GENERATING_HYPOTHESES ? 'Generating Informed Hypotheses...' :
+                   'Analyzing...'}
                 </h3>
                 <p>
                   {currentPhase === 'interim_analysis' && 'Building understanding from your answers...'}
@@ -4007,7 +4063,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
                   {currentPhase === 'implications_preview' && 'Analyzing implications of your choices...'}
                   {currentPhase === 'generating_stage3' && 'Generating context-specific Stage 3 questions...'}
                   {currentPhase === 'final_synthesis' && 'Synthesizing complete concept definition...'}
-                  {!currentPhase && 'Processing...'}
+                  {stage === STAGES.GENERATING_HYPOTHESES && 'Using your blind spots answers to generate targeted hypotheses...'}
+                  {!currentPhase && stage !== STAGES.GENERATING_HYPOTHESES && 'Processing...'}
                 </p>
               </div>
 

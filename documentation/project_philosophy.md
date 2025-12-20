@@ -177,6 +177,20 @@ Key insight: "User occupied time" is free computation budget - exploit paralleli
 
 ---
 
+### prn_epistemic_grounding_before_thesis_generation
+**"Gather information about the user's epistemic position and blind spots before generating theses or hypotheses, so that generated content addresses their actual theoretical concerns rather than generic possibilities."**
+
+Users arrive at concept articulation with tacit theoretical agendas - presuppositions, paradigm dependencies, and unconfronted challenges they may not have explicitly surfaced. By exploring these blind spots BEFORE generating hypotheses, the system can produce theses that are targeted to what the user actually cares about rather than what might generically apply to their topic.
+
+**Implementation:** Major wizard flow reordering:
+- Notes analysis generates blind spots but NOT hypothesis cards
+- User explores blind spots through curator/sharpener questioning
+- After blind spots completion, new `generate-informed-hypotheses` endpoint produces cards
+- Cards now include `informed_by` field referencing which blind spot answers shaped them
+- Hypotheses feel tailored to this specific user's project, not generic philosophical categories
+
+---
+
 ## Future Directions
 
 As the Theory Service evolves, consider:
