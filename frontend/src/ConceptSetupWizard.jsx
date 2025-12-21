@@ -370,7 +370,7 @@ function HypothesisCard({ card, cardType, onApprove, onReject, onTransform, isTr
   )
 }
 
-export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
+export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, addToast }) {
   // Wizard state
   const [stage, setStage] = useState(STAGES.NOTES)
   const [notes, setNotes] = useState('')
@@ -1431,6 +1431,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
             setDifferentiationCards(data.differentiation_cards)
           }
 
+          // Toast notification for user feedback
+          const cardCount = (data.hypothesis_cards?.length || 0) +
+            (data.genealogy_cards?.length || 0) +
+            (data.differentiation_cards?.length || 0)
+          addToast?.(`Generated ${cardCount} hypothesis cards based on your blind spots answers`)
+
           // Now go to understanding validation with the informed cards
           setProgress({ stage: 3, total: 9, label: 'Validate informed hypotheses' })
           setStage(STAGES.UNDERSTANDING_VALIDATION)
@@ -1438,6 +1444,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
         },
         onError: (err) => {
           setError(`Error generating hypotheses: ${err}`)
+          addToast?.(`Error: ${err}`, 'error')
           setStage(STAGES.BLIND_SPOTS_QUESTIONING)
         }
       }
@@ -1446,6 +1453,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
 
   const finishBlindSpotsEarly = async () => {
     try {
+      // Toast notification for user feedback
+      addToast?.(`Finishing with ${blindSpotsQueue?.completedCount || 0} answers...`)
+
       const response = await fetch(`${API_URL}/concepts/wizard/finish-blind-spots`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1456,10 +1466,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel }) {
       const data = await response.json()
 
       setBlindSpotsQuality(data.quality)
+      addToast?.(`Quality assessment: ${data.quality}. Generating hypotheses...`)
       // NEW FLOW: Generate hypotheses after blind spots (prn_epistemic_grounding_before_thesis_generation)
       await generateInformedHypotheses()
     } catch (err) {
       setError(err.message)
+      addToast?.(err.message, 'error')
     }
   }
 

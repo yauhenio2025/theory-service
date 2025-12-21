@@ -1473,6 +1473,7 @@ function App() {
       {showConceptWizard && (
         <ConceptSetupWizard
           sourceId={sourceFilter ? parseInt(sourceFilter) : null}
+          addToast={addToast}
           onComplete={(concept) => {
             setShowConceptWizard(false)
             loadConcepts()
