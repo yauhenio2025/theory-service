@@ -4,6 +4,58 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-21: Concept Relationships Schema
+
+**Commit:** `38243a3`
+**Branch:** `main`
+
+### Description
+Comprehensive schema for tracking relationships between internal concepts (ones we define) and external concepts from other authors/paradigms. Enables nuanced philosophical comparison across the 9-dimensional framework.
+
+### The Problem
+When developing concepts like "Organic Capitalism," we need to relate them to existing concepts from other thinkers (Zuboff's "Surveillance Capitalism," Srnicek's "Platform Capitalism"). Without structured relationships, these comparisons live only in prose - making them hard to query, visualize, or reason about systematically.
+
+### The Solution
+Two new database models with full CRUD API:
+
+**ExternalConcept Model:**
+- `term`, `author`, `source_work`, `year`
+- `brief_definition`, `extended_definition`
+- `paradigm`, `research_program`, `disciplinary_home`
+- `key_claims` (JSON), `dimensional_analysis` (JSON)
+
+**ConceptRelationship Model:**
+- Source concept (internal OR external)
+- Target concept (internal OR external)
+- `relationship_type`: rivals, complements, subsumes, ruptures, specializes, shares_problematic, historicizes, appropriates, responds_to, synthesizes, instantiates, problematizes, extends
+- 9 dimensional JSON columns for philosophical nuance:
+  - `sellarsian`: manifest_vs_scientific (who, what), commitment_structure
+  - `brandomian`: inferential_role_difference, material_incompatibility, normative_status_contrast
+  - `deleuzian`: deterritorialization_vector, plane_of_consistency, becoming_direction
+  - `hacking`: problematic_relation (same_problematic, adjacent, rival), web_proximity (near, far)
+  - `bachelardian`: epistemological_break_assessment, obstacle_relation
+  - `quinean`: centrality_difference (core vs peripheral), revisability_contrast
+  - `carey`: core_domain_sharing, feature_inheritance, transformation_type
+  - `blumenberg`: metaphor_inheritance, absolutism_relation, reoccupation_assessment
+  - `canguilhem`: norm_relation, pathological_boundary_difference
+
+### New Endpoints
+- `GET/POST /concept-relationships/external-concepts`
+- `GET/PATCH/DELETE /concept-relationships/external-concepts/{id}`
+- `GET/POST /concept-relationships/relationships`
+- `GET/PATCH/DELETE /concept-relationships/relationships/{id}`
+- `GET /concept-relationships/concepts/{id}/relationships`
+- `GET /concept-relationships/relationships/by-type/{type}`
+
+### Database Migration
+Run `POST /admin/migrate` to create the `external_concepts` and `concept_relationships` tables.
+
+### Principles Embodied
+- 9-dimensional concept analysis applied to inter-concept relationships
+- Structured representation of philosophical dialogue across paradigms
+
+---
+
 ## 2025-12-20: Blind Spots Before Hypotheses Flow
 
 **Commit:** `3f17dd5` (initial), `3c257e3` (curator call fix)
