@@ -4,6 +4,56 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-21: 9-Dimension Grounded Posit Typology
+
+**Commit:** `a417264`
+**Branch:** `main`
+
+### Description
+Replaced ad-hoc "hypothesis" types (thesis, assumption, tension, methodological, normative) with a formal typology grounded in the 9-dimensional philosophical framework.
+
+### The Problem
+The previous card types were functional but ad-hoc:
+- **thesis** - core argument
+- **assumption** - implicit premise
+- **tension** - internal conflict
+- **methodological** - how to study
+- **normative** - what should be
+
+This mixed content type, epistemic status, structural features, and functional types without systematic grounding in our philosophical dimensions.
+
+### The Solution
+A 9-dimension grounded typology where each posit type maps to a specific philosophical dimension:
+
+| Type | Description | Dimension |
+|------|-------------|-----------|
+| `definitional` | What the concept IS | Sellarsian |
+| `inferential` | What follows from it | Brandomian |
+| `incompatibility` | What it rules out | Brandomian |
+| `genealogical` | Where it comes from | Carey/Blumenberg |
+| `transformational` | What change it enables | Deleuzian |
+| `epistemological_break` | What discontinuity it marks | Bachelardian |
+| `methodological` | How to study/apply | Hacking |
+| `normative` | Evaluative claims | Canguilhem |
+| `positional` | Where it sits in belief web | Quinean |
+
+### Implementation
+- `PosItType` enum with all 9 types
+- `POSIT_TYPE_METADATA` with labels, colors, dimensions
+- Updated `INFORMED_HYPOTHESIS_GENERATION_PROMPT` with type examples
+- New `GET /posit-types` endpoint for frontend
+- Cards now show type label and dimension badge
+- 9 distinct color schemes for posit types
+
+### Terminology Change
+"Hypotheses" renamed to "Posits" (preliminary claims) - more accurate since these aren't testable predictions but detected claims the user can approve/reject.
+
+### Principles Embodied
+- 9-dimensional framework now applies to claim categorization, not just concept analysis
+- Systematic grounding of typology in philosophical dimensions
+
+---
+
 ## 2025-12-21: Concept Relationships Schema
 
 **Commit:** `38243a3`
