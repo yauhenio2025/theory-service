@@ -6,7 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-21: Strengthened New Dimensions & IE Export Function
 
-**Commit:** `pending`
+**Commit:** `8e09dee`
 **Branch:** `main`
 
 ### Description
