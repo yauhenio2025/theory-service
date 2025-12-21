@@ -34,6 +34,7 @@ from anthropic import Anthropic
 
 from .database import get_db, AsyncSessionLocal
 from .models import WizardSession
+from enum import Enum
 
 # PDF extraction (optional - graceful fallback)
 try:
@@ -66,6 +67,103 @@ MAX_OUTPUT = 64000  # Must be > THINKING_BUDGET
 # Sonnet 4.5 for document analysis (1M token context)
 SONNET_MODEL = "claude-sonnet-4-5-20250929"
 SONNET_MAX_OUTPUT = 64000
+
+
+# =============================================================================
+# POSIT TYPE ENUM - 9-Dimension Grounded Typology
+# =============================================================================
+
+class PosItType(str, Enum):
+    """
+    Types of preliminary posits (claims detected in user's notes).
+    Grounded in the 9-dimensional philosophical framework.
+
+    These replace the ad-hoc "hypothesis" types (thesis, assumption, tension, etc.)
+    with a systematic typology tied to our conceptual dimensions.
+    """
+    # Sellarsian - Manifest vs Scientific image
+    DEFINITIONAL = "definitional"  # What the concept IS (manifest/scientific formulation)
+
+    # Brandomian - Inferential commitments
+    INFERENTIAL = "inferential"  # What follows from accepting the concept
+    INCOMPATIBILITY = "incompatibility"  # What the concept rules out
+
+    # Carey + Blumenberg - Conceptual inheritance
+    GENEALOGICAL = "genealogical"  # Where the concept comes from
+
+    # Deleuzian - Lines of flight, deterritorialization
+    TRANSFORMATIONAL = "transformational"  # What change/becoming this enables
+
+    # Bachelardian - Epistemological breaks
+    EPISTEMOLOGICAL_BREAK = "epistemological_break"  # What discontinuity it marks
+
+    # Hacking - Styles of reasoning
+    METHODOLOGICAL = "methodological"  # How to study/apply the concept
+
+    # Canguilhem - Vital norms
+    NORMATIVE = "normative"  # Evaluative/prescriptive claims
+
+    # Quinean - Web of belief
+    POSITIONAL = "positional"  # Where it sits in the belief web
+
+
+# Mapping from posit type to display labels and colors
+POSIT_TYPE_METADATA = {
+    PosItType.DEFINITIONAL: {
+        "label": "Definitional",
+        "description": "What the concept IS",
+        "dimension": "Sellarsian",
+        "color": "blue"
+    },
+    PosItType.INFERENTIAL: {
+        "label": "Inferential",
+        "description": "What follows from this",
+        "dimension": "Brandomian",
+        "color": "purple"
+    },
+    PosItType.INCOMPATIBILITY: {
+        "label": "Incompatibility",
+        "description": "What this rules out",
+        "dimension": "Brandomian",
+        "color": "red"
+    },
+    PosItType.GENEALOGICAL: {
+        "label": "Genealogical",
+        "description": "Where this comes from",
+        "dimension": "Carey/Blumenberg",
+        "color": "amber"
+    },
+    PosItType.TRANSFORMATIONAL: {
+        "label": "Transformational",
+        "description": "What change this enables",
+        "dimension": "Deleuzian",
+        "color": "green"
+    },
+    PosItType.EPISTEMOLOGICAL_BREAK: {
+        "label": "Break",
+        "description": "What discontinuity this marks",
+        "dimension": "Bachelardian",
+        "color": "orange"
+    },
+    PosItType.METHODOLOGICAL: {
+        "label": "Methodological",
+        "description": "How to study/apply this",
+        "dimension": "Hacking",
+        "color": "cyan"
+    },
+    PosItType.NORMATIVE: {
+        "label": "Normative",
+        "description": "Evaluative claims",
+        "dimension": "Canguilhem",
+        "color": "pink"
+    },
+    PosItType.POSITIONAL: {
+        "label": "Positional",
+        "description": "Where this sits in belief web",
+        "dimension": "Quinean",
+        "color": "gray"
+    }
+}
 
 
 # =============================================================================
@@ -1319,7 +1417,7 @@ INFORMED_HYPOTHESIS_GENERATION_PROMPT = """You are an expert in conceptual analy
 
 The user has provided initial notes about their concept "{concept_name}" and has completed a round of epistemic blind spots questioning. Based on their answers to blind spots questions, you now have insight into their actual theoretical agenda.
 
-Your task: Generate hypothesis, genealogy, and differentiation cards INFORMED by what the user revealed through their blind spots answers.
+Your task: Generate POSIT cards (preliminary claims), genealogy cards, and differentiation cards INFORMED by what the user revealed through their blind spots answers.
 
 ## User's Original Notes:
 {notes}
@@ -1334,6 +1432,36 @@ Based on their answers, pay attention to:
 - Tensions they acknowledged (reveals dialectics they're navigating)
 - Presuppositions they confirmed or rejected (reveals their epistemic stance)
 
+## POSIT CARD TYPOLOGY (9-Dimension Grounded):
+Each posit card has a TYPE grounded in our philosophical framework:
+
+1. **definitional** (Sellarsian) - What the concept IS in manifest/scientific terms
+   Example: "Organic capitalism synthesizes planning and market forms through platform coordination"
+
+2. **inferential** (Brandomian) - What follows from accepting this concept
+   Example: "If organic capitalism is correct, then the market/plan dichotomy collapses"
+
+3. **incompatibility** (Brandomian) - What the concept rules out
+   Example: "Incompatible with accounts treating platforms as mere intermediaries"
+
+4. **genealogical** (Carey/Blumenberg) - Where the concept comes from
+   Example: "Transforms Hilferding's 'organized capitalism' for the platform age"
+
+5. **transformational** (Deleuzian) - What change/becoming this enables
+   Example: "Deterritorializes the market/plan binary by showing their co-constitution"
+
+6. **epistemological_break** (Bachelardian) - What discontinuity it marks
+   Example: "Marks a break with classical political economy's dichotomies"
+
+7. **methodological** (Hacking) - How to study/apply the concept
+   Example: "Requires tracing both computational and organizational mechanisms"
+
+8. **normative** (Canguilhem) - Evaluative/prescriptive claims
+   Example: "Platform coordination represents a pathological form of economic organization"
+
+9. **positional** (Quinean) - Where it sits in the belief web
+   Example: "Central to understanding contemporary capitalism, peripheral to orthodox Marxism"
+
 ## GENEALOGY INFERENCE (Use User's Revealed Positions):
 You are Claude Opus 4.5 with extensive knowledge of intellectual history.
 USE THIS KNOWLEDGE to HYPOTHESIZE the likely genealogy - but now INFORMED by what the user actually cares about.
@@ -1345,13 +1473,14 @@ Based on their blind spots answers, you know more about:
 
 Generate a JSON response:
 {{
-    "hypothesis_cards": [
+    "posit_cards": [
         {{
-            "id": "hyp_001",
-            "content": "A specific thesis/claim that addresses what the user revealed they care about",
-            "type": "thesis|assumption|tension|methodological|normative",
+            "id": "pos_001",
+            "content": "A specific claim that addresses what the user revealed they care about",
+            "type": "definitional|inferential|incompatibility|genealogical|transformational|epistemological_break|methodological|normative|positional",
+            "dimension": "Sellarsian|Brandomian|Carey/Blumenberg|Deleuzian|Bachelardian|Hacking|Canguilhem|Quinean",
             "source_excerpts": ["Direct quotes from notes that support this"],
-            "informed_by": "Which blind spot answer(s) helped refine this hypothesis",
+            "informed_by": "Which blind spot answer(s) helped refine this posit",
             "confidence": "high|medium|low",
             "rationale": "Why this is a central claim based on both notes AND blind spots answers"
         }}
@@ -1397,11 +1526,12 @@ Generate a JSON response:
 }}
 
 CRITICAL INSTRUCTIONS:
-1. Generate 5-8 hypothesis cards that address what the user REVEALED they care about
+1. Generate 6-10 posit cards using the 9-TYPE TYPOLOGY above - aim for variety across types
 2. Generate 3-5 genealogy cards linking to SPECIFIC thinkers relevant to user's revealed agenda
 3. Generate 4-6 differentiation cards that clarify distinctions the user is navigating
 4. Each card should reference how blind spots answers informed it
 5. Be SPECIFIC - use the user's actual terminology and concerns from their answers
+6. Ensure posit cards cover different types - don't generate all definitional or all inferential
 
 The cards should feel tailored to this specific user's project, not generic philosophical categories."""
 
@@ -5471,6 +5601,33 @@ async def generate_phase3_questions(request: Phase3QuestionsRequest):
 
 
 # =============================================================================
+# POSIT TYPES ENDPOINT
+# =============================================================================
+
+@router.get("/posit-types")
+async def get_posit_types():
+    """
+    Get the posit type typology with metadata for frontend display.
+
+    Returns all 9 posit types with their labels, descriptions, dimensions, and colors.
+    Used by the frontend to render posit cards with proper styling.
+    """
+    return {
+        "types": [
+            {
+                "value": posit_type.value,
+                "label": metadata["label"],
+                "description": metadata["description"],
+                "dimension": metadata["dimension"],
+                "color": metadata["color"]
+            }
+            for posit_type, metadata in POSIT_TYPE_METADATA.items()
+        ],
+        "description": "9-dimension grounded typology for preliminary posits (claims detected in user's notes)"
+    }
+
+
+# =============================================================================
 # WIZARD SESSION ENDPOINTS (Cross-device persistence)
 # =============================================================================
 
@@ -6202,16 +6359,30 @@ async def generate_informed_hypotheses(request: GenerateInformedHypothesesReques
             # Parse the response
             analysis_data = parse_wizard_response(response_text)
 
-            # Extract cards with status for UI
+            # Extract cards - support both new posit_cards and legacy hypothesis_cards
+            posit_cards = analysis_data.get("posit_cards", [])
             hypothesis_cards = analysis_data.get("hypothesis_cards", [])
+
+            # If LLM returned posit_cards, use those; otherwise fall back to hypothesis_cards
+            primary_cards = posit_cards if posit_cards else hypothesis_cards
+
             genealogy_cards = analysis_data.get("genealogy_cards", [])
             differentiation_cards = analysis_data.get("differentiation_cards", [])
             genealogy_questions = analysis_data.get("genealogy_questions", [])
 
-            # Ensure cards have proper status for UI
-            for card in hypothesis_cards:
+            # Ensure primary cards have proper status and metadata
+            for card in primary_cards:
                 card["status"] = "pending"
                 card["transformation_history"] = []
+                # Add posit type metadata if present
+                if card.get("type"):
+                    posit_type = card["type"]
+                    for pt, metadata in POSIT_TYPE_METADATA.items():
+                        if pt.value == posit_type:
+                            card["type_label"] = metadata["label"]
+                            card["type_color"] = metadata["color"]
+                            card["type_dimension"] = metadata["dimension"]
+                            break
 
             for card in genealogy_cards:
                 card["status"] = "pending"
@@ -6221,18 +6392,28 @@ async def generate_informed_hypotheses(request: GenerateInformedHypothesesReques
                 card["status"] = "pending"
                 card["transformation_history"] = []
 
-            # Return complete response
+            # Return complete response - use posit_cards AND hypothesis_cards for backward compat
             complete_data = {
                 'type': 'complete',
                 'data': {
                     'status': 'cards_ready',
                     'concept_name': request.concept_name,
-                    'stage_title': 'Review Generated Hypotheses',
-                    'stage_description': "Based on your blind spots exploration, we've generated these informed hypotheses. Approve, reject, or transform each card.",
-                    'hypothesis_cards': hypothesis_cards,
+                    'stage_title': 'Review Generated Posits',
+                    'stage_description': "Based on your blind spots exploration, we've generated these informed posits (preliminary claims). Approve, reject, or transform each card.",
+                    'posit_cards': primary_cards,  # New field
+                    'hypothesis_cards': primary_cards,  # Backward compat
                     'genealogy_cards': genealogy_cards,
                     'differentiation_cards': differentiation_cards,
-                    'genealogy_questions': genealogy_questions
+                    'genealogy_questions': genealogy_questions,
+                    'posit_types': [  # Include type metadata for frontend
+                        {
+                            "value": pt.value,
+                            "label": meta["label"],
+                            "dimension": meta["dimension"],
+                            "color": meta["color"]
+                        }
+                        for pt, meta in POSIT_TYPE_METADATA.items()
+                    ]
                 }
             }
             yield f"data: {json.dumps(complete_data)}\n\n"

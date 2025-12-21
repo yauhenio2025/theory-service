@@ -299,7 +299,8 @@ function HypothesisCard({ card, cardType, onApprove, onReject, onTransform, isTr
   const getTypeLabel = () => {
     switch (cardType) {
       case 'hypothesis':
-        return card.type || 'thesis'
+        // Use new type_label (from posit types) if available, fall back to type
+        return card.type_label || card.type || 'thesis'
       case 'genealogy':
         return card.tradition || 'influence'
       case 'differentiation':
@@ -309,12 +310,32 @@ function HypothesisCard({ card, cardType, onApprove, onReject, onTransform, isTr
     }
   }
 
+  // Get dimensional badge if available (new posit type system)
+  const getDimensionBadge = () => {
+    if (cardType === 'hypothesis' && card.type_dimension) {
+      return card.type_dimension
+    }
+    return null
+  }
+
+  // Get color class for posit type
+  const getTypeColorClass = () => {
+    if (cardType === 'hypothesis' && card.type_color) {
+      return `posit-${card.type_color}`
+    }
+    return card.type || ''
+  }
+
   const statusClass = card.status === 'approved' ? 'approved' : card.status === 'rejected' ? 'rejected' : ''
+  const dimensionBadge = getDimensionBadge()
 
   return (
     <div className={`hypothesis-card ${statusClass}`}>
       <div className="card-header">
-        <span className={`card-type ${card.type || ''}`}>{getTypeLabel()}</span>
+        <span className={`card-type ${getTypeColorClass()}`}>{getTypeLabel()}</span>
+        {dimensionBadge && (
+          <span className="card-dimension-badge">{dimensionBadge}</span>
+        )}
       </div>
 
       <div className="card-content">

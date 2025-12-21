@@ -6778,6 +6778,78 @@ header h1 {
   color: #db2777;
 }
 
+/* =============================================================================
+   POSIT TYPE COLORS (9-Dimension Grounded Typology)
+   ============================================================================= */
+
+/* Definitional (Sellarsian) - blue */
+.hypothesis-card .card-type.posit-blue {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+}
+
+/* Inferential (Brandomian) - purple */
+.hypothesis-card .card-type.posit-purple {
+  background: rgba(139, 92, 246, 0.15);
+  color: #7c3aed;
+}
+
+/* Incompatibility (Brandomian) - red */
+.hypothesis-card .card-type.posit-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+/* Genealogical (Carey/Blumenberg) - amber */
+.hypothesis-card .card-type.posit-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+/* Transformational (Deleuzian) - green */
+.hypothesis-card .card-type.posit-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+
+/* Epistemological Break (Bachelardian) - orange */
+.hypothesis-card .card-type.posit-orange {
+  background: rgba(249, 115, 22, 0.15);
+  color: #ea580c;
+}
+
+/* Methodological (Hacking) - cyan */
+.hypothesis-card .card-type.posit-cyan {
+  background: rgba(6, 182, 212, 0.15);
+  color: #0891b2;
+}
+
+/* Normative (Canguilhem) - pink */
+.hypothesis-card .card-type.posit-pink {
+  background: rgba(236, 72, 153, 0.15);
+  color: #db2777;
+}
+
+/* Positional (Quinean) - gray */
+.hypothesis-card .card-type.posit-gray {
+  background: rgba(107, 114, 128, 0.15);
+  color: #4b5563;
+}
+
+/* Dimension badge (shows which philosophical dimension) */
+.hypothesis-card .card-dimension-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  background: var(--panel-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  margin-left: 0.5rem;
+}
+
 .hypothesis-card .card-confidence {
   font-size: 0.8rem;
   color: var(--text-muted);
