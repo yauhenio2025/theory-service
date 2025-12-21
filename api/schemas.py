@@ -578,3 +578,291 @@ class ChallengeDashboardStats(BaseModel):
     resolved_this_week: int
 
     source_projects: List[dict]  # [{id, name, count}]
+
+
+# =============================================================================
+# CONCEPT RELATIONSHIP SCHEMAS
+# =============================================================================
+
+class RelationshipType(str, Enum):
+    """Primary relationship types between concepts."""
+    RIVALS = "rivals"
+    COMPLEMENTS = "complements"
+    SUBSUMES = "subsumes"
+    SUBSUMED_BY = "subsumed_by"
+    RUPTURES = "ruptures"
+    RUPTURED_BY = "ruptured_by"
+    SPECIALIZES = "specializes"
+    GENERALIZES = "generalizes"
+    SHARES_PROBLEMATIC = "shares_problematic"
+    HISTORICIZES = "historicizes"
+    HISTORICIZED_BY = "historicized_by"
+    APPROPRIATES = "appropriates"
+    APPROPRIATED_BY = "appropriated_by"
+    RESPONDS_TO = "responds_to"
+    RESPONDED_TO_BY = "responded_to_by"
+    SYNTHESIZES = "synthesizes"
+    COMPONENT_OF = "component_of"
+
+
+class ProblematicRelation(str, Enum):
+    """Deleuzian: how concepts relate in terms of their underlying problematic."""
+    SAME = "same"
+    OVERLAPPING = "overlapping"
+    NESTED = "nested"
+    ADJACENT = "adjacent"
+    DIFFERENT = "different"
+
+
+class WebProximity(str, Enum):
+    """Quinean: how close concepts are in the web of beliefs."""
+    CORE = "core"
+    ADJACENT = "adjacent"
+    PERIPHERAL = "peripheral"
+    DISTANT = "distant"
+
+
+# Dimensional sub-schemas for rich relationship data
+class SellarsianDimension(BaseModel):
+    """The 'Given' / Foundational claims dimension."""
+    shared_givens: Optional[List[str]] = None
+    contested_givens: Optional[List[str]] = None
+    givenness_conflict: Optional[str] = None
+
+
+class BrandomianDimension(BaseModel):
+    """Inferential commitments dimension."""
+    shared_commitments: Optional[List[str]] = None
+    conflicting_commitments: Optional[List[str]] = None
+    entitlement_transfer: Optional[bool] = None
+
+
+class DeleuzianDimension(BaseModel):
+    """Problematics dimension."""
+    problematic_relation: Optional[ProblematicRelation] = None
+    shared_tension: Optional[str] = None
+    divergent_responses: Optional[str] = None
+
+
+class HackingDimension(BaseModel):
+    """Reasoning styles dimension."""
+    shared_styles: Optional[List[str]] = None
+    style_conflict: Optional[str] = None
+    compatibility: Optional[str] = None  # high, medium, low, incompatible
+
+
+class BachelardianDimension(BaseModel):
+    """Rupture/continuity dimension."""
+    rupture_direction: Optional[str] = None  # "A→B" or "B→A"
+    what_is_ruptured: Optional[str] = None
+    continuity_despite_rupture: Optional[str] = None
+
+
+class QuineanDimension(BaseModel):
+    """Web of beliefs dimension."""
+    web_proximity: Optional[WebProximity] = None
+    shared_inferences: Optional[List[str]] = None
+    inferential_bridges: Optional[List[str]] = None
+
+
+class CareyDimension(BaseModel):
+    """Conceptual combination/components dimension."""
+    shared_components: Optional[List[str]] = None
+    compositional_relation: Optional[str] = None  # overlapping, disjoint, nested, emergent
+    combination_notes: Optional[str] = None
+
+
+class BlumenbergDimension(BaseModel):
+    """Metaphorical grounds dimension."""
+    shared_metaphors: Optional[List[str]] = None
+    metaphor_conflict: Optional[str] = None
+    root_metaphor_relation: Optional[str] = None
+
+
+class CanguilhemDimension(BaseModel):
+    """Norms/values/interests dimension."""
+    shared_interests: Optional[List[str]] = None
+    interest_conflict: Optional[str] = None
+    normative_stance_relation: Optional[str] = None  # aligned, divergent, opposed
+
+
+# =============================================================================
+# EXTERNAL CONCEPT SCHEMAS
+# =============================================================================
+
+class ExternalConceptBase(BaseModel):
+    """Base schema for external concepts."""
+    term: str = Field(..., min_length=1, max_length=255)
+    author: Optional[str] = None
+    source_work: Optional[str] = None
+    year: Optional[int] = None
+    brief_definition: Optional[str] = None
+    extended_definition: Optional[str] = None
+    paradigm: Optional[str] = None
+    research_program: Optional[str] = None
+    disciplinary_home: Optional[str] = None
+    key_claims: Optional[List[str]] = None
+    notes: Optional[str] = None
+
+
+class ExternalConceptCreate(ExternalConceptBase):
+    """Schema for creating external concepts."""
+    dimensional_analysis: Optional[dict] = None
+    confidence: Optional[float] = Field(default=0.8, ge=0.0, le=1.0)
+
+
+class ExternalConceptUpdate(BaseModel):
+    """Schema for updating external concepts."""
+    term: Optional[str] = None
+    author: Optional[str] = None
+    source_work: Optional[str] = None
+    year: Optional[int] = None
+    brief_definition: Optional[str] = None
+    extended_definition: Optional[str] = None
+    paradigm: Optional[str] = None
+    research_program: Optional[str] = None
+    disciplinary_home: Optional[str] = None
+    key_claims: Optional[List[str]] = None
+    dimensional_analysis: Optional[dict] = None
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    notes: Optional[str] = None
+
+
+class ExternalConceptResponse(ExternalConceptBase):
+    """Response schema for external concepts."""
+    id: int
+    dimensional_analysis: Optional[dict] = None
+    source_document_ids: Optional[List[int]] = None
+    confidence: float
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
+# CONCEPT RELATIONSHIP SCHEMAS
+# =============================================================================
+
+class ConceptRelationshipBase(BaseModel):
+    """Base schema for concept relationships."""
+    relationship_type: RelationshipType
+    strength: Optional[float] = Field(default=0.8, ge=0.0, le=1.0)
+    is_symmetric: Optional[bool] = False
+    description: Optional[str] = None
+
+    # Dimensional nuance (all optional)
+    sellarsian: Optional[SellarsianDimension] = None
+    brandomian: Optional[BrandomianDimension] = None
+    deleuzian: Optional[DeleuzianDimension] = None
+    hacking: Optional[HackingDimension] = None
+    bachelardian: Optional[BachelardianDimension] = None
+    quinean: Optional[QuineanDimension] = None
+    carey: Optional[CareyDimension] = None
+    blumenberg: Optional[BlumenbergDimension] = None
+    canguilhem: Optional[CanguilhemDimension] = None
+
+    notes: Optional[str] = None
+    confidence: Optional[float] = Field(default=0.8, ge=0.0, le=1.0)
+
+
+class ConceptRelationshipCreate(ConceptRelationshipBase):
+    """Schema for creating concept relationships."""
+    # Source concept (one required)
+    concept_id: Optional[int] = None
+    external_concept_id: Optional[int] = None
+
+    # Target concept (one required)
+    related_concept_id: Optional[int] = None
+    related_external_concept_id: Optional[int] = None
+
+    source_type: Optional[str] = "manual"  # manual, llm_extracted, document_analysis
+    source_document_id: Optional[int] = None
+
+
+class ConceptRelationshipUpdate(BaseModel):
+    """Schema for updating concept relationships."""
+    relationship_type: Optional[RelationshipType] = None
+    strength: Optional[float] = Field(None, ge=0.0, le=1.0)
+    is_symmetric: Optional[bool] = None
+    description: Optional[str] = None
+
+    sellarsian: Optional[SellarsianDimension] = None
+    brandomian: Optional[BrandomianDimension] = None
+    deleuzian: Optional[DeleuzianDimension] = None
+    hacking: Optional[HackingDimension] = None
+    bachelardian: Optional[BachelardianDimension] = None
+    quinean: Optional[QuineanDimension] = None
+    carey: Optional[CareyDimension] = None
+    blumenberg: Optional[BlumenbergDimension] = None
+    canguilhem: Optional[CanguilhemDimension] = None
+
+    notes: Optional[str] = None
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+
+class ConceptRelationshipResponse(ConceptRelationshipBase):
+    """Response schema for concept relationships."""
+    id: int
+
+    concept_id: Optional[int] = None
+    external_concept_id: Optional[int] = None
+    related_concept_id: Optional[int] = None
+    related_external_concept_id: Optional[int] = None
+
+    source_type: Optional[str] = None
+    source_document_id: Optional[int] = None
+
+    created_at: datetime
+    updated_at: datetime
+
+    # Populated from relationships for display
+    concept_term: Optional[str] = None
+    external_concept_term: Optional[str] = None
+    related_concept_term: Optional[str] = None
+    related_external_concept_term: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
+# RELATIONSHIP EXTRACTION SCHEMAS (for LLM-based extraction from documents)
+# =============================================================================
+
+class ExtractRelationshipsRequest(BaseModel):
+    """Request to extract relationships from uploaded documents."""
+    concept_id: int  # The concept to find relationships for
+    document_text: str  # The document text to analyze
+    target_authors: Optional[List[str]] = None  # Authors to look for (e.g., ["Zuboff", "Srnicek"])
+
+
+class ExtractedRelationship(BaseModel):
+    """A single extracted relationship from document analysis."""
+    external_term: str
+    author: Optional[str] = None
+    source_work: Optional[str] = None
+    relationship_type: RelationshipType
+    description: str
+    confidence: float
+
+    # Dimensional analysis
+    sellarsian: Optional[SellarsianDimension] = None
+    brandomian: Optional[BrandomianDimension] = None
+    deleuzian: Optional[DeleuzianDimension] = None
+    hacking: Optional[HackingDimension] = None
+    bachelardian: Optional[BachelardianDimension] = None
+    quinean: Optional[QuineanDimension] = None
+    carey: Optional[CareyDimension] = None
+    blumenberg: Optional[BlumenbergDimension] = None
+    canguilhem: Optional[CanguilhemDimension] = None
+
+
+class ExtractRelationshipsResponse(BaseModel):
+    """Response from relationship extraction."""
+    concept_id: int
+    concept_term: str
+    extracted_external_concepts: List[ExternalConceptCreate]
+    extracted_relationships: List[ExtractedRelationship]
+    extraction_notes: Optional[str] = None

@@ -45,6 +45,8 @@ from .schemas import (
 
 # Import concept wizard router
 from .concept_wizard import router as wizard_router
+# Import concept relationships router
+from .concept_relationships import router as relationships_router
 
 
 @asynccontextmanager
@@ -73,6 +75,8 @@ app.add_middleware(
 
 # Include concept wizard router
 app.include_router(wizard_router)
+# Include concept relationships router
+app.include_router(relationships_router)
 
 
 # =============================================================================
@@ -93,6 +97,89 @@ async def health_check():
 async def run_migrations(db: AsyncSession = Depends(get_db)):
     """Run pending database migrations (adds new columns to existing tables)."""
     migrations_run = []
+
+    # =========================================================================
+    # EXTERNAL CONCEPTS TABLE
+    # =========================================================================
+    result = await db.execute(text("""
+        SELECT table_name FROM information_schema.tables
+        WHERE table_name = 'external_concepts'
+    """))
+    if not result.fetchone():
+        await db.execute(text("""
+            CREATE TABLE external_concepts (
+                id SERIAL PRIMARY KEY,
+                term VARCHAR(255) NOT NULL,
+                author VARCHAR(255),
+                source_work VARCHAR(500),
+                year INTEGER,
+                brief_definition TEXT,
+                extended_definition TEXT,
+                paradigm VARCHAR(255),
+                research_program VARCHAR(255),
+                disciplinary_home VARCHAR(255),
+                key_claims JSONB,
+                dimensional_analysis JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await db.execute(text("CREATE INDEX idx_external_concepts_term ON external_concepts(term)"))
+        await db.execute(text("CREATE INDEX idx_external_concepts_author ON external_concepts(author)"))
+        await db.execute(text("CREATE INDEX idx_external_concepts_paradigm ON external_concepts(paradigm)"))
+        migrations_run.append("Created external_concepts table")
+
+    # =========================================================================
+    # CONCEPT RELATIONSHIPS TABLE
+    # =========================================================================
+    result = await db.execute(text("""
+        SELECT table_name FROM information_schema.tables
+        WHERE table_name = 'concept_relationships'
+    """))
+    if not result.fetchone():
+        await db.execute(text("""
+            CREATE TABLE concept_relationships (
+                id SERIAL PRIMARY KEY,
+                concept_id INTEGER REFERENCES concepts(id) ON DELETE CASCADE,
+                external_concept_id INTEGER REFERENCES external_concepts(id) ON DELETE CASCADE,
+                related_concept_id INTEGER REFERENCES concepts(id) ON DELETE CASCADE,
+                related_external_concept_id INTEGER REFERENCES external_concepts(id) ON DELETE CASCADE,
+                relationship_type VARCHAR(50) NOT NULL,
+                description TEXT,
+                strength VARCHAR(20),
+                bidirectional BOOLEAN DEFAULT FALSE,
+                sellarsian JSONB,
+                brandomian JSONB,
+                deleuzian JSONB,
+                hacking JSONB,
+                bachelardian JSONB,
+                quinean JSONB,
+                carey JSONB,
+                blumenberg JSONB,
+                canguilhem JSONB,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT chk_source_concept CHECK (
+                    (concept_id IS NOT NULL AND external_concept_id IS NULL) OR
+                    (concept_id IS NULL AND external_concept_id IS NOT NULL)
+                ),
+                CONSTRAINT chk_target_concept CHECK (
+                    (related_concept_id IS NOT NULL AND related_external_concept_id IS NULL) OR
+                    (related_concept_id IS NULL AND related_external_concept_id IS NOT NULL)
+                )
+            )
+        """))
+        await db.execute(text("CREATE INDEX idx_concept_relationships_concept ON concept_relationships(concept_id)"))
+        await db.execute(text("CREATE INDEX idx_concept_relationships_external ON concept_relationships(external_concept_id)"))
+        await db.execute(text("CREATE INDEX idx_concept_relationships_related ON concept_relationships(related_concept_id)"))
+        await db.execute(text("CREATE INDEX idx_concept_relationships_related_ext ON concept_relationships(related_external_concept_id)"))
+        await db.execute(text("CREATE INDEX idx_concept_relationships_type ON concept_relationships(relationship_type)"))
+        migrations_run.append("Created concept_relationships table")
+
+    # =========================================================================
+    # LEGACY MIGRATIONS
+    # =========================================================================
 
     # Check and add source_project_name to challenges
     result = await db.execute(text("""

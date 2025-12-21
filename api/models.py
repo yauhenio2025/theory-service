@@ -497,3 +497,236 @@ class WizardSession(Base):
 
     # Relationships
     source = relationship("TheorySource", foreign_keys=[source_id])
+
+
+# =============================================================================
+# CONCEPT RELATIONSHIPS - Inter-concept relations with dimensional nuance
+# =============================================================================
+
+class RelationshipType(str, enum.Enum):
+    """Primary relationship types between concepts."""
+    RIVALS = "rivals"  # Competing for same theoretical space
+    COMPLEMENTS = "complements"  # Work together, fill different gaps
+    SUBSUMES = "subsumes"  # Broader frame containing the other
+    SUBSUMED_BY = "subsumed_by"  # Contained by a broader frame
+    RUPTURES = "ruptures"  # Explicitly breaks from (Bachelardian)
+    RUPTURED_BY = "ruptured_by"  # Broken from by another
+    SPECIALIZES = "specializes"  # Specific case of a more general concept
+    GENERALIZES = "generalizes"  # Abstracts from another concept
+    SHARES_PROBLEMATIC = "shares_problematic"  # Address same underlying problem
+    HISTORICIZES = "historicizes"  # Places another in historical context
+    HISTORICIZED_BY = "historicized_by"  # Placed in historical context by another
+    APPROPRIATES = "appropriates"  # Takes elements while transforming meaning
+    APPROPRIATED_BY = "appropriated_by"  # Elements taken by another
+    RESPONDS_TO = "responds_to"  # Direct theoretical response
+    RESPONDED_TO_BY = "responded_to_by"  # Received response from another
+    SYNTHESIZES = "synthesizes"  # Combines elements from multiple concepts
+    COMPONENT_OF = "component_of"  # Is a component in a synthesis
+
+
+class ProblematicRelation(str, enum.Enum):
+    """How concepts relate in terms of their underlying problematic (Deleuzian)."""
+    SAME = "same"  # Address exactly the same problematic
+    OVERLAPPING = "overlapping"  # Partial overlap in problem space
+    NESTED = "nested"  # One problematic contains the other
+    ADJACENT = "adjacent"  # Related but distinct problematics
+    DIFFERENT = "different"  # Unrelated problematics
+
+
+class WebProximity(str, enum.Enum):
+    """How close concepts are in the web of beliefs (Quinean)."""
+    CORE = "core"  # Central, tightly connected
+    ADJACENT = "adjacent"  # One degree of separation
+    PERIPHERAL = "peripheral"  # Loosely connected
+    DISTANT = "distant"  # Far apart in belief web
+
+
+class ExternalConcept(Base):
+    """
+    Reference to a concept from an external author/work.
+    Allows relating our concepts to concepts from Zuboff, Srnicek, etc.
+    """
+    __tablename__ = "external_concepts"
+
+    id = Column(Integer, primary_key=True)
+
+    # Core identification
+    term = Column(String(255), nullable=False, index=True)
+    author = Column(String(255), index=True)  # "Zuboff", "Srnicek", etc.
+    source_work = Column(String(500))  # "The Age of Surveillance Capitalism"
+    year = Column(Integer)  # Year of publication
+
+    # Our understanding of their concept
+    brief_definition = Column(Text)
+    extended_definition = Column(Text)  # Fuller explanation
+
+    # Paradigm/school classification
+    paradigm = Column(String(255))  # "surveillance studies", "platform capitalism"
+    research_program = Column(String(255))  # Broader research tradition
+    disciplinary_home = Column(String(255))  # "sociology", "political economy", etc.
+
+    # Key claims (JSON array of strings)
+    key_claims = Column(JSON)  # ["claim1", "claim2", ...]
+
+    # Dimensional pre-analysis (can be extracted from documents)
+    dimensional_analysis = Column(JSON)  # Pre-computed dimensional aspects
+
+    # Source documents we extracted this from
+    source_document_ids = Column(ARRAY(Integer))  # IDs of uploaded documents
+
+    # Metadata
+    confidence = Column(Float, default=0.8)  # How confident in our understanding
+    notes = Column(Text)  # Additional notes
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    relationships_as_source = relationship(
+        "ConceptRelationship",
+        foreign_keys="ConceptRelationship.external_concept_id",
+        back_populates="external_concept"
+    )
+
+
+class ConceptRelationship(Base):
+    """
+    Relationship between concepts (internal or external) with dimensional nuance.
+    Captures how concepts from different research programs/paradigms relate.
+    """
+    __tablename__ = "concept_relationships"
+
+    id = Column(Integer, primary_key=True)
+
+    # Source concept (one of these must be set)
+    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=True)
+    external_concept_id = Column(Integer, ForeignKey("external_concepts.id"), nullable=True)
+
+    # Target concept (one of these must be set)
+    related_concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=True)
+    related_external_concept_id = Column(Integer, ForeignKey("external_concepts.id"), nullable=True)
+
+    # Primary relationship type
+    relationship_type = Column(Enum(RelationshipType), nullable=False)
+
+    # Relationship strength and directionality
+    strength = Column(Float, default=0.8)  # How strong is this relationship (0-1)
+    is_symmetric = Column(Boolean, default=False)  # Is the relationship bidirectional?
+
+    # Brief description
+    description = Column(Text)  # Human-readable explanation
+
+    # ==========================================================================
+    # DIMENSIONAL NUANCE (9 Philosophical Dimensions)
+    # ==========================================================================
+
+    # Sellarsian Dimension (The "Given" / Foundational Claims)
+    sellarsian = Column(JSON)
+    # Structure: {
+    #   "shared_givens": ["what both take for granted"],
+    #   "contested_givens": ["where one questions the other's foundations"],
+    #   "givenness_conflict": "description of foundational disagreement"
+    # }
+
+    # Brandomian Dimension (Inferential Commitments)
+    brandomian = Column(JSON)
+    # Structure: {
+    #   "shared_commitments": ["what using both commits you to"],
+    #   "conflicting_commitments": ["where commitments clash"],
+    #   "entitlement_transfer": true/false - does entitlement to one give entitlement to other?
+    # }
+
+    # Deleuzian Dimension (Problematics)
+    deleuzian = Column(JSON)
+    # Structure: {
+    #   "problematic_relation": "same|overlapping|nested|adjacent|different",
+    #   "shared_tension": "description of shared problem/tension",
+    #   "divergent_responses": "how they respond differently to same problem"
+    # }
+
+    # Hacking Dimension (Reasoning Styles)
+    hacking = Column(JSON)
+    # Structure: {
+    #   "shared_styles": ["historical", "structural", etc.],
+    #   "style_conflict": "description of reasoning style incompatibility",
+    #   "compatibility": "high|medium|low|incompatible"
+    # }
+
+    # Bachelardian Dimension (Rupture/Continuity)
+    bachelardian = Column(JSON)
+    # Structure: {
+    #   "rupture_direction": "A→B" or "B→A" or null,
+    #   "what_is_ruptured": "what framework/assumption is broken",
+    #   "continuity_despite_rupture": "what remains continuous"
+    # }
+
+    # Quinean Dimension (Web of Beliefs)
+    quinean = Column(JSON)
+    # Structure: {
+    #   "web_proximity": "core|adjacent|peripheral|distant",
+    #   "shared_inferences": ["inference patterns in common"],
+    #   "inferential_bridges": ["how to get from one to other"]
+    # }
+
+    # Carey Dimension (Conceptual Combination/Components)
+    carey = Column(JSON)
+    # Structure: {
+    #   "shared_components": ["component concepts in common"],
+    #   "compositional_relation": "overlapping|disjoint|nested|emergent",
+    #   "combination_notes": "how they combine or fail to"
+    # }
+
+    # Blumenberg Dimension (Metaphorical Grounds)
+    blumenberg = Column(JSON)
+    # Structure: {
+    #   "shared_metaphors": ["mining", "harvesting", etc.],
+    #   "metaphor_conflict": "where metaphorical grounds clash",
+    #   "root_metaphor_relation": "description"
+    # }
+
+    # Canguilhem Dimension (Norms/Values/Interests)
+    canguilhem = Column(JSON)
+    # Structure: {
+    #   "shared_interests": ["whose interests both serve"],
+    #   "interest_conflict": "where normative commitments clash",
+    #   "normative_stance_relation": "aligned|divergent|opposed"
+    # }
+
+    # ==========================================================================
+    # Metadata and Provenance
+    # ==========================================================================
+
+    # How was this relationship identified?
+    source_type = Column(String(50))  # "manual", "llm_extracted", "document_analysis"
+    source_document_id = Column(Integer)  # If extracted from a document
+
+    # Confidence in this relationship
+    confidence = Column(Float, default=0.8)
+
+    # Notes
+    notes = Column(Text)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Ensure valid source/target combinations
+    __table_args__ = (
+        CheckConstraint(
+            '(CASE WHEN concept_id IS NOT NULL THEN 1 ELSE 0 END + '
+            'CASE WHEN external_concept_id IS NOT NULL THEN 1 ELSE 0 END) = 1',
+            name='single_source_concept'
+        ),
+        CheckConstraint(
+            '(CASE WHEN related_concept_id IS NOT NULL THEN 1 ELSE 0 END + '
+            'CASE WHEN related_external_concept_id IS NOT NULL THEN 1 ELSE 0 END) = 1',
+            name='single_target_concept'
+        ),
+    )
+
+    # Relationships
+    concept = relationship("Concept", foreign_keys=[concept_id])
+    external_concept = relationship("ExternalConcept", foreign_keys=[external_concept_id], back_populates="relationships_as_source")
+    related_concept = relationship("Concept", foreign_keys=[related_concept_id])
+    related_external_concept = relationship("ExternalConcept", foreign_keys=[related_external_concept_id])
