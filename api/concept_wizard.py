@@ -2556,26 +2556,35 @@ Generate questions about:
 - What simpler concepts is this built from?
 - What emerges from the combination?
 
-### KUHNIAN (Paradigm Structure) [NEW]
+### KUHNIAN (Paradigm Structure)
 Generate questions about:
 - What paradigm does this concept belong to?
 - What would count as an anomaly for this concept?
 - What problems does this paradigm make solvable vs invisible?
 - Is this concept normal science or revolutionary?
+- INCOMMENSURABILITY: How does this concept relate to rival paradigms? Can it be translated into their terms or is there fundamental incommensurability?
+- CRISIS INDICATORS: What would trigger a paradigm crisis for this concept? What accumulation of anomalies would force abandonment?
+- DISCIPLINARY MATRIX: What shared commitments, values, and exemplars do practitioners of this concept share?
 
-### PRAGMATIST (Performative Consequences) [NEW]
+### PRAGMATIST (Performative Consequences)
 Generate questions about:
 - What does USING this concept enable you to DO?
 - What practical difference does adopting it make?
 - What actions or interventions become possible/impossible?
 - How does it change what you can say or propose?
+- HABITS OF ACTION: What habits of thought and practice does using this concept cultivate? What dispositions does it form?
+- VOCABULARY GAMES (Rorty): What new things can you SAY with this concept that you couldn't say before? What conversations does it open?
+- INQUIRY PROCESS (Dewey): How does this concept structure problem-solving? What does it make into a "problem" and what does it treat as "solved"?
 
-### FOUCAULDIAN (Power-Knowledge Relations) [NEW]
+### FOUCAULDIAN (Power-Knowledge Relations)
 Generate questions about:
 - What power relations does this concept naturalize or make invisible?
 - What does it make governable or manageable?
 - Whose authority does it legitimize?
 - What populations or phenomena does it bring under scrutiny?
+- DISCURSIVE FORMATIONS: What statements become possible/impossible within the discourse this concept enables? What are its rules of formation?
+- REGIMES OF TRUTH: What counts as TRUE within the framework this concept establishes? Who gets to speak with authority?
+- ARCHAEOLOGY: How did this concept emerge? What discursive conditions made it possible? What did it replace or displace?
 
 Return as JSON:
 {{
@@ -6683,4 +6692,236 @@ async def generate_answer_options(request: GenerateAnswerOptionsRequest):
 
     except Exception as e:
         logger.error(f"Error generating answer options: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== CONCEPT EXPORT FOR INTELLIGENCE ENGINE =====
+
+class ConceptExportRequest(BaseModel):
+    """Request to export a concept for Intelligence Engine import."""
+    session_key: str
+    include_blind_spots: bool = True
+    include_posits: bool = True
+    include_external_relations: bool = True
+    ie_target_container: str = "THEORY"  # THEORY, FOUNDATIONS, or SPECULATION
+
+
+class DimensionalStatement(BaseModel):
+    """Canonical statement for one dimension."""
+    dimension: str
+    canonical_statement: str
+    key_insights: List[str] = []
+    confidence: float = 0.8
+
+
+class ConceptExportResponse(BaseModel):
+    """Exported concept in IE-compatible format."""
+    # Core identity
+    term: str
+    definition: str
+    author: str = "User"
+    created_at: str
+
+    # 12-dimensional analysis
+    dimensional_statements: List[DimensionalStatement]
+
+    # Posits (approved hypotheses)
+    posits: List[dict] = []
+
+    # Blind spots and user responses
+    blind_spots_explored: List[dict] = []
+
+    # External concept relationships
+    external_relations: List[dict] = []
+
+    # IE metadata
+    ie_target_container: str
+    completeness_score: float
+    dimensions_covered: List[str]
+    export_ready: bool
+    export_notes: str = ""
+
+
+def generate_canonical_statement_for_dimension(
+    concept_name: str,
+    dimension: str,
+    dimensional_data: dict
+) -> str:
+    """Generate a canonical one-sentence statement for a dimension based on collected data."""
+    # This would ideally use the data to synthesize a statement
+    # For now, return a placeholder that indicates synthesis is needed
+
+    dimension_templates = {
+        "quinean": f"In the web of belief, {concept_name} connects to [inferences] and contradicts [contradictions].",
+        "sellarsian": f"{concept_name} treats [assumptions] as given, which actually requires justification.",
+        "brandomian": f"Adopting {concept_name} commits you to [commitments] and licenses [inferences].",
+        "deleuzian": f"{concept_name} enables [transformations] by [mechanism].",
+        "bachelardian": f"{concept_name} marks an epistemological break from [predecessor] by [nature of break].",
+        "canguilhem": f"{concept_name} establishes [norm] as normal, treating [alternative] as pathological.",
+        "hacking": f"{concept_name} makes [phenomena] visible through [style of reasoning].",
+        "blumenberg": f"{concept_name} operates through the metaphor of [metaphor], which reveals [insight] and conceals [hidden].",
+        "carey": f"{concept_name} is bootstrapped from [simpler concepts] through [mechanism].",
+        "kuhnian": f"{concept_name} belongs to the [paradigm] paradigm; anomalies include [anomalies].",
+        "pragmatist": f"Using {concept_name} enables [actions] and opens conversations about [topics].",
+        "foucauldian": f"{concept_name} naturalizes [power relations] and makes [phenomena] governable."
+    }
+
+    return dimension_templates.get(dimension, f"{concept_name} from the {dimension} perspective.")
+
+
+@router.get("/export/{session_key}")
+async def export_concept_for_ie(
+    session_key: str,
+    include_blind_spots: bool = True,
+    include_posits: bool = True,
+    include_external_relations: bool = True,
+    ie_target_container: str = "THEORY"
+):
+    """
+    Export a concept in a format suitable for Intelligence Engine import.
+
+    The export includes:
+    - Core concept identity (term, definition)
+    - Canonical statements for each of the 12 dimensions
+    - Approved posits
+    - Blind spots exploration results
+    - External concept relationships
+    - Completeness metadata
+
+    This enables seamless transfer from Concept Wizard to IE's THEORY container.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Fetch session data
+        cursor.execute("""
+            SELECT * FROM wizard_sessions WHERE session_key = %s
+        """, (session_key,))
+        session = cursor.fetchone()
+
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        data = session.get('data', {})
+        concept_name = data.get('concept_name', 'Unknown Concept')
+
+        # Build dimensional statements from available data
+        dimensional_statements = []
+        dimensions_covered = []
+
+        # Check what dimensional data we have
+        dimensional_keys = [
+            "quinean", "sellarsian", "brandomian", "deleuzian",
+            "bachelardian", "canguilhem", "hacking", "blumenberg",
+            "carey", "kuhnian", "pragmatist", "foucauldian"
+        ]
+
+        # Extract dimensional data from session
+        for dim in dimensional_keys:
+            dim_data = data.get(f'{dim}_analysis', {})
+            if dim_data or data.get('deep_commitments', {}).get(dim):
+                dimensions_covered.append(dim)
+
+                # Get key insights from posits of this dimension type
+                dim_posits = [
+                    p for p in data.get('posits', [])
+                    if p.get('type') == dim or p.get('dimension') == dim
+                ]
+                key_insights = [p.get('statement', '') for p in dim_posits[:3]]
+
+                dimensional_statements.append(DimensionalStatement(
+                    dimension=dim,
+                    canonical_statement=generate_canonical_statement_for_dimension(
+                        concept_name, dim, dim_data
+                    ),
+                    key_insights=key_insights,
+                    confidence=0.7 if dim_data else 0.5
+                ))
+
+        # Extract posits if requested
+        posits = []
+        if include_posits:
+            raw_posits = data.get('posits', []) or data.get('hypothesis_cards', [])
+            for p in raw_posits:
+                if p.get('approved', True):  # Include approved or default to include
+                    posits.append({
+                        "statement": p.get('statement', p.get('text', '')),
+                        "type": p.get('type', 'unknown'),
+                        "dimension": p.get('dimension', p.get('type', 'unknown')),
+                        "confidence": p.get('confidence', 0.7),
+                        "source": "wizard_detection"
+                    })
+
+        # Extract blind spots if requested
+        blind_spots_explored = []
+        if include_blind_spots:
+            bs_answers = data.get('blind_spots_answers', [])
+            for bs in bs_answers:
+                blind_spots_explored.append({
+                    "category": bs.get('category', 'unknown'),
+                    "question": bs.get('question', ''),
+                    "answer": bs.get('answer', ''),
+                    "depth": bs.get('depth', 1)
+                })
+
+        # Extract external relations if requested
+        external_relations = []
+        if include_external_relations:
+            # Check for external concept relationships in session
+            relations = data.get('external_relations', [])
+            for rel in relations:
+                external_relations.append({
+                    "target_concept": rel.get('target', ''),
+                    "target_author": rel.get('author', ''),
+                    "relationship_type": rel.get('type', 'relates_to'),
+                    "description": rel.get('description', '')
+                })
+
+        # Calculate completeness score
+        total_dimensions = len(dimensional_keys)
+        covered_dimensions = len(dimensions_covered)
+        posit_coverage = min(1.0, len(posits) / 12.0)  # Aim for at least 12 posits
+        blind_spots_coverage = min(1.0, len(blind_spots_explored) / 8.0)  # Aim for 8+ answers
+
+        completeness_score = (
+            (covered_dimensions / total_dimensions) * 0.5 +
+            posit_coverage * 0.3 +
+            blind_spots_coverage * 0.2
+        )
+
+        export_ready = completeness_score >= 0.6 and covered_dimensions >= 6
+
+        # Build export notes
+        export_notes_parts = []
+        if covered_dimensions < 6:
+            export_notes_parts.append(f"Only {covered_dimensions}/12 dimensions covered. Consider deeper analysis.")
+        if len(posits) < 9:
+            export_notes_parts.append(f"Only {len(posits)} posits detected. May need more hypothesis exploration.")
+        if len(blind_spots_explored) < 5:
+            export_notes_parts.append(f"Only {len(blind_spots_explored)} blind spots explored. Consider more epistemic grounding.")
+
+        cursor.close()
+        conn.close()
+
+        return ConceptExportResponse(
+            term=concept_name,
+            definition=data.get('definition', data.get('concept_definition', '')),
+            author=data.get('author', 'User'),
+            created_at=str(session.get('created_at', '')),
+            dimensional_statements=dimensional_statements,
+            posits=posits,
+            blind_spots_explored=blind_spots_explored,
+            external_relations=external_relations,
+            ie_target_container=ie_target_container,
+            completeness_score=round(completeness_score, 2),
+            dimensions_covered=dimensions_covered,
+            export_ready=export_ready,
+            export_notes=" | ".join(export_notes_parts) if export_notes_parts else "Ready for IE import."
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting concept: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

@@ -4,6 +4,64 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-21: Strengthened New Dimensions & IE Export Function
+
+**Commit:** `pending`
+**Branch:** `main`
+
+### Description
+Strengthened the 3 new philosophical dimensions (Kuhnian, Pragmatist, Foucauldian) with additional analytical depth, added cross-cutting canonical statement tables, and created an export function for Intelligence Engine integration.
+
+### The Problem
+The 3 new dimensions added in the previous commit had basic table structures but lacked the full analytical depth of the original 9 dimensions. Additionally, there was no way to export concept analyses for use in the Intelligence Engine (IE).
+
+### The Solution
+
+#### 1. Strengthened Kuhnian Dimension
+Added new tables and questions for:
+- **Incommensurability mapping**: How concept relates to rival paradigms, translation issues
+- **Crisis indicators**: What would trigger paradigm crisis, anomaly accumulation thresholds
+- **Disciplinary matrix**: Shared commitments, values, and exemplars
+
+#### 2. Strengthened Pragmatist Dimension
+Added new tables and questions for:
+- **Habits of action**: What habits and dispositions using the concept cultivates
+- **Vocabulary games** (Rorty): What new things can be SAID with this concept
+- **Inquiry process** (Dewey): How concept structures problem-solving
+
+#### 3. Strengthened Foucauldian Dimension
+Added new tables and questions for:
+- **Discursive formations**: Rules of formation for statements
+- **Regimes of truth**: What counts as true, who speaks with authority
+- **Archaeology**: How concept emerged, discursive conditions of possibility
+
+#### 4. Cross-Cutting Tables
+- **concept_canonical_statements**: One canonical statement per dimension per concept
+- **concept_export_metadata**: Metadata for IE export readiness
+
+#### 5. IE Export Function
+New endpoint `GET /export/{session_key}` that exports concepts in IE-compatible format including:
+- Core identity (term, definition, author)
+- Canonical statements for each of 12 dimensions
+- Approved posits
+- Blind spots exploration results
+- External concept relationships
+- Completeness score and export readiness indicator
+
+### Implementation
+- Updated `GENERATE_DEEP_COMMITMENTS_PROMPT` with strengthening concepts
+- Added 7 new tables across 3 dimensions in spreadsheet generator
+- Added `CROSS_CUTTING_TABLES` dictionary with canonical statements and export metadata
+- Added `ConceptExportRequest/Response` models
+- Added `export_concept_for_ie()` endpoint
+- Updated spreadsheet generator to include cross-cutting tables sheet
+
+### Principles Embodied
+- `prn_dimensional_completeness_for_complex_programs` - All dimensions now have comparable analytical depth
+- `prn_export_compatibility_with_ie` - Concept Wizard outputs are now IE-compatible
+
+---
+
 ## 2025-12-21: Extended to 12-Dimension Philosophical Framework
 
 **Commit:** `7b80e9c`

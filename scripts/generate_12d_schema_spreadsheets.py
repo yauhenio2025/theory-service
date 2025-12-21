@@ -465,7 +465,10 @@ DIMENSION_INFO = {
             'What paradigm does this concept belong to?',
             'What are the exemplary instances of this concept?',
             'What would count as an anomaly - something the concept cannot handle?',
-            'Is this concept normal science or potentially revolutionary?'
+            'Is this concept normal science or potentially revolutionary?',
+            'INCOMMENSURABILITY: Can this concept be translated into rival paradigms, or is there fundamental incommensurability?',
+            'CRISIS INDICATORS: What would trigger a paradigm crisis? What accumulation of anomalies would force abandonment?',
+            'DISCIPLINARY MATRIX: What shared commitments, values, and exemplars do practitioners share?'
         ],
         'tables': [
             {
@@ -505,6 +508,33 @@ DIMENSION_INFO = {
                     ('resolution_attempts', 'TEXT', 'How anomaly has been addressed'),
                     ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
                 ]
+            },
+            {
+                'name': 'concept_incommensurability',
+                'description': 'How concept relates to rival paradigms - translation issues',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('rival_paradigm', 'TEXT', 'Name of the rival paradigm'),
+                    ('rival_concept', 'TEXT', 'Equivalent concept in rival paradigm'),
+                    ('translation_possible', 'BOOLEAN', 'Can this concept be translated?'),
+                    ('what_is_lost', 'TEXT', 'What is lost in translation'),
+                    ('fundamental_disagreement', 'TEXT', 'Where paradigms cannot agree'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
+            },
+            {
+                'name': 'concept_crisis_indicators',
+                'description': 'What would trigger paradigm crisis for this concept',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('crisis_trigger', 'TEXT', 'What would trigger crisis'),
+                    ('anomaly_accumulation', 'TEXT', 'What pattern of anomalies would be fatal'),
+                    ('competing_paradigm', 'TEXT', 'What paradigm might replace this'),
+                    ('crisis_probability', 'ENUM', 'unlikely/possible/likely/imminent'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
             }
         ],
         'color': 'kuhnian'
@@ -519,7 +549,10 @@ DIMENSION_INFO = {
             'What does using this concept enable you to DO?',
             'What practical difference does adopting it make?',
             'What interventions or actions become possible?',
-            'What proposals can you make with this concept that you could not make without it?'
+            'What proposals can you make with this concept that you could not make without it?',
+            'HABITS OF ACTION: What habits of thought and practice does using this concept cultivate?',
+            'VOCABULARY GAMES (Rorty): What new things can you SAY with this concept that you could not say before?',
+            'INQUIRY PROCESS (Dewey): How does this concept structure problem-solving? What does it make into a "problem"?'
         ],
         'tables': [
             {
@@ -557,6 +590,45 @@ DIMENSION_INFO = {
                     ('effectiveness', 'ENUM', 'highly_effective/moderately_effective/questionable'),
                     ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
                 ]
+            },
+            {
+                'name': 'concept_habits_of_action',
+                'description': 'Habits and dispositions using the concept cultivates',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('habit_description', 'TEXT', 'The habit of thought or practice'),
+                    ('disposition_formed', 'TEXT', 'What disposition it creates'),
+                    ('how_cultivated', 'TEXT', 'How using the concept forms this habit'),
+                    ('domain', 'TEXT', 'Domain where habit manifests'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
+            },
+            {
+                'name': 'concept_vocabulary_games',
+                'description': 'What new things can be SAID with this concept (Rorty)',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('new_statement_possible', 'TEXT', 'What you can now say'),
+                    ('previously_unsayable', 'BOOLEAN', 'Was this truly unsayable before?'),
+                    ('conversation_opened', 'TEXT', 'What conversation this enables'),
+                    ('vocabulary_extended', 'TEXT', 'How vocabulary is extended'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
+            },
+            {
+                'name': 'concept_inquiry_process',
+                'description': 'How concept structures problem-solving (Dewey)',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('problematic_situation', 'TEXT', 'What becomes a "problem"'),
+                    ('inquiry_method', 'TEXT', 'How inquiry proceeds'),
+                    ('what_counts_as_solved', 'TEXT', 'What counts as resolution'),
+                    ('inquiry_blocked', 'TEXT', 'What inquiry this blocks'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
             }
         ],
         'color': 'pragmatist'
@@ -571,7 +643,10 @@ DIMENSION_INFO = {
             'What power relations does this concept naturalize or make invisible?',
             'What does this concept make governable or manageable?',
             'Whose authority does this concept legitimize?',
-            'What populations or phenomena does it bring under scrutiny?'
+            'What populations or phenomena does it bring under scrutiny?',
+            'DISCURSIVE FORMATIONS: What statements become possible/impossible? What are the rules of formation?',
+            'REGIMES OF TRUTH: What counts as TRUE within this framework? Who speaks with authority?',
+            'ARCHAEOLOGY: How did this concept emerge? What discursive conditions made it possible?'
         ],
         'tables': [
             {
@@ -611,9 +686,87 @@ DIMENSION_INFO = {
                     ('subject_positions_created', 'TEXT', 'New subject positions enabled'),
                     ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
                 ]
+            },
+            {
+                'name': 'concept_discursive_formations',
+                'description': 'Rules of formation for statements enabled by concept',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('statement_type', 'TEXT', 'Type of statement enabled'),
+                    ('formation_rule', 'TEXT', 'Rule governing statement formation'),
+                    ('what_excluded', 'TEXT', 'What statements become impossible'),
+                    ('objects_constituted', 'TEXT', 'What objects the discourse creates'),
+                    ('enunciative_positions', 'TEXT', 'Who can speak from where'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
+            },
+            {
+                'name': 'concept_regimes_of_truth',
+                'description': 'What counts as true within concept framework',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('truth_criterion', 'TEXT', 'What counts as true'),
+                    ('authorized_speakers', 'TEXT', 'Who speaks with authority'),
+                    ('truth_procedures', 'TEXT', 'Procedures for establishing truth'),
+                    ('excluded_knowledge', 'TEXT', 'What knowledge is disqualified'),
+                    ('power_knowledge_nexus', 'TEXT', 'How truth and power interlock'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
+            },
+            {
+                'name': 'concept_archaeology',
+                'description': 'How concept emerged - discursive conditions of possibility',
+                'fields': [
+                    ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+                    ('concept_id', 'INTEGER FK', 'Parent concept'),
+                    ('emergence_conditions', 'TEXT', 'Discursive conditions for emergence'),
+                    ('predecessor_concepts', 'TEXT', 'What it replaced or displaced'),
+                    ('epistemic_rupture', 'BOOLEAN', 'Does it mark an epistemic break?'),
+                    ('historical_a_priori', 'TEXT', 'Background conditions of possibility'),
+                    ('archive_location', 'TEXT', 'Where evidence can be found'),
+                    ('confidence', 'FLOAT 0-1', 'Confidence in this claim'),
+                ]
             }
         ],
         'color': 'foucauldian'
+    }
+}
+
+# Cross-cutting tables that span all dimensions
+CROSS_CUTTING_TABLES = {
+    'concept_canonical_statements': {
+        'description': 'Canonical one-sentence statement for each dimension - the essence of the concept from that perspective',
+        'fields': [
+            ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+            ('concept_id', 'INTEGER FK', 'Parent concept'),
+            ('dimension', 'ENUM', 'quinean/sellarsian/brandomian/deleuzian/bachelardian/canguilhem/hacking/blumenberg/carey/kuhnian/pragmatist/foucauldian'),
+            ('canonical_statement', 'TEXT', 'One-sentence canonical statement from this dimension'),
+            ('statement_rationale', 'TEXT', 'Why this captures the dimensional essence'),
+            ('source_type', 'ENUM', 'user_authored/llm_generated/synthesized'),
+            ('confidence', 'FLOAT 0-1', 'Confidence in this statement'),
+            ('version', 'INTEGER', 'Statement version (for tracking evolution)'),
+            ('created_at', 'TIMESTAMP', 'When statement was created'),
+            ('updated_at', 'TIMESTAMP', 'When statement was last modified'),
+        ],
+        'unique_constraint': '(concept_id, dimension)',
+        'purpose': 'Enables quick lookup of what the concept IS from each philosophical perspective. Essential for IE export and LLM consumption.'
+    },
+    'concept_export_metadata': {
+        'description': 'Metadata for exporting concepts to Intelligence Engine',
+        'fields': [
+            ('id', 'SERIAL PRIMARY KEY', 'Unique identifier'),
+            ('concept_id', 'INTEGER FK UNIQUE', 'Parent concept (1:1)'),
+            ('ie_compatible', 'BOOLEAN', 'Ready for IE import?'),
+            ('ie_target_container', 'ENUM', 'THEORY/FOUNDATIONS/SPECULATION'),
+            ('completeness_score', 'FLOAT 0-1', 'How complete is dimensional analysis'),
+            ('dimensions_covered', 'JSON', 'Which dimensions have data'),
+            ('export_ready_date', 'TIMESTAMP', 'When concept became export-ready'),
+            ('last_exported', 'TIMESTAMP', 'When last exported to IE'),
+            ('export_notes', 'TEXT', 'Notes for export process'),
+        ],
+        'purpose': 'Tracks concept readiness for Intelligence Engine integration'
     }
 }
 
@@ -925,6 +1078,68 @@ def create_schema_explanation_spreadsheet():
         ws.column_dimensions['D'].width = 15
         ws.column_dimensions['E'].width = 15
         ws.column_dimensions['F'].width = 15
+
+    # Add Cross-Cutting Tables sheet
+    ws = wb.create_sheet('Cross-Cutting Tables')
+    ws['A1'] = 'CROSS-CUTTING TABLES'
+    ws['A1'].font = Font(bold=True, size=14)
+
+    ws['A3'] = 'These tables span all 12 dimensions and enable concept export to Intelligence Engine.'
+    ws.merge_cells('A3:F3')
+
+    row = 5
+    for table_name, table_info in CROSS_CUTTING_TABLES.items():
+        # Table header
+        ws[f'A{row}'] = table_name
+        ws[f'A{row}'].font = Font(bold=True, size=12)
+        ws[f'A{row}'].fill = PatternFill(start_color='E8F0FE', end_color='E8F0FE', fill_type='solid')
+        ws.merge_cells(f'A{row}:F{row}')
+        row += 1
+
+        # Description
+        ws[f'A{row}'] = 'Description:'
+        ws[f'A{row}'].font = Font(bold=True)
+        ws[f'B{row}'] = table_info['description']
+        ws.merge_cells(f'B{row}:F{row}')
+        row += 1
+
+        # Purpose
+        ws[f'A{row}'] = 'Purpose:'
+        ws[f'A{row}'].font = Font(bold=True)
+        ws[f'B{row}'] = table_info.get('purpose', '')
+        ws.merge_cells(f'B{row}:F{row}')
+        row += 1
+
+        # Unique constraint if present
+        if 'unique_constraint' in table_info:
+            ws[f'A{row}'] = 'Unique Constraint:'
+            ws[f'A{row}'].font = Font(bold=True)
+            ws[f'B{row}'] = table_info['unique_constraint']
+            row += 1
+
+        row += 1
+
+        # Field headers
+        ws[f'A{row}'] = 'Field'
+        ws[f'B{row}'] = 'Type'
+        ws[f'C{row}'] = 'Description'
+        ws[f'A{row}'].font = Font(bold=True)
+        ws[f'B{row}'].font = Font(bold=True)
+        ws[f'C{row}'].font = Font(bold=True)
+        row += 1
+
+        for field_name, field_type, field_desc in table_info['fields']:
+            ws[f'A{row}'] = field_name
+            ws[f'B{row}'] = field_type
+            ws[f'C{row}'] = field_desc
+            row += 1
+
+        row += 2
+
+    ws.column_dimensions['A'].width = 25
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 50
+    ws.column_dimensions['D'].width = 15
 
     # Save
     output_path = '/home/evgeny/Downloads/Concept_Schema_12D_Explanation.xlsx'
