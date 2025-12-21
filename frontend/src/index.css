@@ -6836,6 +6836,26 @@ header h1 {
   color: #4b5563;
 }
 
+/* === NEW EXTENDED DIMENSIONS === */
+
+/* Paradigmatic (Kuhnian) - indigo */
+.hypothesis-card .card-type.posit-indigo {
+  background: rgba(99, 102, 241, 0.15);
+  color: #4f46e5;
+}
+
+/* Performative (Pragmatist) - teal */
+.hypothesis-card .card-type.posit-teal {
+  background: rgba(20, 184, 166, 0.15);
+  color: #0d9488;
+}
+
+/* Power-Relational (Foucauldian) - rose */
+.hypothesis-card .card-type.posit-rose {
+  background: rgba(244, 63, 94, 0.15);
+  color: #e11d48;
+}
+
 /* Dimension badge (shows which philosophical dimension) */
 .hypothesis-card .card-dimension-badge {
   font-size: 0.65rem;

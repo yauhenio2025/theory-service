@@ -70,16 +70,16 @@ SONNET_MAX_OUTPUT = 64000
 
 
 # =============================================================================
-# POSIT TYPE ENUM - 9-Dimension Grounded Typology
+# POSIT TYPE ENUM - 12-Dimension Grounded Typology
 # =============================================================================
 
 class PosItType(str, Enum):
     """
     Types of preliminary posits (claims detected in user's notes).
-    Grounded in the 9-dimensional philosophical framework.
+    Grounded in a 12-dimensional philosophical framework.
 
-    These replace the ad-hoc "hypothesis" types (thesis, assumption, tension, etc.)
-    with a systematic typology tied to our conceptual dimensions.
+    Core 9 dimensions from our conceptual analysis framework,
+    plus 3 additional dimensions for complex research programs.
     """
     # Sellarsian - Manifest vs Scientific image
     DEFINITIONAL = "definitional"  # What the concept IS (manifest/scientific formulation)
@@ -105,6 +105,17 @@ class PosItType(str, Enum):
 
     # Quinean - Web of belief
     POSITIONAL = "positional"  # Where it sits in the belief web
+
+    # === NEW: Extended dimensions for complex research programs ===
+
+    # Kuhnian - Paradigm structure
+    PARADIGMATIC = "paradigmatic"  # How concept relates to paradigm structure
+
+    # Pragmatist - Performative consequences
+    PERFORMATIVE = "performative"  # What using this concept DOES/enables
+
+    # Foucauldian - Power-knowledge relations
+    POWER_RELATIONAL = "power_relational"  # What power relations it naturalizes/contests
 
 
 # Mapping from posit type to display labels and colors
@@ -162,6 +173,25 @@ POSIT_TYPE_METADATA = {
         "description": "Where this sits in belief web",
         "dimension": "Quinean",
         "color": "gray"
+    },
+    # New dimensions for complex research programs
+    PosItType.PARADIGMATIC: {
+        "label": "Paradigmatic",
+        "description": "How this relates to paradigm structure",
+        "dimension": "Kuhnian",
+        "color": "indigo"
+    },
+    PosItType.PERFORMATIVE: {
+        "label": "Performative",
+        "description": "What using this concept DOES",
+        "dimension": "Pragmatist",
+        "color": "teal"
+    },
+    PosItType.POWER_RELATIONAL: {
+        "label": "Power-Relational",
+        "description": "Power relations it naturalizes/contests",
+        "dimension": "Foucauldian",
+        "color": "rose"
     }
 }
 
@@ -1432,8 +1462,10 @@ Based on their answers, pay attention to:
 - Tensions they acknowledged (reveals dialectics they're navigating)
 - Presuppositions they confirmed or rejected (reveals their epistemic stance)
 
-## POSIT CARD TYPOLOGY (9-Dimension Grounded):
+## POSIT CARD TYPOLOGY (12-Dimension Grounded):
 Each posit card has a TYPE grounded in our philosophical framework:
+
+### Core 9 Dimensions:
 
 1. **definitional** (Sellarsian) - What the concept IS in manifest/scientific terms
    Example: "Organic capitalism synthesizes planning and market forms through platform coordination"
@@ -1462,6 +1494,17 @@ Each posit card has a TYPE grounded in our philosophical framework:
 9. **positional** (Quinean) - Where it sits in the belief web
    Example: "Central to understanding contemporary capitalism, peripheral to orthodox Marxism"
 
+### Extended Dimensions (for complex research programs):
+
+10. **paradigmatic** (Kuhnian) - How concept relates to paradigm structure
+    Example: "Paradigm-constitutive for platform studies; anomalous for orthodox Marxist periodization"
+
+11. **performative** (Pragmatist) - What using this concept DOES/enables in practice
+    Example: "Using 'organic capitalism' reframes policy debates from market-vs-state to coordination-vs-autonomy"
+
+12. **power_relational** (Foucauldian) - What power relations it naturalizes or contests
+    Example: "Denaturalizes platform power as 'mere market efficiency'; reveals it as managerial coordination"
+
 ## GENEALOGY INFERENCE (Use User's Revealed Positions):
 You are Claude Opus 4.5 with extensive knowledge of intellectual history.
 USE THIS KNOWLEDGE to HYPOTHESIZE the likely genealogy - but now INFORMED by what the user actually cares about.
@@ -1477,8 +1520,8 @@ Generate a JSON response:
         {{
             "id": "pos_001",
             "content": "A specific claim that addresses what the user revealed they care about",
-            "type": "definitional|inferential|incompatibility|genealogical|transformational|epistemological_break|methodological|normative|positional",
-            "dimension": "Sellarsian|Brandomian|Carey/Blumenberg|Deleuzian|Bachelardian|Hacking|Canguilhem|Quinean",
+            "type": "definitional|inferential|incompatibility|genealogical|transformational|epistemological_break|methodological|normative|positional|paradigmatic|performative|power_relational",
+            "dimension": "Sellarsian|Brandomian|Carey/Blumenberg|Deleuzian|Bachelardian|Hacking|Canguilhem|Quinean|Kuhnian|Pragmatist|Foucauldian",
             "source_excerpts": ["Direct quotes from notes that support this"],
             "informed_by": "Which blind spot answer(s) helped refine this posit",
             "confidence": "high|medium|low",
@@ -1526,12 +1569,17 @@ Generate a JSON response:
 }}
 
 CRITICAL INSTRUCTIONS:
-1. Generate 6-10 posit cards using the 9-TYPE TYPOLOGY above - aim for variety across types
-2. Generate 3-5 genealogy cards linking to SPECIFIC thinkers relevant to user's revealed agenda
-3. Generate 4-6 differentiation cards that clarify distinctions the user is navigating
-4. Each card should reference how blind spots answers informed it
-5. Be SPECIFIC - use the user's actual terminology and concerns from their answers
-6. Ensure posit cards cover different types - don't generate all definitional or all inferential
+1. Generate 10-15 posit cards using the 12-TYPE TYPOLOGY above
+2. ENSURE COVERAGE: Include at least one posit from each of these dimension groups:
+   - Definitional/Inferential/Incompatibility (Sellarsian/Brandomian)
+   - Genealogical/Transformational/Break (Carey/Deleuzian/Bachelardian)
+   - Methodological/Normative/Positional (Hacking/Canguilhem/Quinean)
+   - Paradigmatic/Performative/Power-Relational (Kuhnian/Pragmatist/Foucauldian)
+3. Generate 3-5 genealogy cards linking to SPECIFIC thinkers relevant to user's revealed agenda
+4. Generate 4-6 differentiation cards that clarify distinctions the user is navigating
+5. Each card should reference how blind spots answers informed it
+6. Be SPECIFIC - use the user's actual terminology and concerns from their answers
+7. Don't cluster all cards in one type - spread across dimensions for comprehensive coverage
 
 The cards should feel tailored to this specific user's project, not generic philosophical categories."""
 
@@ -2439,7 +2487,7 @@ The user will validate/correct your hypotheses."""
 
 GENERATE_DEEP_COMMITMENTS_PROMPT = """You are Claude helping a user articulate the deep philosophical commitments of their concept "{concept_name}".
 
-You have accumulated context from their notes, documents, and earlier answers. NOW generate MULTIPLE CHOICE questions that probe the 9 philosophical dimensions.
+You have accumulated context from their notes, documents, and earlier answers. NOW generate MULTIPLE CHOICE questions that probe the 12 philosophical dimensions.
 
 ## ACCUMULATED CONTEXT:
 - Notes Summary: {notes_summary}
@@ -2449,7 +2497,7 @@ You have accumulated context from their notes, documents, and earlier answers. N
 - Dimensional Extraction (from documents): {dimensional_extraction}
 
 ## YOUR TASK:
-Generate 2-3 MC questions for EACH of the 9 philosophical dimensions.
+Generate 2-3 MC questions for EACH of the 12 philosophical dimensions.
 Each question should:
 1. Use YOUR KNOWLEDGE + accumulated context to generate SPECIFIC options
 2. Options must be real thinkers/frameworks/traditions relevant to THIS specific concept
@@ -2507,6 +2555,27 @@ Generate questions about:
 Generate questions about:
 - What simpler concepts is this built from?
 - What emerges from the combination?
+
+### KUHNIAN (Paradigm Structure) [NEW]
+Generate questions about:
+- What paradigm does this concept belong to?
+- What would count as an anomaly for this concept?
+- What problems does this paradigm make solvable vs invisible?
+- Is this concept normal science or revolutionary?
+
+### PRAGMATIST (Performative Consequences) [NEW]
+Generate questions about:
+- What does USING this concept enable you to DO?
+- What practical difference does adopting it make?
+- What actions or interventions become possible/impossible?
+- How does it change what you can say or propose?
+
+### FOUCAULDIAN (Power-Knowledge Relations) [NEW]
+Generate questions about:
+- What power relations does this concept naturalize or make invisible?
+- What does it make governable or manageable?
+- Whose authority does it legitimize?
+- What populations or phenomena does it bring under scrutiny?
 
 Return as JSON:
 {{
@@ -2633,6 +2702,72 @@ Return as JSON:
       ],
       "rationale": "Complex concepts are bootstrapped from simpler ones",
       "allow_multiple": false
+    }},
+    {{
+      "id": "kuhnian_paradigm",
+      "dimension": "kuhnian",
+      "question": "What PARADIGM does {concept_name} belong to?",
+      "options": [
+        {{"value": "paradigm_1", "label": "Paradigm A", "description": "What this paradigm assumes"}},
+        {{"value": "paradigm_2", "label": "Paradigm B", "description": "What this paradigm assumes"}}
+      ],
+      "rationale": "Concepts operate within paradigmatic frameworks",
+      "allow_multiple": false
+    }},
+    {{
+      "id": "kuhnian_anomalies",
+      "dimension": "kuhnian",
+      "question": "What would count as an ANOMALY for {concept_name}?",
+      "options": [
+        {{"value": "anomaly_1", "label": "Anomaly A", "description": "Why this would challenge the concept"}},
+        {{"value": "anomaly_2", "label": "Anomaly B", "description": "Why this would challenge the concept"}}
+      ],
+      "rationale": "Understanding anomalies reveals paradigm boundaries",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "pragmatist_enables",
+      "dimension": "pragmatist",
+      "question": "What does USING {concept_name} enable you to DO?",
+      "options": [
+        {{"value": "action_1", "label": "Action/Intervention A", "description": "How this becomes possible"}},
+        {{"value": "action_2", "label": "Action/Intervention B", "description": "How this becomes possible"}}
+      ],
+      "rationale": "Concepts are tools for action",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "pragmatist_practical",
+      "dimension": "pragmatist",
+      "question": "What PRACTICAL DIFFERENCE does adopting {concept_name} make?",
+      "options": [
+        {{"value": "difference_1", "label": "Difference A", "description": "What changes"}},
+        {{"value": "difference_2", "label": "Difference B", "description": "What changes"}}
+      ],
+      "rationale": "The meaning of a concept lies in its practical effects",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "foucauldian_power",
+      "dimension": "foucauldian",
+      "question": "What POWER RELATIONS does {concept_name} naturalize or make invisible?",
+      "options": [
+        {{"value": "power_1", "label": "Power relation A", "description": "How it's naturalized"}},
+        {{"value": "power_2", "label": "Power relation B", "description": "How it's naturalized"}}
+      ],
+      "rationale": "Concepts embed and legitimize power relations",
+      "allow_multiple": true
+    }},
+    {{
+      "id": "foucauldian_governable",
+      "dimension": "foucauldian",
+      "question": "What does {concept_name} make GOVERNABLE or manageable?",
+      "options": [
+        {{"value": "govern_1", "label": "Population/Phenomenon A", "description": "How it becomes manageable"}},
+        {{"value": "govern_2", "label": "Population/Phenomenon B", "description": "How it becomes manageable"}}
+      ],
+      "rationale": "Concepts are tools of governance and management",
+      "allow_multiple": true
     }}
   ],
   "generation_note": "Brief note about what dimensions had strongest signal from context"

@@ -4,6 +4,43 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-21: Extended to 12-Dimension Philosophical Framework
+
+**Commit:** `449e429`
+**Branch:** `main`
+
+### Description
+Extended the 9-dimension philosophical framework to 12 dimensions by adding Kuhnian, Pragmatist, and Foucauldian dimensions. This provides more comprehensive coverage for analyzing complex research programs.
+
+### The Problem
+The original 9 dimensions (Sellarsian, Brandomian, Deleuzian, Hacking, Bachelardian, Quinean, Carey, Blumenberg, Canguilhem) were excellent for conceptual analysis but missed three important axes:
+- **Paradigm structure** (Kuhn) - What paradigm does the concept belong to? What counts as an anomaly?
+- **Performative consequences** (Pragmatist) - What does USING the concept enable? What practical difference does it make?
+- **Power-knowledge relations** (Foucault) - What power relations does it naturalize? What does it make governable?
+
+### The Solution
+Added 3 new dimensions to both the posit typology and the deep commitments questioning:
+
+| Type | Description | Dimension |
+|------|-------------|-----------|
+| `paradigmatic` | How concept relates to paradigm structure | Kuhnian |
+| `performative` | What using this concept DOES/enables | Pragmatist |
+| `power_relational` | Power relations it naturalizes/contests | Foucauldian |
+
+### Implementation
+- Extended `PosItType` enum from 9 to 12 types
+- Added metadata for new types (indigo, teal, rose colors)
+- Updated `INFORMED_HYPOTHESIS_GENERATION_PROMPT` with new types and examples
+- Updated `GENERATE_DEEP_COMMITMENTS_PROMPT` with 3 new dimension sections and example questions
+- Added coverage validation to ensure posits span all 12 dimensions
+- Added CSS for new posit colors
+
+### Principles Embodied
+- `prn_dimensional_completeness_for_complex_programs` - Complex research programs require analysis across all major philosophical axes
+- Systematic extension of framework to handle paradigm membership, practical effects, and power dynamics
+
+---
+
 ## 2025-12-21: 9-Dimension Grounded Posit Typology
 
 **Commit:** `a417264`
