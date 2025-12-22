@@ -17,8 +17,8 @@ from .database import get_db
 from .concept_analysis_models import (
     AnalyticalDimension, AnalyticalOperation, TheoreticalInfluence,
     AnalyzedConcept, ConceptAnalysis, AnalysisItem, ConceptAnalysisHistory,
-    ItemReasoningScaffold, DimensionType, OutputType, SourceType,
-    WebCentrality, InferenceType, operation_influences
+    ItemReasoningScaffold, ItemRelationship, DimensionType, OutputType, SourceType,
+    WebCentrality, InferenceType, ItemRelationType, RelationshipSource, operation_influences
 )
 
 router = APIRouter(prefix="/concept-analysis", tags=["Concept Analysis"])
@@ -108,6 +108,21 @@ class ReasoningScaffoldResponse(BaseModel):
         from_attributes = True
 
 
+class ItemRelationshipResponse(BaseModel):
+    """Response model for item relationships."""
+    id: int
+    related_item_id: int
+    related_item_content: str
+    relationship_type: str
+    direction: str  # 'outgoing' or 'incoming'
+    confidence: float = 0.8
+    explanation: Optional[str] = None
+    discovered_via: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class AnalysisItemResponse(BaseModel):
     id: int
     item_type: str
@@ -129,6 +144,9 @@ class AnalysisItemResponse(BaseModel):
 
     # Reasoning scaffold (optional, for rich reasoning display)
     reasoning_scaffold: Optional[ReasoningScaffoldResponse] = None
+
+    # Item relationships (linked items)
+    relationships: List[ItemRelationshipResponse] = []
 
     class Config:
         from_attributes = True
@@ -595,12 +613,19 @@ async def get_concept_dimension_analysis(
 
     operation_ids = [op.id for op in dimension.operations]
 
-    # Get analyses
+    # Get analyses with items, scaffolds, and relationships
     analyses_result = await db.execute(
         select(ConceptAnalysis)
         .options(
             selectinload(ConceptAnalysis.operation),
-            selectinload(ConceptAnalysis.items).selectinload(AnalysisItem.reasoning_scaffold)
+            selectinload(ConceptAnalysis.items)
+                .selectinload(AnalysisItem.reasoning_scaffold),
+            selectinload(ConceptAnalysis.items)
+                .selectinload(AnalysisItem.outgoing_relationships)
+                .selectinload(ItemRelationship.target_item),
+            selectinload(ConceptAnalysis.items)
+                .selectinload(AnalysisItem.incoming_relationships)
+                .selectinload(ItemRelationship.source_item),
         )
         .where(
             ConceptAnalysis.concept_id == concept_id,
@@ -608,6 +633,37 @@ async def get_concept_dimension_analysis(
         )
     )
     analyses = analyses_result.scalars().all()
+
+    # Helper to build relationships for an item
+    def build_relationships(item):
+        relationships = []
+        # Outgoing relationships (this item -> other items)
+        for rel in getattr(item, 'outgoing_relationships', []):
+            if rel.is_active:
+                relationships.append(ItemRelationshipResponse(
+                    id=rel.id,
+                    related_item_id=rel.target_item_id,
+                    related_item_content=rel.target_item.content[:100] if rel.target_item else "",
+                    relationship_type=rel.relationship_type.value,
+                    direction='outgoing',
+                    confidence=rel.confidence or 0.8,
+                    explanation=rel.explanation,
+                    discovered_via=rel.discovered_via.value if rel.discovered_via else None,
+                ))
+        # Incoming relationships (other items -> this item)
+        for rel in getattr(item, 'incoming_relationships', []):
+            if rel.is_active:
+                relationships.append(ItemRelationshipResponse(
+                    id=rel.id,
+                    related_item_id=rel.source_item_id,
+                    related_item_content=rel.source_item.content[:100] if rel.source_item else "",
+                    relationship_type=rel.relationship_type.value,
+                    direction='incoming',
+                    confidence=rel.confidence or 0.8,
+                    explanation=rel.explanation,
+                    discovered_via=rel.discovered_via.value if rel.discovered_via else None,
+                ))
+        return relationships
 
     return {
         "dimension": {
@@ -664,7 +720,8 @@ async def get_concept_dimension_analysis(
                             supports_items=item.reasoning_scaffold.supports_items,
                             supported_by_items=item.reasoning_scaffold.supported_by_items,
                             tension_with_items=item.reasoning_scaffold.tension_with_items,
-                        ) if item.reasoning_scaffold else None
+                        ) if item.reasoning_scaffold else None,
+                        relationships=build_relationships(item)
                     )
                     for item in sorted(a.items, key=lambda x: x.sequence_order)
                 ]

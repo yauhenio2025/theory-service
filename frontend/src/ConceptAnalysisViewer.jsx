@@ -241,7 +241,7 @@ function CentralityBadge({ centrality }) {
 }
 
 // Reasoning Scaffold Display - The Quinean intermediate layer
-function ReasoningScaffoldDisplay({ scaffold, itemContent }) {
+function ReasoningScaffoldDisplay({ scaffold, itemContent, relationships = [], onNavigateToItem }) {
   const [expanded, setExpanded] = useState(false)
 
   if (!scaffold) return null
@@ -492,24 +492,115 @@ function ReasoningScaffoldDisplay({ scaffold, itemContent }) {
             </div>
           )}
 
-          {/* Dependent Claims */}
-          {scaffold.dependent_claims?.length > 0 && (
+          {/* Relationships - linked items from the knowledge web */}
+          {relationships?.length > 0 && (
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                Depends On
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                {scaffold.dependent_claims.map((claim, i) => (
-                  <span key={i} style={{
-                    backgroundColor: '#e8e8e8',
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: '4px',
-                    fontSize: '0.75rem',
-                  }}>
-                    {claim}
-                  </span>
-                ))}
-              </div>
+              {/* Group relationships by type */}
+              {(() => {
+                const relationshipLabels = {
+                  depends_on: { label: 'Depends On', color: '#1565C0', icon: '⬆' },
+                  supports: { label: 'Supported By', color: '#2E7D32', icon: '✓' },
+                  contradicts: { label: 'Contradicts', color: '#c62828', icon: '✗' },
+                  tension_with: { label: 'In Tension With', color: '#E65100', icon: '⚡' },
+                  enables: { label: 'Enables', color: '#7B1FA2', icon: '→' },
+                  supersedes: { label: 'Supersedes', color: '#455A64', icon: '↑' },
+                  specializes: { label: 'Specializes', color: '#00838F', icon: '⊂' },
+                  generalizes: { label: 'Generalizes', color: '#5D4037', icon: '⊃' },
+                }
+
+                // Group by relationship type
+                const grouped = relationships.reduce((acc, rel) => {
+                  const key = rel.relationship_type
+                  if (!acc[key]) acc[key] = []
+                  acc[key].push(rel)
+                  return acc
+                }, {})
+
+                return Object.entries(grouped).map(([type, rels]) => {
+                  const config = relationshipLabels[type] || { label: type, color: '#666', icon: '•' }
+                  return (
+                    <div key={type} style={{ marginBottom: '0.75rem' }}>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: '#666',
+                        textTransform: 'uppercase',
+                        marginBottom: '0.35rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}>
+                        <span style={{ color: config.color }}>{config.icon}</span>
+                        {config.label}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        {rels.map((rel) => (
+                          <div
+                            key={rel.id}
+                            onClick={() => onNavigateToItem && onNavigateToItem(rel.related_item_id)}
+                            style={{
+                              backgroundColor: '#fff',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '4px',
+                              borderLeft: `3px solid ${config.color}`,
+                              cursor: onNavigateToItem ? 'pointer' : 'default',
+                              transition: 'background-color 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (onNavigateToItem) e.currentTarget.style.backgroundColor = '#f0f4ff'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#fff'
+                            }}
+                          >
+                            <div style={{ fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                              {rel.related_item_content}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem', color: '#888', flexWrap: 'wrap' }}>
+                              <span style={{
+                                backgroundColor: rel.direction === 'outgoing' ? '#e3f2fd' : '#fce4ec',
+                                color: rel.direction === 'outgoing' ? '#1565C0' : '#c2185b',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '3px',
+                              }}>
+                                {rel.direction === 'outgoing' ? '→ outgoing' : '← incoming'}
+                              </span>
+                              {rel.discovered_via && (
+                                <span style={{
+                                  backgroundColor: '#e8e8e8',
+                                  padding: '0.1rem 0.4rem',
+                                  borderRadius: '3px',
+                                }}>
+                                  {rel.discovered_via.replace('_', ' ')}
+                                </span>
+                              )}
+                              {rel.confidence && rel.confidence < 1 && (
+                                <span style={{
+                                  backgroundColor: '#fff3e0',
+                                  color: '#E65100',
+                                  padding: '0.1rem 0.4rem',
+                                  borderRadius: '3px',
+                                }}>
+                                  {Math.round(rel.confidence * 100)}% conf
+                                </span>
+                              )}
+                            </div>
+                            {rel.explanation && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                color: '#666',
+                                fontStyle: 'italic',
+                                marginTop: '0.35rem'
+                              }}>
+                                {rel.explanation}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )}
         </div>
@@ -782,6 +873,7 @@ function OperationSection({ operation, analysis, colors }) {
                     {items.map((item, idx) => (
                       <div
                         key={item.id || idx}
+                        data-item-id={item.id}
                         style={{
                           padding: '0.75rem 1rem',
                           backgroundColor: '#fff',
@@ -806,8 +898,24 @@ function OperationSection({ operation, analysis, colors }) {
                             {item.observation_proximity != null && <span>Observation Proximity: <strong>{Math.round(item.observation_proximity * 100)}%</strong></span>}
                           </div>
                         )}
-                        {item.reasoning_scaffold && (
-                          <ReasoningScaffoldDisplay scaffold={item.reasoning_scaffold} itemContent={item.content} />
+                        {(item.reasoning_scaffold || item.relationships?.length > 0) && (
+                          <ReasoningScaffoldDisplay
+                            scaffold={item.reasoning_scaffold}
+                            itemContent={item.content}
+                            relationships={item.relationships}
+                            onNavigateToItem={(itemId) => {
+                              // Find and highlight the related item
+                              const el = document.querySelector(`[data-item-id="${itemId}"]`)
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                el.style.transition = 'background-color 0.3s ease'
+                                el.style.backgroundColor = '#fff9c4'
+                                setTimeout(() => {
+                                  el.style.backgroundColor = ''
+                                }, 2000)
+                              }
+                            }}
+                          />
                         )}
                       </div>
                     ))}

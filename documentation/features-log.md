@@ -4,6 +4,65 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-22: Item-to-Item Relationship System
+
+**Commit:** (pending)
+**Branch:** `main`
+
+### Description
+Added proper item-to-item relationships with foreign keys, replacing the previous JSON text arrays in reasoning scaffolds. This enables building a real knowledge web where items can reference each other with typed relationships like DEPENDS_ON, SUPPORTS, CONTRADICTS, etc.
+
+### The Problem
+The previous `dependent_claims` field in ItemReasoningScaffold was just a JSON array of text strings with no actual links to other items. This meant:
+1. No way to navigate to dependent items
+2. No way to update relationships when items change
+3. No provenance tracking (how was this relationship discovered?)
+4. No real-world population strategy
+
+### The Solution
+
+#### 1. ItemRelationship Junction Table
+New model with proper foreign keys:
+- `source_item_id` / `target_item_id`: Links to AnalysisItem
+- `relationship_type`: Enum with 8 types (depends_on, supports, contradicts, tension_with, enables, supersedes, specializes, generalizes)
+- `discovered_via`: Provenance tracking (wizard_generated, evidence_extracted, llm_inferred, user_curated, system_detected)
+- `confidence`: Float 0-1
+- `explanation`: Why this relationship holds
+- `evidence_fragment_id`: Optional link to evidence source
+
+#### 2. Bidirectional Relationships
+Items track both outgoing and incoming relationships:
+- `outgoing_relationships`: What this item relates to
+- `incoming_relationships`: What relates to this item
+
+#### 3. Frontend Display
+Updated ReasoningScaffoldDisplay component to:
+- Show relationships grouped by type with color-coded icons
+- Display direction (outgoing/incoming) with badges
+- Show provenance source and confidence
+- Make items clickable to navigate and highlight
+
+#### 4. Population Strategies Documentation
+Created comprehensive documentation covering 5 population strategies:
+1. **Wizard-Generated**: Inferred from structural patterns during initial setup
+2. **Evidence-Extracted**: When processing external sources (articles, papers, news)
+3. **LLM-Inferred**: Batch inference across all items
+4. **User-Curated**: Manual relationship creation
+5. **System-Detected**: Automatic detection from content references
+
+### Key Files
+- `api/concept_analysis_models.py`: ItemRelationType, RelationshipSource enums, ItemRelationship model
+- `api/concept_analysis_router.py`: Updated to return relationships with items
+- `scripts/seed_concept_analysis.py`: Sample relationships for testing
+- `frontend/src/ConceptAnalysisViewer.jsx`: Updated ReasoningScaffoldDisplay component
+- `documentation/RELATIONSHIP_POPULATION_STRATEGIES.md`: Comprehensive strategy guide
+
+### Principles Applied
+- `prn_provenance_transparency`: Every relationship tracks how it was discovered
+- `prn_evidence_driven_concept_refinement`: Multiple pathways to populate relationships from real-world sources
+
+---
+
 ## 2025-12-22: Quinean Intermediate Reasoning Layer
 
 **Commit:** `0b9d040`

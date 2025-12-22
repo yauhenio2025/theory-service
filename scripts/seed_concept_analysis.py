@@ -18,8 +18,8 @@ from sqlalchemy.orm import sessionmaker
 from api.concept_analysis_models import (
     Base, AnalyticalDimension, TheoreticalInfluence, AnalyticalOperation,
     AnalyzedConcept, ConceptAnalysis, AnalysisItem, ItemReasoningScaffold,
-    DimensionType, OutputType, SourceType, WebCentrality, InferenceType,
-    operation_influences
+    ItemRelationship, DimensionType, OutputType, SourceType, WebCentrality,
+    InferenceType, ItemRelationType, RelationshipSource, operation_influences
 )
 
 # Database URL
@@ -875,7 +875,8 @@ def seed_database():
         if existing:
             print("Database already seeded. Clearing and re-seeding...")
             # Clear existing data in reverse dependency order
-            session.query(ItemReasoningScaffold).delete()  # Delete scaffolds first (FK to items)
+            session.query(ItemRelationship).delete()       # Delete relationships first (FK to items)
+            session.query(ItemReasoningScaffold).delete()  # Delete scaffolds (FK to items)
             session.query(AnalysisItem).delete()
             session.query(ConceptAnalysis).delete()
             session.query(AnalyzedConcept).delete()
@@ -1014,6 +1015,72 @@ def seed_database():
                                 # Create reasoning scaffold if sample data exists
                                 create_reasoning_scaffold(session, analysis_item, content)
 
+        # 6. Create sample item relationships
+        print("Creating item relationships...")
+
+        # Helper to find item by content substring
+        def find_item(content_substr):
+            return session.query(AnalysisItem).filter(
+                AnalysisItem.content.contains(content_substr)
+            ).first()
+
+        # Define sample relationships
+        SAMPLE_RELATIONSHIPS = [
+            # The semiconductor inference DEPENDS_ON the infrastructure ownership inference
+            {
+                'source': 'domestic semiconductor manufacturing',
+                'target': 'national ownership requirements',
+                'type': ItemRelationType.DEPENDS_ON,
+                'explanation': 'Semiconductor investment follows from the broader principle that critical infrastructure requires national ownership for sovereignty.',
+            },
+            # The backward inference (state legitimacy) SUPPORTS the forward inferences
+            {
+                'source': 'States have legitimate interests',
+                'target': 'domestic semiconductor manufacturing',
+                'type': ItemRelationType.SUPPORTS,
+                'explanation': 'If states have legitimate tech interests (transcendental condition), then specific investment inferences follow.',
+            },
+            {
+                'source': 'States have legitimate interests',
+                'target': 'national ownership requirements',
+                'type': ItemRelationType.SUPPORTS,
+                'explanation': 'State legitimacy grounds the normative claim that states should control infrastructure.',
+            },
+            # The free trade item CONTRADICTS the forward inferences
+            {
+                'source': 'Complete free trade in all technology',
+                'target': 'domestic semiconductor manufacturing',
+                'type': ItemRelationType.CONTRADICTS,
+                'explanation': 'Free trade absolutism is logically incompatible with domestic investment requirements.',
+            },
+            {
+                'source': 'domestic semiconductor manufacturing',
+                'target': 'foreign investment in strategic sectors',
+                'type': ItemRelationType.ENABLES,
+                'explanation': 'Domestic investment requirements make foreign investment screening a natural policy extension.',
+            },
+        ]
+
+        relationships_created = 0
+        for rel_def in SAMPLE_RELATIONSHIPS:
+            source_item = find_item(rel_def['source'])
+            target_item = find_item(rel_def['target'])
+
+            if source_item and target_item:
+                relationship = ItemRelationship(
+                    source_item_id=source_item.id,
+                    target_item_id=target_item.id,
+                    relationship_type=rel_def['type'],
+                    discovered_via=RelationshipSource.WIZARD_GENERATED,
+                    confidence=0.85,
+                    explanation=rel_def['explanation'],
+                    created_by='seed_script',
+                )
+                session.add(relationship)
+                relationships_created += 1
+
+        print(f"  Created {relationships_created} item relationships")
+
         session.commit()
         print("Database seeded successfully!")
 
@@ -1026,6 +1093,7 @@ def seed_database():
         print(f"Analyses: {session.query(ConceptAnalysis).count()}")
         print(f"Analysis Items: {session.query(AnalysisItem).count()}")
         print(f"Reasoning Scaffolds: {session.query(ItemReasoningScaffold).count()}")
+        print(f"Item Relationships: {session.query(ItemRelationship).count()}")
 
     except Exception as e:
         session.rollback()

@@ -338,6 +338,31 @@ class InferenceType(str, enum.Enum):
     TRANSCENDENTAL = "transcendental"  # Conditions of possibility
 
 
+class ItemRelationType(str, enum.Enum):
+    """Types of relationships between analysis items.
+
+    These capture the inferential web structure - how items depend on,
+    support, contradict, or create tension with each other.
+    """
+    DEPENDS_ON = "depends_on"        # This item requires that item to be true
+    SUPPORTS = "supports"            # This item provides evidence for that item
+    CONTRADICTS = "contradicts"      # Logical incompatibility
+    TENSION_WITH = "tension_with"    # Not contradictory but creates pressure
+    ENABLES = "enables"              # This item makes that item possible/meaningful
+    SUPERSEDES = "supersedes"        # This item replaces/updates that item
+    SPECIALIZES = "specializes"      # This is a more specific version of that
+    GENERALIZES = "generalizes"      # This is a more general version of that
+
+
+class RelationshipSource(str, enum.Enum):
+    """How a relationship was discovered/created."""
+    WIZARD_GENERATED = "wizard_generated"      # From concept wizard LLM
+    EVIDENCE_EXTRACTED = "evidence_extracted"  # From evidence integration
+    LLM_INFERRED = "llm_inferred"              # From batch relationship inference
+    USER_CURATED = "user_curated"              # Manual user input
+    SYSTEM_DETECTED = "system_detected"        # Auto-detected (e.g., text matching)
+
+
 class AnalysisItem(Base):
     """
     Individual items within an analysis.
@@ -475,6 +500,81 @@ class ItemReasoningScaffold(Base):
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+# ==================== ITEM RELATIONSHIPS ====================
+# Proper item-to-item relationship tracking with provenance
+
+class ItemRelationship(Base):
+    """
+    Tracks relationships between analysis items.
+
+    This is the proper way to represent "depends on", "supports", etc.
+    Each relationship has:
+    - Source and target items
+    - Relationship type (depends_on, supports, contradicts, etc.)
+    - How it was discovered (wizard, evidence, LLM inference, manual)
+    - Confidence and explanation
+
+    Population strategies:
+    1. WIZARD_GENERATED: When generating inferences, LLM identifies what
+       premises/items the inference depends on
+    2. EVIDENCE_EXTRACTED: When processing articles/papers, identify which
+       existing items are affected
+    3. LLM_INFERRED: Batch job that analyzes all items for relationships
+    4. USER_CURATED: Manual user input through UI
+    5. SYSTEM_DETECTED: Auto-detected via text similarity, semantic matching
+    """
+    __tablename__ = 'ca_item_relationships'
+
+    id = Column(Integer, primary_key=True)
+
+    # The item that has the relationship
+    source_item_id = Column(Integer, ForeignKey('ca_analysis_items.id'), nullable=False)
+    # The item it relates to
+    target_item_id = Column(Integer, ForeignKey('ca_analysis_items.id'), nullable=False)
+
+    # What type of relationship
+    relationship_type = Column(Enum(ItemRelationType), nullable=False)
+
+    # How was this relationship discovered
+    discovered_via = Column(Enum(RelationshipSource), nullable=False)
+
+    # Confidence in this relationship (0-1)
+    confidence = Column(Float, default=0.8)
+
+    # Natural language explanation of why this relationship holds
+    explanation = Column(Text)
+
+    # Optional: If from evidence, which fragment triggered it
+    evidence_fragment_id = Column(Integer, ForeignKey('ca_evidence_fragments.id'), nullable=True)
+
+    # Is this relationship still valid (can be invalidated without deletion)
+    is_active = Column(Boolean, default=True)
+
+    # Who/what created this
+    created_by = Column(String(100))  # 'wizard', 'evidence_processor', 'user:email', etc.
+
+    # Relationships
+    source_item = relationship(
+        "AnalysisItem",
+        foreign_keys=[source_item_id],
+        backref="outgoing_relationships"
+    )
+    target_item = relationship(
+        "AnalysisItem",
+        foreign_keys=[target_item_id],
+        backref="incoming_relationships"
+    )
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Prevent duplicate relationships
+    __table_args__ = (
+        UniqueConstraint('source_item_id', 'target_item_id', 'relationship_type',
+                        name='uq_item_relationship'),
+    )
 
 
 # ==================== EVIDENCE INTEGRATION TABLES ====================
