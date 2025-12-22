@@ -6,7 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-22: Item-to-Item Relationship System
 
-**Commit:** (pending)
+**Commit:** `a21074a`
 **Branch:** `main`
 
 ### Description
