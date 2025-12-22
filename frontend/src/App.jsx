@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import './index.css'
 import ConceptSetupWizard from './ConceptSetupWizard'
+import ConceptAnalysisViewer from './ConceptAnalysisViewer'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://theory-api.onrender.com'
 
@@ -1156,6 +1157,9 @@ function App() {
         <button className={`tab ${activeTab === 'challenges' ? 'active' : ''}`} onClick={() => setActiveTab('challenges')}>
           Challenges<span className="badge">{pendingChallenges.length}</span>
         </button>
+        <button className={`tab ${activeTab === 'analysis8d' ? 'active' : ''}`} onClick={() => setActiveTab('analysis8d')}>
+          8D Analysis
+        </button>
       </div>
 
       {/* CONCEPTS TAB */}
@@ -1448,6 +1452,11 @@ function App() {
           addToast={addToast}
           onRefresh={() => { loadChallenges(); loadStats(); }}
         />
+      )}
+
+      {/* 8D CONCEPT ANALYSIS TAB */}
+      {activeTab === 'analysis8d' && (
+        <ConceptAnalysisViewer />
       )}
 
       {/* MODALS */}

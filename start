@@ -2,6 +2,7 @@
 # Theory Service - Start Script
 
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+export DATABASE_URL="${DATABASE_URL:-postgresql:///essay_genre_db}"
 
 # Default port
 PORT=${PORT:-8000}

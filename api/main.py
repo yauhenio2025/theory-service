@@ -47,6 +47,8 @@ from .schemas import (
 from .concept_wizard import router as wizard_router
 # Import concept relationships router
 from .concept_relationships import router as relationships_router
+# Import concept analysis router (operation-indexed schema)
+from .concept_analysis_router import router as concept_analysis_router
 
 
 @asynccontextmanager
@@ -77,6 +79,8 @@ app.add_middleware(
 app.include_router(wizard_router)
 # Include concept relationships router
 app.include_router(relationships_router)
+# Include concept analysis router (operation-indexed 8D schema)
+app.include_router(concept_analysis_router)
 
 
 # =============================================================================

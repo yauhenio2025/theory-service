@@ -8,9 +8,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 from .models import Base
+from .concept_analysis_models import Base as ConceptAnalysisBase
 
 # Database URL from environment
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/theory_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql:///essay_genre_db")
 
 # Convert to async URL if needed
 if DATABASE_URL.startswith("postgres://"):
@@ -52,6 +53,7 @@ async def init_db():
     """Initialize database tables."""
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(ConceptAnalysisBase.metadata.create_all)
 
 
 async def close_db():

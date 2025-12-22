@@ -4,6 +4,82 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-22: Operation-Indexed 8D Concept Analysis Framework
+
+**Commit:** `e6d8dac`
+**Branch:** `main`
+
+### Description
+Implemented a new operation-indexed concept analysis framework that reorganizes the philosophical dimensions by analytical operation rather than by thinker. This approach grounds dimensions in what they actually DO analytically, with thinkers as metadata references.
+
+### The Problem
+The previous 12-dimension schema was organized by thinker (Quinean, Sellarsian, Kuhnian, etc.). While useful for attribution, this organization:
+1. Made it harder to see what analytical work each dimension performs
+2. Created redundancy where different thinkers contributed similar operations
+3. Made the schema less modular and harder to extend
+
+### The Solution
+
+#### 1. Reorganized into 8 Analytical Dimensions
+Each dimension is defined by its core analytical question:
+- **Positional Analysis**: Where does this concept SIT in various networks?
+- **Genealogical Analysis**: Where does this concept COME FROM?
+- **Presuppositional Analysis**: What does this concept TAKE FOR GRANTED?
+- **Commitment Analysis**: What does accepting this concept COMMIT YOU TO?
+- **Affordance Analysis**: What does this concept ENABLE or BLOCK?
+- **Normalization Analysis**: What does this concept NORMALIZE?
+- **Boundary Analysis**: What are the LIMITS of this concept?
+- **Dynamic Analysis**: How does this concept CHANGE over time?
+
+#### 2. 38 Analytical Operations
+Each dimension contains 4-6 specific operations (e.g., Inferential Mapping, Paradigm Positioning, Givenness Excavation, etc.)
+
+#### 3. 14 Theoretical Influences as Metadata
+Thinkers (Quine, Kuhn, Foucault, Sellars, Brandom, etc.) are now linked to operations they inform via a junction table.
+
+#### 4. SQLAlchemy Models
+Created comprehensive async SQLAlchemy models:
+- `AnalyticalDimension` - The 8 dimensions
+- `AnalyticalOperation` - The 38 operations
+- `TheoreticalInfluence` - The 14 thinkers
+- `AnalyzedConcept` - Concepts being analyzed
+- `ConceptAnalysis` - Analysis per concept per operation
+- `AnalysisItem` - Individual items within analyses
+
+#### 5. FastAPI Router
+New `/concept-analysis/` endpoints:
+- `GET /dimensions` - List all dimensions with operations
+- `GET /operations` - List all operations
+- `GET /influences` - List all theoretical influences
+- `GET /concepts` - List analyzed concepts
+- `GET /concepts/{id}` - Full analysis across all dimensions
+- `GET /schema-overview` - High-level statistics
+
+#### 6. React UI Component
+Created `ConceptAnalysisViewer.jsx` with:
+- Schema overview with statistics
+- Concept selector
+- Expandable dimension cards with color coding
+- Nested operation sections showing analysis items
+- Expand/collapse all functionality
+
+#### 7. Complete Tech Sovereignty Analysis
+Seeded database with comprehensive analysis of "Technological Sovereignty" across all 38 operations, generating 159 individual analysis items.
+
+### Files Created/Modified
+- `api/concept_analysis_models.py` - SQLAlchemy models
+- `api/concept_analysis_router.py` - FastAPI router
+- `scripts/seed_concept_analysis.py` - Database seeder
+- `frontend/src/ConceptAnalysisViewer.jsx` - React component
+- `frontend/src/App.jsx` - Added 8D Analysis tab
+
+### Principles Embodied
+- `prn_operation_grounding` - Dimensions are defined by analytical operations, not attribution
+- `prn_modular_extensibility` - Schema can grow as new operations are discovered
+- `prn_metadata_separation` - Thinkers inform operations but don't organize the schema
+
+---
+
 ## 2025-12-21: Strengthened New Dimensions & IE Export Function
 
 **Commit:** `8e09dee`
