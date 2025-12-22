@@ -6,7 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-22: Wizard to 8D Schema Bridge
 
-**Commit:** `10e8625`
+**Commit:** `c106ead`
 **Branch:** `main`
 
 ### Description
