@@ -1199,6 +1199,30 @@ Analyze the notes and produce a JSON response:
             "combination_type": "aggregation|interaction|emergence|unknown",
             "what_emerges": "What's new beyond the components",
             "confidence": "high|medium|low"
+        }},
+        "kuhnian": {{
+            "paradigm_position": "normal_science|anomaly|crisis|revolutionary|post_revolutionary",
+            "exemplars": ["Paradigmatic cases that define proper use"],
+            "puzzle_solving_rules": ["What counts as legitimate puzzles/solutions"],
+            "incommensurabilities": ["What frameworks cannot communicate with this concept"],
+            "disciplinary_matrix": "What shared commitments enable this concept's use",
+            "confidence": "high|medium|low"
+        }},
+        "foucauldian": {{
+            "power_knowledge_nexus": "What power relations does this concept encode/enable",
+            "governmentality_mode": "discipline|security|sovereign|pastoral|neoliberal|other",
+            "subjectification_effects": ["What kinds of subjects does this concept produce"],
+            "discourse_formation": "What statements become possible/impossible",
+            "resistance_points": ["Where might this power-knowledge be contested"],
+            "confidence": "high|medium|low"
+        }},
+        "pragmatist": {{
+            "practical_consequences": ["What difference does accepting this concept make in practice"],
+            "cash_value": "The concept's practical meaning in experiential terms",
+            "performative_effects": ["What does using this concept DO in the world"],
+            "habit_formations": ["What patterns of action does this concept enable/block"],
+            "inquiry_context": "What problematic situation generated this concept",
+            "confidence": "high|medium|low"
         }}
     }}
 }}
@@ -1206,8 +1230,8 @@ Analyze the notes and produce a JSON response:
 Be conservative with pre-fills: only suggest values when you have clear evidence from the notes.
 If the notes don't provide enough information for a question, set suggested_value to null.
 
-## 9-DIMENSIONAL EXTRACTION INSTRUCTIONS:
-Extract preliminary signals for ALL 9 philosophical dimensions. Even if notes are sparse:
+## 12-DIMENSIONAL EXTRACTION INSTRUCTIONS:
+Extract preliminary signals for ALL 12 philosophical dimensions. Even if notes are sparse:
 - QUINEAN: Look for logical implications ("if X then Y", "X implies Y")
 - SELLARSIAN: Spot "givenness" language (obviously, naturally, clearly, of course)
 - BRANDOMIAN: What does using this concept commit you to? What does it entitle you to claim?
@@ -1217,6 +1241,9 @@ Extract preliminary signals for ALL 9 philosophical dimensions. Even if notes ar
 - DAVIDSON: What reasoning style does this require? What becomes visible/invisible?
 - BLUMENBERG: Is there a root metaphor underlying the concept?
 - CAREY: What simpler concepts is this built from?
+- KUHNIAN: Is this normal science or paradigm-challenging? What exemplars define it? What's incommensurable?
+- FOUCAULDIAN: What power-knowledge relations does this encode? What subjects does it produce? What discourse rules?
+- PRAGMATIST: What practical difference does this make? What does using it DO? What habits does it form?
 
 Set confidence to "low" if you're inferring without explicit evidence.
 
@@ -1431,6 +1458,30 @@ Analyze the notes and produce a JSON response:
             "component_concepts": ["Simpler concepts this is built from"],
             "combination_type": "aggregation|interaction|emergence|unknown",
             "what_emerges": "What's new beyond the components",
+            "confidence": "high|medium|low"
+        }},
+        "kuhnian": {{
+            "paradigm_position": "normal_science|anomaly|crisis|revolutionary|post_revolutionary",
+            "exemplars": ["Paradigmatic cases that define proper use"],
+            "puzzle_solving_rules": ["What counts as legitimate puzzles/solutions"],
+            "incommensurabilities": ["What frameworks cannot communicate with this concept"],
+            "disciplinary_matrix": "What shared commitments enable this concept's use",
+            "confidence": "high|medium|low"
+        }},
+        "foucauldian": {{
+            "power_knowledge_nexus": "What power relations does this concept encode/enable",
+            "governmentality_mode": "discipline|security|sovereign|pastoral|neoliberal|other",
+            "subjectification_effects": ["What kinds of subjects does this concept produce"],
+            "discourse_formation": "What statements become possible/impossible",
+            "resistance_points": ["Where might this power-knowledge be contested"],
+            "confidence": "high|medium|low"
+        }},
+        "pragmatist": {{
+            "practical_consequences": ["What difference does accepting this concept make in practice"],
+            "cash_value": "The concept's practical meaning in experiential terms",
+            "performative_effects": ["What does using this concept DO in the world"],
+            "habit_formations": ["What patterns of action does this concept enable/block"],
+            "inquiry_context": "What problematic situation generated this concept",
             "confidence": "high|medium|low"
         }}
     }}
@@ -2474,6 +2525,33 @@ Return as JSON with confidence levels (high/medium/low/speculative):
     "what_emerges": "What's new beyond components",
     "transparency": "high|medium|low",
     "bootstrap_status": "successful|partial|failed"
+  }},
+
+  "kuhnian": {{
+    "paradigm_position": "normal_science|anomaly|crisis|revolutionary|post_revolutionary",
+    "exemplars": ["Paradigmatic cases that define proper use"],
+    "puzzle_solving_rules": ["What counts as legitimate puzzle/solution"],
+    "incommensurabilities": [{{"framework": "...", "cannot_translate": "..."}}],
+    "disciplinary_matrix": "What shared commitments enable this concept's use",
+    "paradigm_threat_level": "none|minor|significant|revolutionary"
+  }},
+
+  "foucauldian": {{
+    "power_knowledge_nexus": "What power relations this encodes/enables",
+    "governmentality_mode": "discipline|security|sovereign|pastoral|neoliberal|other",
+    "subjectification_effects": ["What subjects this produces"],
+    "discourse_rules": [{{"rule": "...", "enables": "...", "excludes": "..."}}],
+    "resistance_points": ["Where this might be contested"],
+    "truth_regime": "What counts as true within this framework"
+  }},
+
+  "pragmatist": {{
+    "practical_consequences": ["What difference this makes in practice"],
+    "cash_value": "The concept's meaning in experiential terms",
+    "performative_effects": ["What using this concept DOES"],
+    "habit_formations": ["Patterns of action enabled/blocked"],
+    "inquiry_context": "What problematic situation generated this",
+    "melioristic_potential": "How does this improve the situation"
   }}
 }}
 
@@ -4735,6 +4813,84 @@ Output a complete JSON with ALL dimensions:
       "transparency": "high|medium|low",
       "bootstrap_failure_reason": "if failed, why",
       "what_would_fix": "what would make bootstrap succeed"
+    }},
+
+    "kuhnian": {{
+      "paradigm_position": "normal_science|anomaly|crisis|revolutionary|post_revolutionary",
+      "exemplars": ["paradigmatic cases that define proper use"],
+      "puzzle_solving_rules": ["what counts as legitimate puzzle/solution"],
+      "incommensurabilities": [
+        {{
+          "other_paradigm": "incompatible framework",
+          "translation_failure": "what cannot be translated",
+          "talk_past_reason": "why adherents talk past each other"
+        }}
+      ],
+      "disciplinary_matrix": {{
+        "symbolic_generalizations": ["shared formal expressions"],
+        "models": ["shared heuristic models"],
+        "values": ["shared epistemic values"],
+        "exemplars": ["shared paradigmatic problem-solutions"]
+      }},
+      "paradigm_threat": {{
+        "anomalies_detected": ["empirical challenges"],
+        "crisis_indicators": ["signs of paradigm strain"],
+        "revolutionary_potential": "none|low|medium|high"
+      }}
+    }},
+
+    "foucauldian": {{
+      "power_knowledge": {{
+        "what_power_enables": "what knowledge becomes possible",
+        "what_knowledge_enables": "what power relations it supports",
+        "mutual_constitution": "how they reinforce each other"
+      }},
+      "governmentality": {{
+        "mode": "discipline|security|sovereign|pastoral|neoliberal",
+        "technologies": ["specific techniques of government"],
+        "rationality": "underlying logic/reason",
+        "subjects_produced": ["kinds of subjects this creates"]
+      }},
+      "discourse_formation": {{
+        "rules_of_formation": ["what can be said"],
+        "exclusion_procedures": ["what cannot be said"],
+        "rarefaction": ["who can speak authoritatively"],
+        "archive": "conditions of possibility for statements"
+      }},
+      "resistance": {{
+        "points_of_reversal": ["where power can be contested"],
+        "counter_conducts": ["alternative subject positions"],
+        "specific_struggles": ["concrete sites of resistance"]
+      }}
+    }},
+
+    "pragmatist": {{
+      "practical_consequences": {{
+        "if_true": ["what follows if we accept this"],
+        "if_false": ["what follows if we reject this"],
+        "difference_in_practice": "what changes in conduct"
+      }},
+      "cash_value": "the concept's meaning in experiential terms",
+      "performative_dimension": {{
+        "speech_acts": ["what saying this does"],
+        "social_effects": ["how it changes social reality"],
+        "world_making": "what reality it helps constitute"
+      }},
+      "habit_formation": {{
+        "habits_enabled": ["patterns of action it supports"],
+        "habits_blocked": ["patterns it makes difficult"],
+        "disposition_changes": "how it reshapes conduct"
+      }},
+      "inquiry_context": {{
+        "problematic_situation": "what problem generated this concept",
+        "doubt_resolved": "what uncertainty it addresses",
+        "belief_fixation": "how it settles inquiry"
+      }},
+      "meliorism": {{
+        "improvement_enabled": "what gets better",
+        "regression_risk": "what might get worse",
+        "incremental_vs_revolutionary": "scope of change possible"
+      }}
     }},
 
     "core_claims": {{

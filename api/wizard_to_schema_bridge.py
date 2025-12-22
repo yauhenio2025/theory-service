@@ -45,8 +45,9 @@ HYPOTHESIS_TYPE_TO_DIMENSION = {
     "normative": (DimensionType.NORMALIZATION, "embedded_norm"),
 }
 
-# Map dimensional signals to dimensions
+# Map dimensional signals to dimensions (12 total)
 SIGNAL_TO_DIMENSION = {
+    # Original 9 dimensions
     "quinean": DimensionType.POSITIONAL,
     "sellarsian": DimensionType.PRESUPPOSITIONAL,
     "brandomian": DimensionType.COMMITMENT,
@@ -56,6 +57,10 @@ SIGNAL_TO_DIMENSION = {
     "davidson": DimensionType.AFFORDANCE,
     "blumenberg": DimensionType.GENEALOGICAL,
     "carey": DimensionType.GENEALOGICAL,
+    # 3 new dimensions (Kuhn, Foucault, Pragmatists)
+    "kuhnian": DimensionType.BOUNDARY,        # Paradigm structure, anomalies, incommensurability
+    "foucauldian": DimensionType.NORMALIZATION,  # Power-knowledge, governmentality, subjectification
+    "pragmatist": DimensionType.AFFORDANCE,   # Practical consequences, performativity, habits
 }
 
 # Map wizard stage answers to dimensions/operations
@@ -664,6 +669,193 @@ async def _process_signal_by_type(
                         "combination_type": signal_data.get("combination_type"),
                         "what_emerges": signal_data.get("what_emerges"),
                     },
+                    provenance_type=ProvenanceType.WIZARD,
+                    provenance_source_id=wizard_session_id,
+                    created_via="initial_wizard",
+                    is_active=True,
+                )
+                db.add(item)
+                await db.flush()
+                items.append(item)
+
+    # Kuhnian signals (paradigm structure, anomalies, incommensurability)
+    elif signal_name == "kuhnian":
+        # Paradigm position
+        position = signal_data.get("paradigm_position")
+        if position:
+            item = AnalysisItem(
+                analysis_id=analysis_id,
+                item_type="paradigm_position",
+                content=f"Paradigm status: {position}",
+                strength=confidence,
+                extra_data={
+                    "paradigm_position": position,
+                    "disciplinary_matrix": signal_data.get("disciplinary_matrix"),
+                },
+                provenance_type=ProvenanceType.WIZARD,
+                provenance_source_id=wizard_session_id,
+                created_via="initial_wizard",
+                is_active=True,
+            )
+            db.add(item)
+            await db.flush()
+            items.append(item)
+
+        # Exemplars
+        for exemplar in signal_data.get("exemplars", []):
+            if exemplar:
+                item = AnalysisItem(
+                    analysis_id=analysis_id,
+                    item_type="paradigm_exemplar",
+                    content=exemplar,
+                    strength=confidence,
+                    provenance_type=ProvenanceType.WIZARD,
+                    provenance_source_id=wizard_session_id,
+                    created_via="initial_wizard",
+                    is_active=True,
+                )
+                db.add(item)
+                await db.flush()
+                items.append(item)
+
+        # Incommensurabilities
+        for incomm in signal_data.get("incommensurabilities", []):
+            if incomm:
+                item = AnalysisItem(
+                    analysis_id=analysis_id,
+                    item_type="incommensurability",
+                    content=incomm if isinstance(incomm, str) else str(incomm),
+                    strength=confidence,
+                    provenance_type=ProvenanceType.WIZARD,
+                    provenance_source_id=wizard_session_id,
+                    created_via="initial_wizard",
+                    is_active=True,
+                )
+                db.add(item)
+                await db.flush()
+                items.append(item)
+
+    # Foucauldian signals (power-knowledge, governmentality, subjectification)
+    elif signal_name == "foucauldian":
+        # Power-knowledge nexus
+        power_knowledge = signal_data.get("power_knowledge_nexus")
+        if power_knowledge:
+            item = AnalysisItem(
+                analysis_id=analysis_id,
+                item_type="power_knowledge",
+                content=power_knowledge,
+                strength=confidence,
+                extra_data={
+                    "governmentality_mode": signal_data.get("governmentality_mode"),
+                    "discourse_formation": signal_data.get("discourse_formation"),
+                },
+                provenance_type=ProvenanceType.WIZARD,
+                provenance_source_id=wizard_session_id,
+                created_via="initial_wizard",
+                is_active=True,
+            )
+            db.add(item)
+            await db.flush()
+            items.append(item)
+
+        # Subjectification effects
+        for effect in signal_data.get("subjectification_effects", []):
+            if effect:
+                item = AnalysisItem(
+                    analysis_id=analysis_id,
+                    item_type="subjectification_effect",
+                    content=effect,
+                    strength=confidence,
+                    provenance_type=ProvenanceType.WIZARD,
+                    provenance_source_id=wizard_session_id,
+                    created_via="initial_wizard",
+                    is_active=True,
+                )
+                db.add(item)
+                await db.flush()
+                items.append(item)
+
+        # Resistance points
+        for point in signal_data.get("resistance_points", []):
+            if point:
+                item = AnalysisItem(
+                    analysis_id=analysis_id,
+                    item_type="resistance_point",
+                    content=point,
+                    strength=confidence,
+                    provenance_type=ProvenanceType.WIZARD,
+                    provenance_source_id=wizard_session_id,
+                    created_via="initial_wizard",
+                    is_active=True,
+                )
+                db.add(item)
+                await db.flush()
+                items.append(item)
+
+    # Pragmatist signals (practical consequences, performativity, habits)
+    elif signal_name == "pragmatist":
+        # Cash value
+        cash_value = signal_data.get("cash_value")
+        if cash_value:
+            item = AnalysisItem(
+                analysis_id=analysis_id,
+                item_type="practical_meaning",
+                content=cash_value,
+                strength=confidence,
+                extra_data={
+                    "inquiry_context": signal_data.get("inquiry_context"),
+                },
+                provenance_type=ProvenanceType.WIZARD,
+                provenance_source_id=wizard_session_id,
+                created_via="initial_wizard",
+                is_active=True,
+            )
+            db.add(item)
+            await db.flush()
+            items.append(item)
+
+        # Practical consequences
+        for consequence in signal_data.get("practical_consequences", []):
+            if consequence:
+                item = AnalysisItem(
+                    analysis_id=analysis_id,
+                    item_type="practical_consequence",
+                    content=consequence,
+                    strength=confidence,
+                    provenance_type=ProvenanceType.WIZARD,
+                    provenance_source_id=wizard_session_id,
+                    created_via="initial_wizard",
+                    is_active=True,
+                )
+                db.add(item)
+                await db.flush()
+                items.append(item)
+
+        # Performative effects
+        for effect in signal_data.get("performative_effects", []):
+            if effect:
+                item = AnalysisItem(
+                    analysis_id=analysis_id,
+                    item_type="performative_effect",
+                    content=effect,
+                    strength=confidence,
+                    provenance_type=ProvenanceType.WIZARD,
+                    provenance_source_id=wizard_session_id,
+                    created_via="initial_wizard",
+                    is_active=True,
+                )
+                db.add(item)
+                await db.flush()
+                items.append(item)
+
+        # Habit formations
+        for habit in signal_data.get("habit_formations", []):
+            if habit:
+                item = AnalysisItem(
+                    analysis_id=analysis_id,
+                    item_type="habit_formation",
+                    content=habit,
+                    strength=confidence,
                     provenance_type=ProvenanceType.WIZARD,
                     provenance_source_id=wizard_session_id,
                     created_via="initial_wizard",
