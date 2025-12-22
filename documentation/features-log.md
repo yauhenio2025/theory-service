@@ -6,7 +6,7 @@ This document tracks major features introduced to the Theory Service application
 
 ## 2025-12-22: Evidence Integration & Conflict Resolution System
 
-**Commit:** `69bd1e8`
+**Commit:** `1808950`
 **Branch:** `main`
 
 ### Description
