@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import AddEvidenceSource from './components/AddEvidenceSource'
+import EvidenceDecisionView from './components/EvidenceDecisionView'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://theory-api.onrender.com'
 
@@ -102,124 +104,421 @@ function DimensionCard({ dimension, analyses, expanded, onToggle }) {
   )
 }
 
+// Format item content - parse JSON-like strings and display nicely
+function formatItemContent(content, itemType) {
+  // Try to parse if it looks like a dict/object representation
+  if (content.startsWith('{') && content.includes(':')) {
+    try {
+      // Convert Python-style dict to JSON
+      const jsonStr = content
+        .replace(/'/g, '"')
+        .replace(/None/g, 'null')
+        .replace(/True/g, 'true')
+        .replace(/False/g, 'false')
+      const parsed = JSON.parse(jsonStr)
+
+      // Format based on what fields are present
+      if (parsed.year && parsed.event) {
+        return (
+          <div>
+            <strong>{parsed.year}</strong>: {parsed.event}
+            {parsed.impact && <div style={{ color: '#666', marginTop: '0.25rem', fontSize: '0.85rem' }}>Impact: {parsed.impact}</div>}
+          </div>
+        )
+      }
+      if (parsed.from && parsed.to) {
+        return <span>{parsed.from} → {parsed.to}</span>
+      }
+      if (parsed.statement) {
+        return <span>{parsed.statement}</span>
+      }
+      // Generic object display
+      return (
+        <div>
+          {Object.entries(parsed).map(([k, v]) => (
+            <div key={k} style={{ marginBottom: '0.15rem' }}>
+              <strong style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</strong>: {String(v)}
+            </div>
+          ))}
+        </div>
+      )
+    } catch (e) {
+      // Not valid JSON, return as-is
+    }
+  }
+  return content
+}
+
+// Group items by type for better organization
+function groupItemsByType(items) {
+  const groups = {}
+  items?.forEach(item => {
+    const type = item.item_type
+    if (!groups[type]) groups[type] = []
+    groups[type].push(item)
+  })
+  return groups
+}
+
+// Get a nice label for item types
+function getItemTypeLabel(type) {
+  const labels = {
+    'conditions_of_possibility': 'Conditions of Possibility',
+    'key_moments': 'Key Historical Moments',
+    'forward_inference': 'Forward Inferences',
+    'backward_inference': 'Backward Inferences',
+    'lateral_inference': 'Lateral Inferences',
+    'commitment': 'Commitments',
+    'hard_commitment': 'Hard Commitments',
+    'soft_commitment': 'Soft Commitments',
+    'anomaly': 'Anomalies',
+    'contradiction': 'Contradictions',
+    'gray_zone': 'Gray Zones',
+    'looping_effect': 'Looping Effects',
+    'visibility': 'What Becomes Visible',
+    'invisibility': 'What Becomes Invisible',
+    'transformation': 'Transformation Vectors',
+    'vocabulary_addition': 'Vocabulary Additions',
+    'norm': 'Embedded Norms',
+    'authority': 'Authority Relations',
+    'assumption': 'Assumptions',
+    'given': 'Taken-for-Granted',
+  }
+  return labels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Provenance badge component
+function ProvenanceBadge({ item }) {
+  const provType = item.provenance_type || item.created_via || 'wizard'
+  const badgeStyles = {
+    wizard: { bg: '#e3e8ee', text: '#5c6773', label: 'wizard' },
+    evidence: { bg: '#e8f5e9', text: '#2e7d32', label: 'evidence' },
+    evidence_auto_integrate: { bg: '#e8f5e9', text: '#2e7d32', label: 'auto' },
+    evidence_decision: { bg: '#fff3e0', text: '#e65100', label: 'decision' },
+    user_manual: { bg: '#e3f2fd', text: '#1565c0', label: 'manual' },
+    initial_wizard: { bg: '#e3e8ee', text: '#5c6773', label: 'wizard' },
+  }
+  const style = badgeStyles[provType] || badgeStyles.wizard
+
+  return (
+    <span style={{
+      backgroundColor: style.bg,
+      color: style.text,
+      padding: '0.15rem 0.4rem',
+      borderRadius: '4px',
+      fontSize: '0.7rem',
+      fontWeight: 500,
+      marginLeft: '0.5rem',
+    }}>
+      {style.label}
+    </span>
+  )
+}
+
+// Evidence Dashboard component
+function EvidenceDashboard({ conceptId, onOpenAddSource, onOpenDecisions }) {
+  const [progress, setProgress] = useState(null)
+  const [sources, setSources] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!conceptId) return
+    loadData()
+  }, [conceptId])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [progressData, sourcesData] = await Promise.all([
+        api(`/concepts/${conceptId}/evidence/progress`),
+        api(`/concepts/${conceptId}/evidence/sources`),
+      ])
+      setProgress(progressData)
+      setSources(sourcesData)
+    } catch (err) {
+      console.error('Failed to load evidence data:', err)
+    }
+    setLoading(false)
+  }
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Loading evidence data...</div>
+  }
+
+  return (
+    <div>
+      {/* Progress Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: '1rem',
+        marginBottom: '1.5rem',
+      }}>
+        <div style={{ textAlign: 'center', padding: '1.25rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#1565C0' }}>{progress?.total_sources || 0}</div>
+          <div style={{ color: '#666', fontSize: '0.9rem' }}>Sources</div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '1.25rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#7B1FA2' }}>{progress?.total_fragments || 0}</div>
+          <div style={{ color: '#666', fontSize: '0.9rem' }}>Extracts</div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '1.25rem', backgroundColor: '#e8f5e9', borderRadius: '8px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2E7D32' }}>{progress?.auto_integrated_count || 0}</div>
+          <div style={{ color: '#666', fontSize: '0.9rem' }}>Auto-Integrated</div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '1.25rem', backgroundColor: progress?.needs_decision_count > 0 ? '#fff3e0' : '#f8f9fa', borderRadius: '8px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: progress?.needs_decision_count > 0 ? '#E65100' : '#666' }}>
+            {progress?.needs_decision_count || 0}
+          </div>
+          <div style={{ color: '#666', fontSize: '0.9rem' }}>Pending Decisions</div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <button
+          onClick={onOpenAddSource}
+          style={{
+            padding: '0.75rem 1.5rem',
+            borderRadius: '6px',
+            border: 'none',
+            backgroundColor: '#1565C0',
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>+</span> Add Source
+        </button>
+        {progress?.needs_decision_count > 0 && (
+          <button
+            onClick={onOpenDecisions}
+            style={{
+              padding: '0.75rem 1.5rem',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: '#E65100',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 500,
+            }}
+          >
+            View Pending Decisions ({progress.needs_decision_count})
+          </button>
+        )}
+      </div>
+
+      {/* Sources List */}
+      <div>
+        <h3 style={{ marginBottom: '1rem' }}>Evidence Sources</h3>
+        {sources.length === 0 ? (
+          <div style={{
+            padding: '2rem',
+            textAlign: 'center',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '8px',
+            color: '#666',
+          }}>
+            No evidence sources yet. Add a source to begin evidence integration.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {sources.map(source => (
+              <div
+                key={source.id}
+                style={{
+                  padding: '1rem',
+                  backgroundColor: '#fff',
+                  border: '1px solid #e8e8e8',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{source.source_name}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                    <span style={{
+                      backgroundColor: '#e3e8ee',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px',
+                      marginRight: '0.75rem',
+                    }}>
+                      {source.source_type}
+                    </span>
+                    {source.extracted_count} fragments extracted
+                  </div>
+                </div>
+                <div style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                  backgroundColor: source.extraction_status === 'completed' ? '#e8f5e9' :
+                                   source.extraction_status === 'failed' ? '#ffebee' : '#fff3e0',
+                  color: source.extraction_status === 'completed' ? '#2e7d32' :
+                         source.extraction_status === 'failed' ? '#c62828' : '#e65100',
+                }}>
+                  {source.extraction_status}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function OperationSection({ operation, analysis, colors }) {
   const [expanded, setExpanded] = useState(false)
+  const groupedItems = groupItemsByType(analysis?.items)
 
   return (
     <div
       style={{
-        backgroundColor: 'rgba(255,255,255,0.7)',
-        borderRadius: '6px',
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        borderRadius: '8px',
         marginBottom: '0.75rem',
         border: `1px solid ${colors.border}`,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       }}
     >
       <div
         onClick={() => setExpanded(!expanded)}
         style={{
-          padding: '0.75rem 1rem',
+          padding: '1rem 1.25rem',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
         }}
       >
-        <div>
-          <div style={{ fontWeight: 500, color: colors.text, marginBottom: '0.25rem' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, color: colors.text, marginBottom: '0.35rem', fontSize: '1.05rem' }}>
             {operation.name}
           </div>
-          <div style={{ fontSize: '0.85rem', color: '#666' }}>
+          <div style={{ fontSize: '0.9rem', color: '#555', lineHeight: 1.4 }}>
             {operation.description}
           </div>
           {operation.influences?.length > 0 && (
-            <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '0.25rem' }}>
-              Influences: {operation.influences.map(i => i.short_name).join(', ')}
+            <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '0.5rem' }}>
+              <span style={{ opacity: 0.7 }}>Influences:</span> {operation.influences.map(i => i.short_name).join(', ')}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '1rem' }}>
           {analysis && (
             <span style={{
               backgroundColor: colors.text,
               color: '#fff',
-              padding: '0.2rem 0.5rem',
-              borderRadius: '4px',
-              fontSize: '0.75rem',
+              padding: '0.35rem 0.75rem',
+              borderRadius: '20px',
+              fontSize: '0.8rem',
+              fontWeight: 500,
             }}>
               {analysis.items?.length || 0} items
             </span>
           )}
-          <span style={{ color: colors.text }}>{expanded ? '−' : '+'}</span>
+          <span style={{ color: colors.text, fontSize: '1.2rem', fontWeight: 300 }}>{expanded ? '−' : '+'}</span>
         </div>
       </div>
 
       {expanded && analysis && (
-        <div style={{ padding: '0 1rem 1rem', borderTop: `1px solid ${colors.border}` }}>
+        <div style={{ padding: '0 1.25rem 1.25rem', borderTop: `1px solid ${colors.border}` }}>
           {analysis.canonical_statement && (
             <div style={{
-              backgroundColor: 'rgba(0,0,0,0.03)',
-              padding: '0.75rem',
-              borderRadius: '4px',
-              marginTop: '0.75rem',
-              fontStyle: 'italic',
+              backgroundColor: colors.bg,
+              padding: '1rem 1.25rem',
+              borderRadius: '6px',
+              marginTop: '1rem',
+              borderLeft: `4px solid ${colors.text}`,
             }}>
-              <strong>Summary:</strong> {analysis.canonical_statement}
+              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: colors.text, marginBottom: '0.5rem', fontWeight: 600, letterSpacing: '0.5px' }}>
+                Summary
+              </div>
+              <div style={{ fontSize: '0.95rem', lineHeight: 1.5, color: '#333' }}>
+                {analysis.canonical_statement}
+              </div>
             </div>
           )}
 
-          {analysis.items?.length > 0 && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                Analysis Items:
-              </div>
-              {analysis.items.map((item, idx) => (
-                <div
-                  key={item.id || idx}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    marginBottom: '0.5rem',
-                    backgroundColor: '#fff',
-                    borderRadius: '4px',
-                    border: '1px solid #eee',
-                  }}
-                >
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+          {Object.keys(groupedItems).length > 0 && (
+            <div style={{ marginTop: '1.25rem' }}>
+              {Object.entries(groupedItems).map(([itemType, items]) => (
+                <div key={itemType} style={{ marginBottom: '1.25rem' }}>
+                  <div style={{
+                    fontWeight: 600,
+                    marginBottom: '0.75rem',
+                    fontSize: '0.85rem',
+                    color: colors.text,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}>
+                    {getItemTypeLabel(itemType)}
                     <span style={{
                       backgroundColor: colors.bg,
-                      color: colors.text,
-                      padding: '0.1rem 0.4rem',
-                      borderRadius: '3px',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '10px',
                       fontSize: '0.75rem',
                       fontWeight: 500,
-                      flexShrink: 0,
                     }}>
-                      {item.item_type.replace(/_/g, ' ')}
+                      {items.length}
                     </span>
-                    <span style={{ fontSize: '0.9rem' }}>{item.content}</span>
                   </div>
-                  {item.severity && (
-                    <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '0.25rem' }}>
-                      Severity: {item.severity}
-                    </div>
-                  )}
-                  {item.strength !== null && item.strength !== undefined && (
-                    <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '0.25rem' }}>
-                      Strength: {Math.round(item.strength * 100)}%
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {items.map((item, idx) => (
+                      <div
+                        key={item.id || idx}
+                        style={{
+                          padding: '0.75rem 1rem',
+                          backgroundColor: '#fff',
+                          borderRadius: '6px',
+                          border: '1px solid #e8e8e8',
+                          fontSize: '0.9rem',
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>{formatItemContent(item.content, item.item_type)}</div>
+                          <ProvenanceBadge item={item} />
+                        </div>
+                        {(item.severity || item.strength) && (
+                          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#888' }}>
+                            {item.severity && <span>Severity: <strong>{item.severity}</strong></span>}
+                            {item.strength != null && <span>Strength: <strong>{Math.round(item.strength * 100)}%</strong></span>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           {operation.key_questions?.length > 0 && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <div style={{ fontWeight: 500, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
-                Key Questions:
+            <div style={{
+              marginTop: '1.25rem',
+              padding: '1rem',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '6px',
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.75rem', fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Guiding Questions
               </div>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#666', fontSize: '0.85rem' }}>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#555', fontSize: '0.9rem', lineHeight: 1.6 }}>
                 {operation.key_questions.map((q, i) => (
-                  <li key={i} style={{ marginBottom: '0.25rem' }}>{q}</li>
+                  <li key={i} style={{ marginBottom: '0.35rem' }}>{q}</li>
                 ))}
               </ul>
             </div>
@@ -229,10 +528,11 @@ function OperationSection({ operation, analysis, colors }) {
 
       {expanded && !analysis && (
         <div style={{
-          padding: '1rem',
+          padding: '1.25rem',
           color: '#999',
           fontStyle: 'italic',
           borderTop: `1px solid ${colors.border}`,
+          textAlign: 'center',
         }}>
           No analysis data for this operation yet.
         </div>
@@ -304,6 +604,10 @@ function ConceptAnalysisViewer() {
   const [selectedConcept, setSelectedConcept] = useState(null)
   const [fullAnalysis, setFullAnalysis] = useState(null)
   const [expandedDimensions, setExpandedDimensions] = useState({})
+  const [activeTab, setActiveTab] = useState('analysis')
+  const [showAddSource, setShowAddSource] = useState(false)
+  const [showDecisions, setShowDecisions] = useState(false)
+  const [evidenceKey, setEvidenceKey] = useState(0) // For forcing refresh
 
   // Load initial data
   useEffect(() => {
@@ -439,26 +743,81 @@ function ConceptAnalysisViewer() {
                 </div>
               </div>
 
-              {/* Expand/Collapse buttons */}
-              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
-                <button className="btn btn-secondary btn-sm" onClick={expandAll}>
-                  Expand All
+              {/* Tab Navigation */}
+              <div style={{
+                display: 'flex',
+                borderBottom: '2px solid #e8e8e8',
+                marginBottom: '1.5rem',
+              }}>
+                <button
+                  onClick={() => setActiveTab('analysis')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    fontWeight: 500,
+                    color: activeTab === 'analysis' ? '#1565C0' : '#666',
+                    borderBottom: activeTab === 'analysis' ? '2px solid #1565C0' : '2px solid transparent',
+                    marginBottom: '-2px',
+                  }}
+                >
+                  Analysis
                 </button>
-                <button className="btn btn-secondary btn-sm" onClick={collapseAll}>
-                  Collapse All
+                <button
+                  onClick={() => setActiveTab('evidence')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    fontWeight: 500,
+                    color: activeTab === 'evidence' ? '#1565C0' : '#666',
+                    borderBottom: activeTab === 'evidence' ? '2px solid #1565C0' : '2px solid transparent',
+                    marginBottom: '-2px',
+                  }}
+                >
+                  Evidence
                 </button>
               </div>
 
-              {/* Dimensions */}
-              {fullAnalysis.dimensions?.map(dim => (
-                <DimensionCard
-                  key={dim.dimension_type}
-                  dimension={dim}
-                  analyses={fullAnalysis.analyses_by_dimension?.[dim.dimension_type]}
-                  expanded={expandedDimensions[dim.dimension_type]}
-                  onToggle={() => toggleDimension(dim.dimension_type)}
+              {/* Analysis Tab Content */}
+              {activeTab === 'analysis' && (
+                <>
+                  {/* Expand/Collapse buttons */}
+                  <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={expandAll}>
+                      Expand All
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={collapseAll}>
+                      Collapse All
+                    </button>
+                  </div>
+
+                  {/* Dimensions */}
+                  {fullAnalysis.dimensions?.map(dim => (
+                    <DimensionCard
+                      key={dim.dimension_type}
+                      dimension={dim}
+                      analyses={fullAnalysis.analyses_by_dimension?.[dim.dimension_type]}
+                      expanded={expandedDimensions[dim.dimension_type]}
+                      onToggle={() => toggleDimension(dim.dimension_type)}
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* Evidence Tab Content */}
+              {activeTab === 'evidence' && (
+                <EvidenceDashboard
+                  key={evidenceKey}
+                  conceptId={selectedConcept}
+                  onOpenAddSource={() => setShowAddSource(true)}
+                  onOpenDecisions={() => setShowDecisions(true)}
                 />
-              ))}
+              )}
             </>
           )}
 
@@ -470,6 +829,32 @@ function ConceptAnalysisViewer() {
           )}
         </div>
       </div>
+
+      {/* Modals */}
+      {showAddSource && selectedConcept && (
+        <AddEvidenceSource
+          conceptId={selectedConcept}
+          apiUrl={API_URL}
+          onClose={() => setShowAddSource(false)}
+          onSourceAdded={() => {
+            setShowAddSource(false)
+            setEvidenceKey(k => k + 1) // Refresh evidence dashboard
+          }}
+        />
+      )}
+
+      {showDecisions && selectedConcept && (
+        <EvidenceDecisionView
+          conceptId={selectedConcept}
+          apiUrl={API_URL}
+          onClose={() => setShowDecisions(false)}
+          onDecisionMade={() => {
+            setEvidenceKey(k => k + 1) // Refresh evidence dashboard
+            // Also reload the concept analysis to show new provenance
+            loadConceptAnalysis(selectedConcept)
+          }}
+        />
+      )}
     </div>
   )
 }

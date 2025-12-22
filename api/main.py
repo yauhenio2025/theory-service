@@ -49,6 +49,8 @@ from .concept_wizard import router as wizard_router
 from .concept_relationships import router as relationships_router
 # Import concept analysis router (operation-indexed schema)
 from .concept_analysis_router import router as concept_analysis_router
+# Import concept evidence router (evidence integration)
+from .concept_evidence_router import router as concept_evidence_router
 
 
 @asynccontextmanager
@@ -81,6 +83,8 @@ app.include_router(wizard_router)
 app.include_router(relationships_router)
 # Include concept analysis router (operation-indexed 8D schema)
 app.include_router(concept_analysis_router)
+# Include concept evidence router (evidence integration for 8D analysis)
+app.include_router(concept_evidence_router)
 
 
 # =============================================================================

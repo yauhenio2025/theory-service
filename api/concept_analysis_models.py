@@ -80,6 +80,60 @@ class SourceType(str, enum.Enum):
     SYNTHESIZED = "synthesized"
 
 
+class EvidenceSourceType(str, enum.Enum):
+    """Types of evidence sources."""
+    ARTICLE = "article"
+    BOOK = "book"
+    NEWS = "news"
+    THINKER_WORK = "thinker_work"
+    URL = "url"
+    MANUAL = "manual"
+
+
+class ExtractionStatus(str, enum.Enum):
+    """Status of evidence extraction from a source."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class AnalysisStatus(str, enum.Enum):
+    """Status of fragment analysis."""
+    PENDING = "pending"
+    ANALYZED = "analyzed"
+    NEEDS_DECISION = "needs_decision"
+    RESOLVED = "resolved"
+    AUTO_INTEGRATED = "auto_integrated"
+
+
+class EvidenceRelationship(str, enum.Enum):
+    """How evidence relates to existing analysis (Idea Vectors)."""
+    ILLUSTRATES = "illustrates"  # Concrete example making abstract vivid
+    DEEPENS = "deepens"          # Adds nuance or complexity
+    CHALLENGES = "challenges"    # Contradicts premise, requires revision
+    LIMITS = "limits"            # Establishes scope boundary
+    BRIDGES = "bridges"          # Connects previously unlinked operations
+    INVERTS = "inverts"          # Flips assumed relationship
+
+
+class ChangeType(str, enum.Enum):
+    """Types of structural changes from evidence."""
+    REVISION = "revision"
+    ADDITION = "addition"
+    STRENGTHENING = "strengthening"
+    SCOPE_LIMITATION = "scope_limitation"
+    DELETION = "deletion"
+
+
+class ProvenanceType(str, enum.Enum):
+    """Origin type for analysis items."""
+    WIZARD = "wizard"
+    EVIDENCE = "evidence"
+    USER_MANUAL = "user_manual"
+    LLM_SYNTHESIS = "llm_synthesis"
+
+
 # ==================== JUNCTION TABLES ====================
 
 # Many-to-many: Operation <-> Theoretical Influence
@@ -293,11 +347,194 @@ class AnalysisItem(Base):
 
     sequence_order = Column(Integer, default=0)
 
+    # Provenance fields - track where this item came from
+    provenance_type = Column(Enum(ProvenanceType), default=ProvenanceType.WIZARD)
+    provenance_source_id = Column(Integer)  # FK to evidence_fragment or wizard_session
+    provenance_decision_id = Column(Integer)  # FK to evidence_decision if from resolution
+    created_via = Column(String(50))  # 'initial_wizard', 'evidence_auto_integrate', 'evidence_decision', 'manual_edit'
+    supersedes_item_id = Column(Integer, ForeignKey('ca_analysis_items.id'))  # If this replaced another item
+    is_active = Column(Boolean, default=True)  # False if superseded by another item
+
     # Relationship
     analysis = relationship("ConceptAnalysis", back_populates="items")
+    superseded_by = relationship("AnalysisItem", remote_side=[id], backref="supersedes")
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+# ==================== EVIDENCE INTEGRATION TABLES ====================
+# These tables support evidence-driven concept refinement
+
+class ConceptEvidenceSource(Base):
+    """
+    An external source of evidence (article, book, news, etc.).
+    Evidence is extracted into fragments for analysis.
+    """
+    __tablename__ = 'ca_evidence_sources'
+
+    id = Column(Integer, primary_key=True)
+    concept_id = Column(Integer, ForeignKey('ca_analyzed_concepts.id'), nullable=False)
+
+    source_type = Column(Enum(EvidenceSourceType), nullable=False)
+    source_name = Column(String(500), nullable=False)  # "Zuboff, S. - Surveillance Capitalism"
+    source_url = Column(String(1000))
+    source_date = Column(DateTime)
+    source_content = Column(Text)  # Full text or summary
+
+    extraction_status = Column(Enum(ExtractionStatus), default=ExtractionStatus.PENDING)
+    extraction_error = Column(Text)  # Error message if failed
+    extracted_count = Column(Integer, default=0)  # Number of fragments extracted
+
+    # Relationships
+    concept = relationship("AnalyzedConcept", backref="evidence_sources")
+    fragments = relationship("ConceptEvidenceFragment", back_populates="source", cascade="all, delete-orphan")
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class ConceptEvidenceFragment(Base):
+    """
+    An extracted claim/insight from an evidence source.
+    Analyzed for relationship to existing concept analysis.
+    """
+    __tablename__ = 'ca_evidence_fragments'
+
+    id = Column(Integer, primary_key=True)
+    source_id = Column(Integer, ForeignKey('ca_evidence_sources.id'), nullable=False)
+
+    content = Column(Text, nullable=False)  # The extracted claim/insight
+    source_location = Column(String(200))  # page, paragraph, timestamp
+
+    # Analysis results
+    analysis_status = Column(Enum(AnalysisStatus), default=AnalysisStatus.PENDING)
+    relationship_type = Column(Enum(EvidenceRelationship))
+    target_operation_id = Column(Integer, ForeignKey('ca_analytical_operations.id'))
+    target_item_id = Column(Integer, ForeignKey('ca_analysis_items.id'))
+    confidence = Column(Float)  # 0.0-1.0
+    is_ambiguous = Column(Boolean, default=False)
+    why_needs_decision = Column(Text)  # LLM explanation if ambiguous
+
+    # Relationships
+    source = relationship("ConceptEvidenceSource", back_populates="fragments")
+    target_operation = relationship("AnalyticalOperation")
+    target_item = relationship("AnalysisItem")
+    interpretations = relationship("ConceptEvidenceInterpretation", back_populates="fragment", cascade="all, delete-orphan")
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class ConceptEvidenceInterpretation(Base):
+    """
+    A possible interpretation of ambiguous evidence.
+    Multiple interpretations allow user to choose how to integrate.
+    """
+    __tablename__ = 'ca_evidence_interpretations'
+
+    id = Column(Integer, primary_key=True)
+    fragment_id = Column(Integer, ForeignKey('ca_evidence_fragments.id'), nullable=False)
+    interpretation_key = Column(String(10))  # 'a', 'b', 'c'
+
+    title = Column(String(200), nullable=False)  # "Reading A: Revise the commitment"
+    strategy = Column(Text)  # What this interpretation means
+    rationale = Column(Text)  # Why this reading is valid
+
+    relationship_type = Column(Enum(EvidenceRelationship))
+    target_operation_id = Column(Integer, ForeignKey('ca_analytical_operations.id'))
+    is_selected = Column(Boolean, default=False)
+    is_recommended = Column(Boolean, default=False)
+    recommendation_rationale = Column(Text)
+
+    display_order = Column(Integer, default=0)
+
+    # Relationships
+    fragment = relationship("ConceptEvidenceFragment", back_populates="interpretations")
+    target_operation = relationship("AnalyticalOperation")
+    structural_changes = relationship("ConceptStructuralChange", back_populates="interpretation", cascade="all, delete-orphan")
+
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class ConceptStructuralChange(Base):
+    """
+    A specific change to the concept analysis proposed by an interpretation.
+    Includes before/after diff and commitment/foreclosure statements.
+    """
+    __tablename__ = 'ca_structural_changes'
+
+    id = Column(Integer, primary_key=True)
+    interpretation_id = Column(Integer, ForeignKey('ca_evidence_interpretations.id'), nullable=False)
+
+    change_type = Column(Enum(ChangeType), nullable=False)
+    target_operation_id = Column(Integer, ForeignKey('ca_analytical_operations.id'))
+    target_item_id = Column(Integer, ForeignKey('ca_analysis_items.id'))
+
+    before_content = Column(Text)  # Current state (null for additions)
+    after_content = Column(Text)   # Proposed new state (null for deletions)
+
+    commitment_statement = Column(Text)   # What you're committing to
+    foreclosure_statements = Column(JSON) # What you're giving up (array of strings)
+
+    display_order = Column(Integer, default=0)
+
+    # Relationships
+    interpretation = relationship("ConceptEvidenceInterpretation", back_populates="structural_changes")
+    target_operation = relationship("AnalyticalOperation")
+    target_item = relationship("AnalysisItem")
+
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class ConceptEvidenceDecision(Base):
+    """
+    A user's decision on how to integrate ambiguous evidence.
+    Links fragment to chosen interpretation and applied changes.
+    """
+    __tablename__ = 'ca_evidence_decisions'
+
+    id = Column(Integer, primary_key=True)
+    concept_id = Column(Integer, ForeignKey('ca_analyzed_concepts.id'), nullable=False)
+    fragment_id = Column(Integer, ForeignKey('ca_evidence_fragments.id'), nullable=False)
+
+    selected_interpretation_id = Column(Integer, ForeignKey('ca_evidence_interpretations.id'))
+    accepted_change_ids = Column(JSON)   # Array of change IDs to apply
+    rejected_change_ids = Column(JSON)   # Array of rejected changes
+    skipped = Column(Boolean, default=False)  # If user skipped without deciding
+
+    decision_notes = Column(Text)
+    decided_by = Column(String(100))
+
+    # Relationships
+    concept = relationship("AnalyzedConcept", backref="evidence_decisions")
+    fragment = relationship("ConceptEvidenceFragment", backref="decision")
+    selected_interpretation = relationship("ConceptEvidenceInterpretation")
+
+    decided_at = Column(DateTime, server_default=func.now())
+
+
+class ConceptEvidenceProgress(Base):
+    """
+    Tracks overall evidence integration progress for a concept.
+    Updated as sources are added and fragments are processed.
+    """
+    __tablename__ = 'ca_evidence_progress'
+
+    id = Column(Integer, primary_key=True)
+    concept_id = Column(Integer, ForeignKey('ca_analyzed_concepts.id'), nullable=False, unique=True)
+
+    total_sources = Column(Integer, default=0)
+    total_fragments = Column(Integer, default=0)
+    auto_integrated_count = Column(Integer, default=0)
+    needs_decision_count = Column(Integer, default=0)
+    resolved_count = Column(Integer, default=0)
+    skipped_count = Column(Integer, default=0)
+
+    # Relationship
+    concept = relationship("AnalyzedConcept", backref="evidence_progress")
+
+    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 # ==================== HELPER FUNCTIONS ====================

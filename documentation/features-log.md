@@ -4,6 +4,104 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-22: Evidence Integration & Conflict Resolution System
+
+**Commit:** `69bd1e8`
+**Branch:** `main`
+
+### Description
+Expanded the 8D concept analysis system to support evidence integration from external sources (articles, journalism, thinker's works) with provenance tracking, auto-integration for high-confidence insights, and a rich decision UI for ambiguous cases.
+
+### The Problem
+Concepts are not static - they evolve as new evidence is encountered. The previous system treated the initial wizard analysis as final, with no mechanism to:
+1. Integrate insights from external sources (articles, books, news)
+2. Track the provenance of each analytical element
+3. Route ambiguous evidence through user decision-making
+4. Articulate commitment/foreclosure tradeoffs for each interpretation
+
+### The Solution
+
+#### 1. Provenance Tracking
+Added provenance fields to `AnalysisItem` model:
+- `provenance_type`: wizard, evidence, user_manual, llm_synthesis
+- `provenance_source_id`: Links to evidence fragment or wizard session
+- `provenance_decision_id`: Links to evidence decision if from resolution
+- `created_via`: initial_wizard, evidence_auto_integrate, evidence_decision, manual_edit
+- `supersedes_item_id`: For items that replace previous versions
+
+#### 2. Evidence Source Management
+New models for tracking external sources:
+- `ConceptEvidenceSource`: Articles, books, URLs with extraction status
+- `ConceptEvidenceFragment`: Extracted claims with relationship analysis
+- `ConceptEvidenceInterpretation`: Multiple valid readings for ambiguous evidence
+- `ConceptStructuralChange`: Proposed changes with commitment/foreclosure statements
+- `ConceptEvidenceDecision`: User choices and applied changes
+- `ConceptEvidenceProgress`: Progress tracking for UI
+
+#### 3. Relationship Types (Idea Vectors)
+Six types adapted from ASC project patterns:
+- **ILLUSTRATES**: Concrete example making abstract vivid
+- **DEEPENS**: Adds nuance or complexity
+- **CHALLENGES**: Contradicts premise, requires revision
+- **LIMITS**: Establishes scope boundary
+- **BRIDGES**: Connects previously unlinked operations
+- **INVERTS**: Flips assumed relationship
+
+#### 4. Auto-Integration vs Pending Decisions
+- Confidence ≥ 0.85 + non-conflicting → auto-integrated
+- Confidence < 0.85 OR ambiguous → routes to pending decisions UI
+
+#### 5. Rich Decision UI
+Pending decisions view shows:
+- Evidence fragment with source citation
+- Relationship type and confidence
+- Why this needs user input
+- 2-4 interpretation options with:
+  - Structural changes (before/after)
+  - Commitment statements (what you're committing to)
+  - Foreclosure statements (what options you're giving up)
+
+#### 6. API Endpoints
+New router at `/concepts/{id}/evidence/`:
+- `POST /sources` - Add evidence source
+- `GET /sources` - List sources with status
+- `GET /fragments` - List fragments by status
+- `GET /decisions/pending` - Get next pending decision
+- `POST /decisions` - Submit decision and apply changes
+- `GET /progress` - Progress statistics
+
+#### 7. LLM Prompts
+Created comprehensive prompts for:
+- Evidence extraction from sources
+- Relationship analysis against existing schema
+- Interpretation generation for ambiguous cases
+- Commitment/foreclosure articulation
+- Batch synthesis for multiple fragments
+
+#### 8. Frontend Components
+- **EvidenceDashboard**: Progress cards, sources list, action buttons
+- **AddEvidenceSource**: Modal for adding new sources
+- **EvidenceDecisionView**: Rich decision UI with interpretation options
+- **ProvenanceBadge**: Shows origin of each analysis item
+- **Tab Navigation**: Switch between Analysis and Evidence views
+
+### Files Created/Modified
+- `api/concept_analysis_models.py` - 6 new enums, 7 new models, provenance fields
+- `api/concept_evidence_router.py` - New router with all endpoints
+- `api/concept_evidence_prompts.py` - LLM prompts for evidence processing
+- `api/main.py` - Router registration
+- `frontend/src/ConceptAnalysisViewer.jsx` - Tab UI, EvidenceDashboard, ProvenanceBadge
+- `frontend/src/components/AddEvidenceSource.jsx` - Source upload modal
+- `frontend/src/components/EvidenceDecisionView.jsx` - Decision UI
+
+### Principles Embodied
+- `prn_provenance_transparency` - Every element traces back to its origin
+- `prn_evidence_driven_concept_refinement` - Concepts evolve through evidence encounters
+- `prn_commitment_foreclosure_articulation` - Decisions show what you gain and lose
+- `prn_graceful_partial_completion_validity` - Works with partial evidence integration
+
+---
+
 ## 2025-12-22: Operation-Indexed 8D Concept Analysis Framework
 
 **Commit:** `e6d8dac`
