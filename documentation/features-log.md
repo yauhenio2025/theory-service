@@ -4,6 +4,48 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-22: 12-Dimensional Wizard Expansion (Kuhn, Foucault, Pragmatists)
+
+**Commit:** `932864b`
+**Branch:** `main`
+
+### Description
+Expanded the concept wizard from 9 to 12 dimensional signals by adding Kuhnian, Foucauldian, and Pragmatist philosophical traditions.
+
+### New Dimensional Signals
+
+| Signal | Key Extractions | Maps to Dimension |
+|--------|----------------|-------------------|
+| **kuhnian** | paradigm_position, exemplars, incommensurabilities, disciplinary_matrix | BOUNDARY |
+| **foucauldian** | power_knowledge_nexus, governmentality_mode, subjectification_effects, discourse_formation | NORMALIZATION |
+| **pragmatist** | cash_value, practical_consequences, performative_effects, habit_formations | AFFORDANCE |
+
+### Key Concepts Extracted
+
+**Kuhnian:**
+- Paradigm position (normal_science → anomaly → crisis → revolutionary)
+- Exemplars (paradigmatic cases that define proper use)
+- Incommensurabilities (frameworks that cannot translate)
+- Disciplinary matrix (shared symbolic generalizations, models, values)
+
+**Foucauldian:**
+- Power-knowledge nexus (what power enables what knowledge)
+- Governmentality modes (discipline/security/sovereign/pastoral/neoliberal)
+- Subjectification effects (what subjects the concept produces)
+- Discourse formation (what statements become possible/impossible)
+
+**Pragmatist:**
+- Cash value (meaning in experiential terms)
+- Practical consequences (what difference accepting this makes)
+- Performative effects (what using the concept DOES)
+- Habit formations (patterns of action enabled/blocked)
+
+### Key Files
+- `api/concept_wizard.py`: Updated all 4 prompt templates with new signals
+- `api/wizard_to_schema_bridge.py`: Added processing for new signals
+
+---
+
 ## 2025-12-22: Wizard to 8D Schema Bridge
 
 **Commit:** `c106ead`
