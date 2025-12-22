@@ -10,4 +10,4 @@ python-dotenv>=1.0.0
 alembic>=1.12.0
 httpx>=0.25.0
 python-multipart>=0.0.6
-anthropic>=0.40.0
+anthropic>=0.70.0  # Extended thinking support requires 0.50+
