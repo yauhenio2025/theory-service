@@ -694,7 +694,29 @@ async def get_evidence_progress(
     )
 
 
-# --- Extraction Trigger (placeholder for LLM integration) ---
+# --- LLM-Powered Extraction and Analysis ---
+
+from .concept_evidence_llm import (
+    extract_fragments_from_source as llm_extract_fragments,
+    analyze_fragment as llm_analyze_fragment,
+    generate_interpretations as llm_generate_interpretations,
+    add_commitment_foreclosure as llm_add_commitment_foreclosure,
+    get_likely_item_type
+)
+
+
+def get_concept_summary(concept, analyses) -> str:
+    """Build a summary of current concept analysis for LLM context."""
+    parts = [f"Concept: {concept.term}"]
+    if concept.definition:
+        parts.append(f"Definition: {concept.definition}")
+
+    for analysis in analyses[:5]:
+        if analysis.canonical_statement:
+            parts.append(f"- {analysis.canonical_statement[:200]}")
+
+    return "\n".join(parts)
+
 
 @router.post("/sources/{source_id}/extract")
 async def extract_from_source(
@@ -703,11 +725,12 @@ async def extract_from_source(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Trigger extraction of fragments from a source.
+    Extract fragments from a source using LLM analysis.
 
-    This will be implemented with LLM integration.
-    For now, returns a placeholder response.
+    This processes the source content and creates evidence fragments
+    that can then be analyzed for integration into the concept.
     """
+    # Get source
     result = await db.execute(
         select(ConceptEvidenceSource).where(
             ConceptEvidenceSource.id == source_id,
@@ -719,31 +742,85 @@ async def extract_from_source(
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
 
+    # Get concept
+    concept_result = await db.execute(
+        select(AnalyzedConcept)
+        .options(selectinload(AnalyzedConcept.analyses))
+        .where(AnalyzedConcept.id == concept_id)
+    )
+    concept = concept_result.scalar_one_or_none()
+
+    if not concept:
+        raise HTTPException(status_code=404, detail="Concept not found")
+
     # Update status to processing
     source.extraction_status = ExtractionStatus.PROCESSING
-    await db.commit()
+    await db.flush()
 
-    return {
-        "status": "processing",
-        "source_id": source_id,
-        "message": "Extraction queued. Use GET /fragments to check results."
-    }
+    try:
+        # Call LLM to extract fragments
+        fragments_data = await llm_extract_fragments(
+            concept_term=concept.term,
+            concept_definition=concept.definition or "",
+            concept_summary=get_concept_summary(concept, concept.analyses),
+            source_name=source.source_name,
+            source_type=source.source_type.value,
+            source_content=source.source_content
+        )
+
+        # Create fragment records
+        created_fragments = []
+        for frag_data in fragments_data:
+            fragment = ConceptEvidenceFragment(
+                source_id=source_id,
+                content=frag_data.get("content", ""),
+                source_location=frag_data.get("source_location"),
+                analysis_status=AnalysisStatus.PENDING,
+                extraction_metadata={
+                    "likely_dimension": frag_data.get("likely_dimension"),
+                    "extraction_note": frag_data.get("extraction_note")
+                }
+            )
+            db.add(fragment)
+            created_fragments.append(fragment)
+
+        # Update source
+        source.extraction_status = ExtractionStatus.COMPLETED
+        source.extracted_count = len(created_fragments)
+
+        await update_progress_counts(db, concept_id)
+        await db.commit()
+
+        return {
+            "status": "completed",
+            "source_id": source_id,
+            "fragments_extracted": len(created_fragments),
+            "message": f"Extracted {len(created_fragments)} fragments. Use POST /fragments/{{id}}/analyze to analyze each."
+        }
+
+    except Exception as e:
+        source.extraction_status = ExtractionStatus.FAILED
+        source.extraction_error = str(e)
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 
 @router.post("/fragments/{fragment_id}/analyze")
-async def analyze_fragment(
+async def analyze_fragment_endpoint(
     concept_id: int,
     fragment_id: int,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Trigger analysis of a fragment.
+    Analyze a fragment to determine how it relates to the concept.
 
-    This will be implemented with LLM integration.
-    For now, returns a placeholder response.
+    High-confidence, non-ambiguous fragments are auto-integrated.
+    Ambiguous fragments get interpretations generated for user decision.
     """
+    # Get fragment with source
     result = await db.execute(
         select(ConceptEvidenceFragment)
+        .options(selectinload(ConceptEvidenceFragment.source))
         .join(ConceptEvidenceSource)
         .where(
             ConceptEvidenceFragment.id == fragment_id,
@@ -755,8 +832,242 @@ async def analyze_fragment(
     if not fragment:
         raise HTTPException(status_code=404, detail="Fragment not found")
 
+    # Get concept with analyses
+    concept_result = await db.execute(
+        select(AnalyzedConcept)
+        .options(
+            selectinload(AnalyzedConcept.analyses)
+            .selectinload(ConceptAnalysis.operation)
+            .selectinload(AnalyticalOperation.dimension)
+        )
+        .where(AnalyzedConcept.id == concept_id)
+    )
+    concept = concept_result.scalar_one_or_none()
+
+    # Determine likely dimension from extraction metadata
+    likely_dimension = fragment.extraction_metadata.get("likely_dimension", "positional") if fragment.extraction_metadata else "positional"
+
+    # Find relevant operation for this dimension
+    dimension_operations = []
+    for analysis in concept.analyses:
+        if analysis.operation and analysis.operation.dimension:
+            if analysis.operation.dimension.type.value.lower() == likely_dimension.lower():
+                dimension_operations.append(analysis)
+
+    # Get existing items for context
+    existing_items = []
+    current_analysis = {}
+
+    if dimension_operations:
+        target_analysis = dimension_operations[0]
+        current_analysis = target_analysis.analysis_data or {}
+
+        # Get items
+        items_result = await db.execute(
+            select(AnalysisItem)
+            .where(AnalysisItem.analysis_id == target_analysis.id)
+            .order_by(AnalysisItem.sequence_order)
+        )
+        items = items_result.scalars().all()
+        existing_items = [{"id": i.id, "content": i.content, "item_type": i.item_type} for i in items]
+
+    try:
+        # Analyze fragment
+        analysis_result = await llm_analyze_fragment(
+            concept_term=concept.term,
+            concept_definition=concept.definition or "",
+            fragment_content=fragment.content,
+            source_name=fragment.source.source_name if fragment.source else "Unknown",
+            dimension_name=likely_dimension,
+            current_analysis=current_analysis,
+            existing_items=existing_items
+        )
+
+        # Update fragment with analysis results
+        fragment.relationship_type = EvidenceRelationship(analysis_result.get("relationship_type", "illustrates"))
+        fragment.confidence = analysis_result.get("confidence", 0.5)
+        fragment.is_ambiguous = analysis_result.get("is_ambiguous", True)
+        fragment.why_needs_decision = analysis_result.get("why_needs_decision")
+
+        # Find target operation
+        if analysis_result.get("target_operation_name") and dimension_operations:
+            for analysis in dimension_operations:
+                if analysis.operation.name.lower() == analysis_result["target_operation_name"].lower():
+                    fragment.target_operation_id = analysis.operation.id
+                    break
+
+        if not fragment.target_operation_id and dimension_operations:
+            fragment.target_operation_id = dimension_operations[0].operation.id
+
+        # Decision: auto-integrate or generate interpretations
+        if fragment.confidence >= 0.85 and not fragment.is_ambiguous:
+            # AUTO-INTEGRATE
+            auto_content = analysis_result.get("auto_integration_content", fragment.content)
+            auto_item_type = analysis_result.get("auto_integration_item_type", get_likely_item_type(likely_dimension, fragment.relationship_type.value))
+
+            # Find or create analysis for this operation
+            if fragment.target_operation_id:
+                analysis_record = await db.execute(
+                    select(ConceptAnalysis).where(
+                        ConceptAnalysis.concept_id == concept_id,
+                        ConceptAnalysis.operation_id == fragment.target_operation_id
+                    )
+                )
+                target_analysis = analysis_record.scalar_one_or_none()
+
+                if target_analysis:
+                    new_item = AnalysisItem(
+                        analysis_id=target_analysis.id,
+                        item_type=auto_item_type,
+                        content=auto_content,
+                        provenance_type=ProvenanceType.EVIDENCE,
+                        provenance_source_id=fragment.id,
+                        created_via="evidence_auto_integrate"
+                    )
+                    db.add(new_item)
+
+            fragment.analysis_status = AnalysisStatus.AUTO_INTEGRATED
+            await update_progress_counts(db, concept_id)
+            await db.commit()
+
+            return {
+                "status": "auto_integrated",
+                "fragment_id": fragment_id,
+                "relationship_type": fragment.relationship_type.value,
+                "confidence": fragment.confidence,
+                "message": "Fragment auto-integrated based on high confidence."
+            }
+
+        else:
+            # GENERATE INTERPRETATIONS for user decision
+            interpretations_data = await llm_generate_interpretations(
+                concept_term=concept.term,
+                fragment_content=fragment.content,
+                source_name=fragment.source.source_name if fragment.source else "Unknown",
+                why_ambiguous=fragment.why_needs_decision or "Multiple valid interpretations possible",
+                current_analysis=current_analysis,
+                existing_items=existing_items
+            )
+
+            # Add commitment/foreclosure
+            cf_data = await llm_add_commitment_foreclosure(
+                concept_term=concept.term,
+                fragment_content=fragment.content,
+                interpretations=interpretations_data
+            )
+
+            # Create interpretation records
+            for i, interp_data in enumerate(interpretations_data):
+                interp = ConceptEvidenceInterpretation(
+                    fragment_id=fragment_id,
+                    interpretation_key=interp_data.get("key", chr(ord('a') + i)),
+                    title=interp_data.get("title", f"Interpretation {i+1}"),
+                    strategy=interp_data.get("strategy"),
+                    rationale=interp_data.get("rationale"),
+                    relationship_type=EvidenceRelationship(interp_data.get("relationship_type", "illustrates")) if interp_data.get("relationship_type") else None,
+                    is_recommended=interp_data.get("is_recommended", False),
+                    recommendation_rationale=interp_data.get("recommendation_rationale"),
+                    display_order=i
+                )
+
+                # Add commitment/foreclosure from separate call
+                key = interp_data.get("key", chr(ord('a') + i))
+                if key in cf_data:
+                    interp.commitment_statement = cf_data[key].get("commitment_statement")
+                    interp.foreclosure_statements = cf_data[key].get("foreclosure_statements", [])
+
+                db.add(interp)
+                await db.flush()
+
+                # Create structural changes
+                for j, change_data in enumerate(interp_data.get("structural_changes", [])):
+                    # Find target operation
+                    target_op_id = None
+                    if change_data.get("target_operation_name"):
+                        for analysis in concept.analyses:
+                            if analysis.operation and analysis.operation.name.lower() == change_data["target_operation_name"].lower():
+                                target_op_id = analysis.operation.id
+                                break
+
+                    change = ConceptStructuralChange(
+                        interpretation_id=interp.id,
+                        change_type=ChangeType(change_data.get("change_type", "addition")),
+                        target_operation_id=target_op_id or fragment.target_operation_id,
+                        target_item_id=change_data.get("target_item_id"),
+                        before_content=change_data.get("before_content"),
+                        after_content=change_data.get("after_content"),
+                        commitment_statement=cf_data.get(key, {}).get("commitment_statement"),
+                        foreclosure_statements=cf_data.get(key, {}).get("foreclosure_statements", []),
+                        display_order=j
+                    )
+                    db.add(change)
+
+            fragment.analysis_status = AnalysisStatus.NEEDS_DECISION
+            await update_progress_counts(db, concept_id)
+            await db.commit()
+
+            return {
+                "status": "needs_decision",
+                "fragment_id": fragment_id,
+                "relationship_type": fragment.relationship_type.value,
+                "confidence": fragment.confidence,
+                "interpretations_count": len(interpretations_data),
+                "message": "Fragment requires decision. Use GET /decisions/pending to review."
+            }
+
+    except Exception as e:
+        fragment.analysis_status = AnalysisStatus.PENDING
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@router.post("/sources/{source_id}/extract-and-analyze")
+async def extract_and_analyze_source(
+    concept_id: int,
+    source_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Full pipeline: extract fragments from source, then analyze each.
+
+    Convenience endpoint that combines extraction and analysis in one call.
+    """
+    # First extract
+    extract_result = await extract_from_source(concept_id, source_id, db)
+
+    if extract_result["status"] != "completed":
+        return extract_result
+
+    # Get all fragments for this source
+    fragments_result = await db.execute(
+        select(ConceptEvidenceFragment)
+        .where(ConceptEvidenceFragment.source_id == source_id)
+    )
+    fragments = fragments_result.scalars().all()
+
+    # Analyze each
+    results = {
+        "auto_integrated": 0,
+        "needs_decision": 0,
+        "failed": 0
+    }
+
+    for fragment in fragments:
+        try:
+            analysis_result = await analyze_fragment_endpoint(concept_id, fragment.id, db)
+            if analysis_result["status"] == "auto_integrated":
+                results["auto_integrated"] += 1
+            else:
+                results["needs_decision"] += 1
+        except Exception as e:
+            results["failed"] += 1
+
     return {
-        "status": "queued",
-        "fragment_id": fragment_id,
-        "message": "Analysis queued. Results will update fragment status and interpretations."
+        "status": "completed",
+        "source_id": source_id,
+        "fragments_extracted": extract_result["fragments_extracted"],
+        "auto_integrated": results["auto_integrated"],
+        "needs_decision": results["needs_decision"],
+        "failed": results["failed"],
+        "message": f"Processed {extract_result['fragments_extracted']} fragments."
     }

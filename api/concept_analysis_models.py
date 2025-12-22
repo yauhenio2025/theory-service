@@ -620,6 +620,7 @@ class ConceptEvidenceFragment(Base):
 
     content = Column(Text, nullable=False)  # The extracted claim/insight
     source_location = Column(String(200))  # page, paragraph, timestamp
+    extraction_metadata = Column(JSON)  # Additional extraction info (likely_dimension, extraction_note)
 
     # Analysis results
     analysis_status = Column(Enum(AnalysisStatus), default=AnalysisStatus.PENDING)
