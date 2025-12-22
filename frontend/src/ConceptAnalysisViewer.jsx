@@ -215,6 +215,309 @@ function ProvenanceBadge({ item }) {
   )
 }
 
+// Web Centrality badge
+function CentralityBadge({ centrality }) {
+  if (!centrality) return null
+  const styles = {
+    core: { bg: '#c62828', text: '#fff', label: 'Core' },
+    high: { bg: '#e65100', text: '#fff', label: 'High' },
+    medium: { bg: '#f9a825', text: '#000', label: 'Medium' },
+    peripheral: { bg: '#9e9e9e', text: '#fff', label: 'Peripheral' },
+  }
+  const style = styles[centrality] || styles.medium
+  return (
+    <span style={{
+      backgroundColor: style.bg,
+      color: style.text,
+      padding: '0.15rem 0.5rem',
+      borderRadius: '4px',
+      fontSize: '0.7rem',
+      fontWeight: 500,
+      marginLeft: '0.5rem',
+    }}>
+      {style.label}
+    </span>
+  )
+}
+
+// Reasoning Scaffold Display - The Quinean intermediate layer
+function ReasoningScaffoldDisplay({ scaffold, itemContent }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (!scaffold) return null
+
+  return (
+    <div style={{ marginTop: '0.75rem' }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          background: 'none',
+          border: '1px solid #e0e0e0',
+          borderRadius: '4px',
+          padding: '0.35rem 0.75rem',
+          cursor: 'pointer',
+          fontSize: '0.8rem',
+          color: '#666',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+        }}
+      >
+        <span style={{ fontSize: '1rem' }}>{expanded ? '▾' : '▸'}</span>
+        Show Reasoning
+      </button>
+
+      {expanded && (
+        <div style={{
+          marginTop: '0.75rem',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          padding: '1rem',
+          border: '1px solid #e0e0e0',
+        }}>
+          {/* Inference Type */}
+          {scaffold.inference_type && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                Inference Type
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{
+                  backgroundColor: '#1565C0',
+                  color: '#fff',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                }}>
+                  {scaffold.inference_type}
+                </span>
+                {scaffold.inference_rule && (
+                  <span style={{ color: '#666', fontSize: '0.85rem' }}>
+                    via {scaffold.inference_rule}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Premises */}
+          {scaffold.premises?.length > 0 && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                From Premises
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {scaffold.premises.map((premise, i) => (
+                  <div key={i} style={{
+                    backgroundColor: '#fff',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '4px',
+                    borderLeft: `3px solid ${premise.centrality === 'core' ? '#c62828' : premise.centrality === 'high' ? '#e65100' : '#9e9e9e'}`,
+                  }}>
+                    <div style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>{premise.claim}</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: '#888' }}>
+                      <span style={{
+                        backgroundColor: '#e8e8e8',
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '3px',
+                      }}>
+                        {premise.claim_type}
+                      </span>
+                      <span style={{
+                        backgroundColor: '#e8e8e8',
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '3px',
+                      }}>
+                        {premise.centrality}
+                      </span>
+                      <span style={{
+                        backgroundColor: '#e8e8e8',
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '3px',
+                      }}>
+                        {premise.source}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Reasoning Trace */}
+          {scaffold.reasoning_trace && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                Reasoning Trace
+              </div>
+              <div style={{
+                backgroundColor: '#fff',
+                padding: '0.75rem',
+                borderRadius: '4px',
+                fontSize: '0.9rem',
+                lineHeight: 1.5,
+                fontStyle: 'italic',
+                color: '#444',
+              }}>
+                {scaffold.reasoning_trace}
+              </div>
+            </div>
+          )}
+
+          {/* Source Context */}
+          {(scaffold.source_passage || scaffold.derivation_trigger) && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                Triggered By
+              </div>
+              <div style={{
+                backgroundColor: '#e3f2fd',
+                padding: '0.75rem',
+                borderRadius: '4px',
+              }}>
+                {scaffold.derivation_trigger && (
+                  <div style={{ fontSize: '0.8rem', color: '#1565C0', marginBottom: '0.25rem' }}>
+                    Source: {scaffold.derivation_trigger}
+                  </div>
+                )}
+                {scaffold.source_passage && (
+                  <div style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>
+                    "{scaffold.source_passage}"
+                  </div>
+                )}
+                {scaffold.source_location && (
+                  <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
+                    Location: {scaffold.source_location}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Confidence Decomposition */}
+          {(scaffold.premise_confidence || scaffold.inference_validity || scaffold.web_coherence) && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                Confidence Decomposition
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                {scaffold.premise_confidence && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2E7D32' }}>
+                      {Math.round(scaffold.premise_confidence * 100)}%
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#666' }}>Premise</div>
+                  </div>
+                )}
+                {scaffold.inference_validity && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#1565C0' }}>
+                      {Math.round(scaffold.inference_validity * 100)}%
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#666' }}>Inference</div>
+                  </div>
+                )}
+                {scaffold.source_quality && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#7B1FA2' }}>
+                      {Math.round(scaffold.source_quality * 100)}%
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#666' }}>Source</div>
+                  </div>
+                )}
+                {scaffold.web_coherence && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#E65100' }}>
+                      {Math.round(scaffold.web_coherence * 100)}%
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#666' }}>Coherence</div>
+                  </div>
+                )}
+              </div>
+              {scaffold.confidence_explanation && (
+                <div style={{ fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>
+                  {scaffold.confidence_explanation}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Alternatives Rejected */}
+          {scaffold.alternatives_rejected?.length > 0 && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                Alternatives Considered
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {scaffold.alternatives_rejected.map((alt, i) => (
+                  <div key={i} style={{
+                    backgroundColor: '#ffebee',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '4px',
+                    borderLeft: '3px solid #c62828',
+                  }}>
+                    <div style={{ fontSize: '0.85rem', color: '#c62828', marginBottom: '0.25rem' }}>
+                      ✗ {alt.inference}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                      Rejected: {alt.rejected_because}
+                    </div>
+                    {alt.plausibility && (
+                      <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.25rem' }}>
+                        Plausibility: {Math.round(alt.plausibility * 100)}%
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Revisability Cost */}
+          {scaffold.revisability_cost && (
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                Revisability Cost (Quine)
+              </div>
+              <div style={{
+                backgroundColor: '#fff3e0',
+                padding: '0.75rem',
+                borderRadius: '4px',
+                fontSize: '0.85rem',
+                color: '#e65100',
+              }}>
+                {scaffold.revisability_cost}
+              </div>
+            </div>
+          )}
+
+          {/* Dependent Claims */}
+          {scaffold.dependent_claims?.length > 0 && (
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                Depends On
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                {scaffold.dependent_claims.map((claim, i) => (
+                  <span key={i} style={{
+                    backgroundColor: '#e8e8e8',
+                    padding: '0.2rem 0.5rem',
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                  }}>
+                    {claim}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Evidence Dashboard component
 function EvidenceDashboard({ conceptId, onOpenAddSource, onOpenDecisions }) {
   const [progress, setProgress] = useState(null)
@@ -490,13 +793,21 @@ function OperationSection({ operation, analysis, colors }) {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div style={{ flex: 1 }}>{formatItemContent(item.content, item.item_type)}</div>
-                          <ProvenanceBadge item={item} />
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                            <CentralityBadge centrality={item.web_centrality} />
+                            <ProvenanceBadge item={item} />
+                          </div>
                         </div>
-                        {(item.severity || item.strength) && (
-                          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#888' }}>
+                        {(item.severity || item.strength || item.coherence_score != null) && (
+                          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#888', flexWrap: 'wrap' }}>
                             {item.severity && <span>Severity: <strong>{item.severity}</strong></span>}
                             {item.strength != null && <span>Strength: <strong>{Math.round(item.strength * 100)}%</strong></span>}
+                            {item.coherence_score != null && <span>Coherence: <strong>{Math.round(item.coherence_score * 100)}%</strong></span>}
+                            {item.observation_proximity != null && <span>Observation Proximity: <strong>{Math.round(item.observation_proximity * 100)}%</strong></span>}
                           </div>
+                        )}
+                        {item.reasoning_scaffold && (
+                          <ReasoningScaffoldDisplay scaffold={item.reasoning_scaffold} itemContent={item.content} />
                         )}
                       </div>
                     ))}

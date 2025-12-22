@@ -17,8 +17,9 @@ from sqlalchemy.orm import sessionmaker
 
 from api.concept_analysis_models import (
     Base, AnalyticalDimension, TheoreticalInfluence, AnalyticalOperation,
-    AnalyzedConcept, ConceptAnalysis, AnalysisItem,
-    DimensionType, OutputType, SourceType, operation_influences
+    AnalyzedConcept, ConceptAnalysis, AnalysisItem, ItemReasoningScaffold,
+    DimensionType, OutputType, SourceType, WebCentrality, InferenceType,
+    operation_influences
 )
 
 # Database URL
@@ -650,6 +651,216 @@ OPERATIONS = {
 from scripts.generate_operation_indexed_spreadsheet import TECH_SOV_ANALYSIS
 
 
+# ==================== QUINEAN REASONING SCAFFOLDS ====================
+# Sample reasoning scaffolds for forward inferences in Inferential Mapping
+
+REASONING_SCAFFOLDS = {
+    # Key: (item_type, content_fragment) -> scaffold data
+    ('forward_inferences', 'States should invest in domestic semiconductor manufacturing'): {
+        'inference_type': InferenceType.MATERIAL,
+        'inference_rule': 'material_implication',
+        'premises': [
+            {
+                'claim': 'Technological sovereignty requires autonomous capacity for technology development',
+                'claim_type': 'definitional',
+                'centrality': 'core',
+                'source': 'concept_definition'
+            },
+            {
+                'claim': 'Semiconductors are foundational to all digital technology',
+                'claim_type': 'empirical',
+                'centrality': 'high',
+                'source': 'domain_knowledge'
+            },
+            {
+                'claim': 'Dependency on foreign semiconductor supply creates strategic vulnerability',
+                'claim_type': 'empirical',
+                'centrality': 'medium',
+                'source': 'user_notes'
+            }
+        ],
+        'reasoning_trace': 'Given the definitional link between sovereignty and autonomous capacity, combined with the empirical fact that semiconductors underpin all digital systems, it follows materially that states pursuing tech sovereignty must develop domestic chip manufacturing. The 2021-2023 chip shortage demonstrated the strategic vulnerability of import dependency.',
+        'derivation_trigger': 'concept_definition',
+        'source_passage': 'Technological sovereignty entails the capacity for indigenous technology development',
+        'source_location': 'concept definition + domain knowledge',
+        'alternatives_rejected': [
+            {
+                'inference': 'States should rely on allied nations for semiconductor supply',
+                'rejected_because': 'Conflicts with sovereignty framing emphasis on autonomous capacity; allied dependencies can shift',
+                'plausibility': 0.4
+            },
+            {
+                'inference': 'Private sector investment alone can secure semiconductor supply',
+                'rejected_because': 'Historical evidence shows market failures in strategic sectors; chip fabs require state-level capital',
+                'plausibility': 0.3
+            }
+        ],
+        'premise_confidence': 0.95,
+        'inference_validity': 0.9,
+        'source_quality': 0.9,
+        'web_coherence': 0.92,
+        'confidence_explanation': 'High strength (90%) due to: (1) tight definitional link between sovereignty and autonomous capacity, (2) empirical evidence from chip shortage demonstrating vulnerability, (3) strong coherence with industrial policy frameworks that are central to sovereignty discourse.',
+        'revisability_cost': 'Rejecting this would require either: (a) weakening the definition of sovereignty to not require autonomous capacity, or (b) arguing semiconductors are not foundational to digital tech - both highly costly revisions.',
+        'dependent_claims': [
+            'Tech sovereignty requires industrial policy',
+            'Strategic sectors deserve public investment',
+            'Import dependency creates vulnerability'
+        ],
+        'web_centrality': WebCentrality.PERIPHERAL,
+        'observation_proximity': 0.75,
+    },
+    ('forward_inferences', 'Critical infrastructure must have national ownership requirements'): {
+        'inference_type': InferenceType.MATERIAL,
+        'inference_rule': 'material_implication',
+        'premises': [
+            {
+                'claim': 'Critical infrastructure is essential for national functioning',
+                'claim_type': 'definitional',
+                'centrality': 'high',
+                'source': 'domain_knowledge'
+            },
+            {
+                'claim': 'Foreign ownership of critical infrastructure enables external leverage',
+                'claim_type': 'empirical',
+                'centrality': 'medium',
+                'source': 'geopolitical_analysis'
+            }
+        ],
+        'reasoning_trace': 'If critical infrastructure is essential AND foreign ownership creates external leverage, then sovereignty (understood as freedom from external control) requires national ownership. This follows from the core sovereignty commitment to self-determination.',
+        'derivation_trigger': 'prior_inference',
+        'source_passage': 'Sovereignty implies freedom from external coercion',
+        'source_location': 'sovereignty theory',
+        'alternatives_rejected': [
+            {
+                'inference': 'Regulatory oversight is sufficient for foreign-owned infrastructure',
+                'rejected_because': 'Regulation can be circumvented; ownership provides fundamental control',
+                'plausibility': 0.5
+            }
+        ],
+        'premise_confidence': 0.9,
+        'inference_validity': 0.85,
+        'source_quality': 0.85,
+        'web_coherence': 0.88,
+        'confidence_explanation': 'Strong inference (85%) but slightly lower than semiconductor case because: ownership requirements are more contested politically; some sovereignty advocates accept regulatory alternatives.',
+        'revisability_cost': 'Would require distinguishing types of infrastructure or arguing regulation is sufficient for sovereignty.',
+        'dependent_claims': [
+            'States should screen foreign investment in strategic sectors',
+            'National security review of tech acquisitions is justified'
+        ],
+        'web_centrality': WebCentrality.MEDIUM,
+        'observation_proximity': 0.6,
+    },
+    ('backward_inferences', 'States have legitimate interests in technological capacity'): {
+        'inference_type': InferenceType.TRANSCENDENTAL,
+        'inference_rule': 'condition_of_possibility',
+        'premises': [
+            {
+                'claim': 'Technological sovereignty is a valid political goal',
+                'claim_type': 'normative',
+                'centrality': 'core',
+                'source': 'concept_definition'
+            }
+        ],
+        'reasoning_trace': 'This is a transcendental inference: for tech sovereignty to be a valid goal AT ALL, states must have legitimate interests in technological capacity. If states had no such interests, sovereignty talk would be category error. This is a condition of possibility for the entire discourse.',
+        'derivation_trigger': 'concept_definition',
+        'source_passage': 'The concept of technological sovereignty presupposes state interest legitimacy',
+        'source_location': 'conceptual analysis',
+        'alternatives_rejected': [
+            {
+                'inference': 'Only individuals have legitimate tech interests; state interests are illegitimate aggregations',
+                'rejected_because': 'Would dissolve the entire concept; libertarian framing incompatible with sovereignty',
+                'plausibility': 0.2
+            }
+        ],
+        'premise_confidence': 0.98,
+        'inference_validity': 0.95,
+        'source_quality': 0.9,
+        'web_coherence': 0.95,
+        'confidence_explanation': 'Very high (95%) because this is nearly analytic - it follows from the very possibility of sovereignty discourse. Rejecting it would dissolve the concept entirely.',
+        'revisability_cost': 'Cannot reject this while maintaining any version of tech sovereignty. This is a load-bearing assumption.',
+        'dependent_claims': [
+            'All forward inferences from tech sovereignty',
+            'The legitimacy of industrial policy',
+            'State intervention in tech markets'
+        ],
+        'web_centrality': WebCentrality.CORE,
+        'observation_proximity': 0.3,
+    },
+    ('contradictions', 'Complete free trade in all technology sectors'): {
+        'inference_type': InferenceType.DEDUCTIVE,
+        'inference_rule': 'material_incompatibility',
+        'premises': [
+            {
+                'claim': 'Tech sovereignty requires capacity for autonomous tech development',
+                'claim_type': 'definitional',
+                'centrality': 'core',
+                'source': 'concept_definition'
+            },
+            {
+                'claim': 'Complete free trade precludes protective industrial policy',
+                'claim_type': 'definitional',
+                'centrality': 'high',
+                'source': 'economic_theory'
+            }
+        ],
+        'reasoning_trace': 'This is a hard contradiction: tech sovereignty REQUIRES industrial policy to build autonomous capacity, but complete free trade FORBIDS industrial policy. They cannot both be true. One must choose between the sovereignty framework and the pure free trade framework.',
+        'derivation_trigger': 'concept_definition',
+        'source_passage': 'Sovereignty requires autonomous capacity; free trade forbids protection',
+        'source_location': 'conceptual analysis',
+        'alternatives_rejected': [],
+        'premise_confidence': 0.95,
+        'inference_validity': 0.98,
+        'source_quality': 0.9,
+        'web_coherence': 0.95,
+        'confidence_explanation': 'Near-deductive incompatibility. Both positions are clearly defined and their requirements are logically opposed.',
+        'revisability_cost': 'This contradiction cannot be resolved without fundamentally redefining either sovereignty or free trade.',
+        'dependent_claims': [
+            'Tech sovereignty critique of WTO frameworks',
+            'Justification for strategic industry exceptions'
+        ],
+        'web_centrality': WebCentrality.HIGH,
+        'observation_proximity': 0.5,
+    },
+}
+
+
+def create_reasoning_scaffold(session, item, item_content):
+    """Create a reasoning scaffold for an analysis item if sample data exists."""
+    key = (item.item_type, item_content)
+    if key not in REASONING_SCAFFOLDS:
+        return None
+
+    scaffold_data = REASONING_SCAFFOLDS[key]
+
+    scaffold = ItemReasoningScaffold(
+        item_id=item.id,
+        inference_type=scaffold_data.get('inference_type'),
+        inference_rule=scaffold_data.get('inference_rule'),
+        premises=scaffold_data.get('premises'),
+        reasoning_trace=scaffold_data.get('reasoning_trace'),
+        derivation_trigger=scaffold_data.get('derivation_trigger'),
+        source_passage=scaffold_data.get('source_passage'),
+        source_location=scaffold_data.get('source_location'),
+        alternatives_rejected=scaffold_data.get('alternatives_rejected'),
+        premise_confidence=scaffold_data.get('premise_confidence'),
+        inference_validity=scaffold_data.get('inference_validity'),
+        source_quality=scaffold_data.get('source_quality'),
+        web_coherence=scaffold_data.get('web_coherence'),
+        confidence_explanation=scaffold_data.get('confidence_explanation'),
+        revisability_cost=scaffold_data.get('revisability_cost'),
+        dependent_claims=scaffold_data.get('dependent_claims'),
+    )
+    session.add(scaffold)
+
+    # Also update the item's Quinean fields
+    if 'web_centrality' in scaffold_data:
+        item.web_centrality = scaffold_data['web_centrality']
+    if 'observation_proximity' in scaffold_data:
+        item.observation_proximity = scaffold_data['observation_proximity']
+
+    return scaffold
+
+
 def seed_database():
     """Main seeding function."""
     # Create tables
@@ -664,6 +875,7 @@ def seed_database():
         if existing:
             print("Database already seeded. Clearing and re-seeding...")
             # Clear existing data in reverse dependency order
+            session.query(ItemReasoningScaffold).delete()  # Delete scaffolds first (FK to items)
             session.query(AnalysisItem).delete()
             session.query(ConceptAnalysis).delete()
             session.query(AnalyzedConcept).delete()
@@ -797,6 +1009,10 @@ def seed_database():
                                     sequence_order=i,
                                 )
                                 session.add(analysis_item)
+                                session.flush()  # Get the item ID
+
+                                # Create reasoning scaffold if sample data exists
+                                create_reasoning_scaffold(session, analysis_item, content)
 
         session.commit()
         print("Database seeded successfully!")
@@ -809,6 +1025,7 @@ def seed_database():
         print(f"Concepts: {session.query(AnalyzedConcept).count()}")
         print(f"Analyses: {session.query(ConceptAnalysis).count()}")
         print(f"Analysis Items: {session.query(AnalysisItem).count()}")
+        print(f"Reasoning Scaffolds: {session.query(ItemReasoningScaffold).count()}")
 
     except Exception as e:
         session.rollback()

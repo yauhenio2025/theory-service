@@ -320,6 +320,24 @@ class ConceptAnalysisHistory(Base):
 # These tables store the individual items that make up an analysis
 # (e.g., individual inferences, individual commitments, etc.)
 
+class WebCentrality(str, enum.Enum):
+    """Quinean web of belief position - how central vs peripheral."""
+    CORE = "core"          # Foundational, revision requires massive restructuring
+    HIGH = "high"          # Important, revision affects many connected beliefs
+    MEDIUM = "medium"      # Moderate importance, some connections
+    PERIPHERAL = "peripheral"  # Edge beliefs, easily revisable
+
+
+class InferenceType(str, enum.Enum):
+    """Type of inferential move."""
+    DEDUCTIVE = "deductive"        # Logically necessary
+    MATERIAL = "material"          # Content-based, norm-governed
+    DEFAULT = "default"            # Defeasible, can be overridden
+    ABDUCTIVE = "abductive"        # Inference to best explanation
+    ANALOGICAL = "analogical"      # From similar cases
+    TRANSCENDENTAL = "transcendental"  # Conditions of possibility
+
+
 class AnalysisItem(Base):
     """
     Individual items within an analysis.
@@ -347,6 +365,12 @@ class AnalysisItem(Base):
 
     sequence_order = Column(Integer, default=0)
 
+    # ========== QUINEAN WEB OF BELIEF FIELDS ==========
+    # These fields capture the item's position in the inferential web
+    web_centrality = Column(Enum(WebCentrality))  # Core → Peripheral
+    observation_proximity = Column(Float)  # 0-1: how close to empirical grounding
+    coherence_score = Column(Float)  # 0-1: how well it fits the web
+
     # Provenance fields - track where this item came from
     provenance_type = Column(Enum(ProvenanceType), default=ProvenanceType.WIZARD)
     provenance_source_id = Column(Integer)  # FK to evidence_fragment or wizard_session
@@ -355,9 +379,99 @@ class AnalysisItem(Base):
     supersedes_item_id = Column(Integer, ForeignKey('ca_analysis_items.id'))  # If this replaced another item
     is_active = Column(Boolean, default=True)  # False if superseded by another item
 
-    # Relationship
+    # Relationships
     analysis = relationship("ConceptAnalysis", back_populates="items")
     superseded_by = relationship("AnalysisItem", remote_side=[id], backref="supersedes")
+    reasoning_scaffold = relationship("ItemReasoningScaffold", back_populates="item", uselist=False, cascade="all, delete-orphan")
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class ItemReasoningScaffold(Base):
+    """
+    Quinean Intermediate Reasoning Layer.
+
+    Captures the full reasoning scaffold for how an AnalysisItem was derived:
+    - What premises it follows from
+    - What inference type was used
+    - Why this conclusion vs alternatives
+    - What would need to change if revised (revisability cost)
+    - Source context that triggered it
+
+    This makes LLM reasoning visible, auditable, and improvable.
+    """
+    __tablename__ = 'ca_item_reasoning_scaffolds'
+
+    id = Column(Integer, primary_key=True)
+    item_id = Column(Integer, ForeignKey('ca_analysis_items.id'), nullable=False, unique=True)
+
+    # ========== DERIVATION CHAIN ==========
+    # The inferential pathway from premises to conclusion
+
+    inference_type = Column(Enum(InferenceType))  # How the inference was made
+    inference_rule = Column(String(100))  # Specific rule if applicable (modus_ponens, etc.)
+
+    # Premises as structured JSON array:
+    # [{
+    #   "claim": "Tech sovereignty requires domestic capacity",
+    #   "claim_type": "definitional|empirical|normative",
+    #   "centrality": "core|high|medium|peripheral",
+    #   "source": "concept_definition|user_notes|external"
+    # }]
+    premises = Column(JSON)
+
+    # The reasoning trace - natural language explanation of the inferential move
+    reasoning_trace = Column(Text)
+
+    # ========== SOURCE CONTEXT ==========
+    # What triggered this item - provenance with visibility
+
+    derivation_trigger = Column(String(50))  # 'user_notes', 'external_article', 'concept_definition', 'prior_inference'
+    source_passage = Column(Text)  # The specific text that triggered this
+    source_location = Column(String(200))  # Where in the source (paragraph, page, section)
+
+    # ========== ALTERNATIVES CONSIDERED ==========
+    # What other inferences could have been drawn but weren't
+    # [{
+    #   "inference": "Private sector could handle this",
+    #   "rejected_because": "Conflicts with sovereignty's state-role emphasis",
+    #   "plausibility": 0.4
+    # }]
+    alternatives_rejected = Column(JSON)
+
+    # ========== STRENGTH DECOMPOSITION ==========
+    # Why the confidence score is what it is
+
+    # Individual factors that compose the final strength
+    premise_confidence = Column(Float)      # 0-1: confidence in the premises
+    inference_validity = Column(Float)      # 0-1: strength of the inferential move
+    source_quality = Column(Float)          # 0-1: quality/reliability of the source
+    web_coherence = Column(Float)           # 0-1: how well it fits the belief web
+
+    # Natural language explanation of confidence
+    confidence_explanation = Column(Text)
+
+    # ========== REVISABILITY / WHAT-IF ==========
+    # Quinean: what would need to change if this were rejected
+
+    revisability_cost = Column(Text)  # Natural language description
+    # Claims that would need revision if this item were rejected
+    # ["If rejected, must revise claim X", "Would require new explanation for Y"]
+    dependent_claims = Column(JSON)
+
+    # ========== WEB CONNECTIONS ==========
+    # What this item connects to in the inferential web
+
+    # IDs of other items this directly supports
+    supports_items = Column(JSON)  # [item_id, item_id, ...]
+    # IDs of other items this is supported by
+    supported_by_items = Column(JSON)  # [item_id, item_id, ...]
+    # IDs of items this is in tension with
+    tension_with_items = Column(JSON)  # [item_id, item_id, ...]
+
+    # Relationship
+    item = relationship("AnalysisItem", back_populates="reasoning_scaffold")
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

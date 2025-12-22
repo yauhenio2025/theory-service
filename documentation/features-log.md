@@ -4,6 +4,106 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-22: Quinean Intermediate Reasoning Layer
+
+**Commit:** `0b9d040`
+**Branch:** `main`
+
+### Description
+Added a rich intermediate reasoning layer to AnalysisItem, inspired by Quine's web of belief model. This layer captures the full derivation chain, confidence decomposition, alternatives rejected, and revisability cost for each analytical item - enabling both better LLM reasoning and human audit of the inference process.
+
+### The Problem
+Analysis items (like forward inferences) displayed only a strength percentage (e.g., "90%") without explaining:
+1. WHY the LLM picked this particular inference
+2. What PREMISES supported it and how central each is to the web of belief
+3. What SOURCE/CONTEXT triggered the derivation
+4. What ALTERNATIVES were considered and rejected
+5. What the COST would be of revising this belief
+
+### The Solution
+
+#### 1. Quinean Fields on AnalysisItem
+Added new fields to capture web-of-belief positioning:
+- `web_centrality`: CORE | HIGH | MEDIUM | PERIPHERAL (how central to belief web)
+- `observation_proximity`: Float 0-1 (how close to empirical grounding)
+- `coherence_score`: Float 0-1 (how well integrated with other beliefs)
+
+#### 2. ItemReasoningScaffold Model
+New model with ~20 fields for full reasoning capture:
+
+**Inference Type & Rule:**
+- `inference_type`: DEDUCTIVE | MATERIAL | DEFAULT | ABDUCTIVE | ANALOGICAL | TRANSCENDENTAL
+- `inference_rule`: Name of the rule applied (e.g., "material_implication", "condition_of_possibility")
+
+**Derivation Chain:**
+- `premises`: JSON list of premises with claim, claim_type, centrality, source
+- `reasoning_trace`: Full natural language explanation of the inference
+
+**Source Provenance:**
+- `derivation_trigger`: What triggered this (concept_definition, prior_inference, external_source, user_notes)
+- `source_passage`: The relevant source text
+- `source_location`: Where in the source
+
+**Alternatives & Rejection:**
+- `alternatives_rejected`: JSON list of {inference, rejected_because, plausibility}
+
+**Confidence Decomposition:**
+- `premise_confidence`: Confidence in premises (0-1)
+- `inference_validity`: Validity of inference step (0-1)
+- `source_quality`: Quality of source (0-1)
+- `web_coherence`: Coherence with belief web (0-1)
+- `confidence_explanation`: Why these confidence levels
+
+**Quinean Revisability:**
+- `revisability_cost`: What would need to change if this were revised
+- `dependent_claims`: What other claims depend on this
+
+#### 3. Frontend ReasoningScaffoldDisplay Component
+Rich expandable display showing:
+- Inference type badge (e.g., "MATERIAL inference via material_implication")
+- Premises with centrality color-coding (core=red, high=orange, medium=yellow, peripheral=green)
+- Full reasoning trace
+- Source context section
+- Confidence decomposition (4 visual bars)
+- Alternatives rejected with plausibility scores
+- Quinean revisability cost
+- Dependent claims
+
+### Philosophical Grounding
+
+**Quine's Web of Belief:**
+- Beliefs form an interconnected network, not isolated atoms
+- Central beliefs (logic, math) are highly resistant to revision
+- Peripheral beliefs (specific observations) are easily revisable
+- Revision in one area ripples through connected beliefs
+- "No statement is immune to revision" but some have higher costs
+
+**Inference Types Captured:**
+- **Deductive**: Logically necessary (A→B, A, therefore B)
+- **Material**: Domain-specific rules (semiconductors foundational → invest in fabs)
+- **Default**: Defeasible reasoning (birds fly, unless penguin)
+- **Abductive**: Inference to best explanation
+- **Analogical**: Similar cases, similar treatment
+- **Transcendental**: Conditions of possibility
+
+### API Changes
+Updated `/concept-analysis/concepts/{id}/dimension/{dim}` to return:
+- `web_centrality`, `observation_proximity`, `coherence_score` on items
+- Full `reasoning_scaffold` object when present
+
+### Files Modified
+- `api/concept_analysis_models.py`: Added WebCentrality, InferenceType enums, ItemReasoningScaffold model, Quinean fields to AnalysisItem
+- `api/concept_analysis_router.py`: Updated endpoints to return reasoning scaffold data
+- `scripts/seed_concept_analysis.py`: Added REASONING_SCAFFOLDS with 4 sample items
+- `frontend/src/ConceptAnalysisViewer.jsx`: Added CentralityBadge and ReasoningScaffoldDisplay components
+
+### Principles Embodied
+- `prn_reasoning_justification_externalization`: Make LLM reasoning visible, not hidden
+- `prn_dual_consumer_structure_design`: Structure serves both LLM cognition and human audit
+- `prn_visibility_as_quality_forcing`: Visibility forces quality improvement in prompts
+
+---
+
 ## 2025-12-22: Evidence Integration & Conflict Resolution System
 
 **Commit:** `1808950`

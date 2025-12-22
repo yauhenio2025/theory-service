@@ -17,7 +17,8 @@ from .database import get_db
 from .concept_analysis_models import (
     AnalyticalDimension, AnalyticalOperation, TheoreticalInfluence,
     AnalyzedConcept, ConceptAnalysis, AnalysisItem, ConceptAnalysisHistory,
-    DimensionType, OutputType, SourceType, operation_influences
+    ItemReasoningScaffold, DimensionType, OutputType, SourceType,
+    WebCentrality, InferenceType, operation_influences
 )
 
 router = APIRouter(prefix="/concept-analysis", tags=["Concept Analysis"])
@@ -69,6 +70,44 @@ class AnalyticalDimensionResponse(BaseModel):
         from_attributes = True
 
 
+class ReasoningScaffoldResponse(BaseModel):
+    """Quinean intermediate reasoning layer for an analysis item."""
+    id: int
+
+    # Derivation chain
+    inference_type: Optional[str] = None  # deductive, material, default, abductive, etc.
+    inference_rule: Optional[str] = None
+    premises: Optional[list] = None  # [{claim, claim_type, centrality, source}]
+    reasoning_trace: Optional[str] = None
+
+    # Source context
+    derivation_trigger: Optional[str] = None
+    source_passage: Optional[str] = None
+    source_location: Optional[str] = None
+
+    # Alternatives considered
+    alternatives_rejected: Optional[list] = None
+
+    # Strength decomposition
+    premise_confidence: Optional[float] = None
+    inference_validity: Optional[float] = None
+    source_quality: Optional[float] = None
+    web_coherence: Optional[float] = None
+    confidence_explanation: Optional[str] = None
+
+    # Revisability
+    revisability_cost: Optional[str] = None
+    dependent_claims: Optional[list] = None
+
+    # Web connections
+    supports_items: Optional[list] = None
+    supported_by_items: Optional[list] = None
+    tension_with_items: Optional[list] = None
+
+    class Config:
+        from_attributes = True
+
+
 class AnalysisItemResponse(BaseModel):
     id: int
     item_type: str
@@ -78,6 +117,18 @@ class AnalysisItemResponse(BaseModel):
     subtype: Optional[str] = None
     extra_data: Optional[dict] = None
     sequence_order: int = 0
+
+    # Quinean web of belief fields
+    web_centrality: Optional[str] = None
+    observation_proximity: Optional[float] = None
+    coherence_score: Optional[float] = None
+
+    # Provenance
+    provenance_type: Optional[str] = None
+    created_via: Optional[str] = None
+
+    # Reasoning scaffold (optional, for rich reasoning display)
+    reasoning_scaffold: Optional[ReasoningScaffoldResponse] = None
 
     class Config:
         from_attributes = True
@@ -396,7 +447,7 @@ async def get_concept_full_analysis(
         select(ConceptAnalysis)
         .options(
             selectinload(ConceptAnalysis.operation).selectinload(AnalyticalOperation.dimension),
-            selectinload(ConceptAnalysis.items)
+            selectinload(ConceptAnalysis.items).selectinload(AnalysisItem.reasoning_scaffold)
         )
         .where(ConceptAnalysis.concept_id == concept_id)
     )
@@ -431,7 +482,33 @@ async def get_concept_full_analysis(
                     severity=item.severity,
                     subtype=item.subtype,
                     extra_data=item.extra_data,
-                    sequence_order=item.sequence_order
+                    sequence_order=item.sequence_order,
+                    web_centrality=item.web_centrality.value if item.web_centrality else None,
+                    observation_proximity=item.observation_proximity,
+                    coherence_score=item.coherence_score,
+                    provenance_type=item.provenance_type.value if item.provenance_type else None,
+                    created_via=item.created_via,
+                    reasoning_scaffold=ReasoningScaffoldResponse(
+                        id=item.reasoning_scaffold.id,
+                        inference_type=item.reasoning_scaffold.inference_type.value if item.reasoning_scaffold.inference_type else None,
+                        inference_rule=item.reasoning_scaffold.inference_rule,
+                        premises=item.reasoning_scaffold.premises,
+                        reasoning_trace=item.reasoning_scaffold.reasoning_trace,
+                        derivation_trigger=item.reasoning_scaffold.derivation_trigger,
+                        source_passage=item.reasoning_scaffold.source_passage,
+                        source_location=item.reasoning_scaffold.source_location,
+                        alternatives_rejected=item.reasoning_scaffold.alternatives_rejected,
+                        premise_confidence=item.reasoning_scaffold.premise_confidence,
+                        inference_validity=item.reasoning_scaffold.inference_validity,
+                        source_quality=item.reasoning_scaffold.source_quality,
+                        web_coherence=item.reasoning_scaffold.web_coherence,
+                        confidence_explanation=item.reasoning_scaffold.confidence_explanation,
+                        revisability_cost=item.reasoning_scaffold.revisability_cost,
+                        dependent_claims=item.reasoning_scaffold.dependent_claims,
+                        supports_items=item.reasoning_scaffold.supports_items,
+                        supported_by_items=item.reasoning_scaffold.supported_by_items,
+                        tension_with_items=item.reasoning_scaffold.tension_with_items,
+                    ) if item.reasoning_scaffold else None
                 )
                 for item in sorted(analysis.items, key=lambda x: x.sequence_order)
             ]
@@ -523,7 +600,7 @@ async def get_concept_dimension_analysis(
         select(ConceptAnalysis)
         .options(
             selectinload(ConceptAnalysis.operation),
-            selectinload(ConceptAnalysis.items)
+            selectinload(ConceptAnalysis.items).selectinload(AnalysisItem.reasoning_scaffold)
         )
         .where(
             ConceptAnalysis.concept_id == concept_id,
@@ -561,7 +638,33 @@ async def get_concept_dimension_analysis(
                         severity=item.severity,
                         subtype=item.subtype,
                         extra_data=item.extra_data,
-                        sequence_order=item.sequence_order
+                        sequence_order=item.sequence_order,
+                        web_centrality=item.web_centrality.value if item.web_centrality else None,
+                        observation_proximity=item.observation_proximity,
+                        coherence_score=item.coherence_score,
+                        provenance_type=item.provenance_type.value if item.provenance_type else None,
+                        created_via=item.created_via,
+                        reasoning_scaffold=ReasoningScaffoldResponse(
+                            id=item.reasoning_scaffold.id,
+                            inference_type=item.reasoning_scaffold.inference_type.value if item.reasoning_scaffold.inference_type else None,
+                            inference_rule=item.reasoning_scaffold.inference_rule,
+                            premises=item.reasoning_scaffold.premises,
+                            reasoning_trace=item.reasoning_scaffold.reasoning_trace,
+                            derivation_trigger=item.reasoning_scaffold.derivation_trigger,
+                            source_passage=item.reasoning_scaffold.source_passage,
+                            source_location=item.reasoning_scaffold.source_location,
+                            alternatives_rejected=item.reasoning_scaffold.alternatives_rejected,
+                            premise_confidence=item.reasoning_scaffold.premise_confidence,
+                            inference_validity=item.reasoning_scaffold.inference_validity,
+                            source_quality=item.reasoning_scaffold.source_quality,
+                            web_coherence=item.reasoning_scaffold.web_coherence,
+                            confidence_explanation=item.reasoning_scaffold.confidence_explanation,
+                            revisability_cost=item.reasoning_scaffold.revisability_cost,
+                            dependent_claims=item.reasoning_scaffold.dependent_claims,
+                            supports_items=item.reasoning_scaffold.supports_items,
+                            supported_by_items=item.reasoning_scaffold.supported_by_items,
+                            tension_with_items=item.reasoning_scaffold.tension_with_items,
+                        ) if item.reasoning_scaffold else None
                     )
                     for item in sorted(a.items, key=lambda x: x.sequence_order)
                 ]
