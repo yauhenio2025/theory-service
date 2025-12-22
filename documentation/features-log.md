@@ -4,6 +4,84 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-22: Wizard to 8D Schema Bridge
+
+**Commit:** `10e8625`
+**Branch:** `main`
+
+### Description
+Created a bridge system that converts concept wizard outputs (hypothesis_cards, genealogy_cards, dimensional_signals, etc.) into the structured 8D concept analysis schema (AnalyzedConcept, ConceptAnalysis, AnalysisItem with provenance tracking).
+
+### The Problem
+The concept wizard and 8D schema were completely disconnected:
+1. Wizard creates `Concept` records (from models.py)
+2. 8D analysis uses `AnalyzedConcept` → `ConceptAnalysis` → `AnalysisItem` (from concept_analysis_models.py)
+3. No automatic population of the 8D schema from wizard outputs
+4. All the rich data (hypothesis_cards, genealogy_cards, dimensional_signals) was essentially lost
+
+### The Solution
+
+#### 1. New Bridge Module (`wizard_to_schema_bridge.py`)
+Maps wizard outputs to 8D schema:
+- `hypothesis_cards` → AnalysisItems in appropriate dimensions (thesis→POSITIONAL, assumption→PRESUPPOSITIONAL, etc.)
+- `genealogy_cards` → GENEALOGICAL dimension items with thinker lineage
+- `differentiation_cards` → POSITIONAL dimension incompatibility items
+- `dimensional_signals` → Per-dimension items (quinean→inferences, sellarsian→assumptions, brandomian→commitments, etc.)
+- Stage answers → Appropriate dimension items (core_definition, problem_addressed, etc.)
+- `epistemic_blind_spots` → PRESUPPOSITIONAL dimension items marked for resolution
+
+#### 2. Provenance Tracking
+All items created via wizard bridge get:
+- `provenance_type = WIZARD`
+- `created_via = 'initial_wizard'`
+- `provenance_source_id` = wizard session ID
+- Full ItemReasoningScaffold with source excerpts
+
+#### 3. Wizard Save Integration
+Updated the `/concepts/wizard/save` endpoint to:
+- Create legacy Concept record (backward compatible)
+- Also call the bridge to populate 8D schema
+- Return bridge results in response
+
+#### 4. Retroactive Bridge Endpoint
+Added `/concepts/{id}/evidence/bridge-wizard` for:
+- Retroactively populating 8D schema for existing concepts
+- Re-processing wizard outputs after schema updates
+- Testing the bridge logic
+
+### Key Files
+- `api/wizard_to_schema_bridge.py` (NEW): Core bridge logic
+- `api/concept_wizard.py`: Updated save_concept to call bridge
+- `api/concept_evidence_router.py`: Added bridge-wizard endpoint
+
+### Mapping Details
+
+| Wizard Output | Dimension | Item Type |
+|--------------|-----------|-----------|
+| hypothesis_cards (thesis) | POSITIONAL | forward_inference |
+| hypothesis_cards (assumption) | PRESUPPOSITIONAL | hidden_assumption |
+| hypothesis_cards (tension) | DYNAMIC | tension |
+| hypothesis_cards (normative) | NORMALIZATION | embedded_norm |
+| genealogy_cards | GENEALOGICAL | theoretical_lineage |
+| differentiation_cards | POSITIONAL | incompatibility |
+| dimensional_signals.quinean | POSITIONAL | forward_inference |
+| dimensional_signals.sellarsian | PRESUPPOSITIONAL | hidden_assumption |
+| dimensional_signals.brandomian | COMMITMENT | commitment |
+| dimensional_signals.deleuzian | DYNAMIC | tension |
+| dimensional_signals.bachelardian | GENEALOGICAL | epistemological_break |
+| dimensional_signals.canguilhem | NORMALIZATION | embedded_norm |
+| dimensional_signals.davidson | AFFORDANCE | reasoning_style |
+| dimensional_signals.blumenberg | GENEALOGICAL | root_metaphor |
+| dimensional_signals.carey | GENEALOGICAL | component_concept |
+| epistemic_blind_spots | PRESUPPOSITIONAL | epistemic_blind_spot |
+
+### Principles Applied
+- `prn_provenance_transparency`: Every item traces to wizard origin
+- `prn_evidence_driven_concept_refinement`: Wizard seeds concept, evidence enriches it
+- `prn_data_genesis_traceability`: Every field tracks its source
+
+---
+
 ## 2025-12-22: Item-to-Item Relationship System
 
 **Commit:** `a21074a`

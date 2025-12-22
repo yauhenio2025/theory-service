@@ -1071,3 +1071,70 @@ async def extract_and_analyze_source(
         "failed": results["failed"],
         "message": f"Processed {extract_result['fragments_extracted']} fragments."
     }
+
+
+# ==================== WIZARD BRIDGE ENDPOINTS ====================
+# These endpoints bridge wizard outputs to the 8D schema
+
+class WizardBridgeRequest(BaseModel):
+    """Request to bridge wizard data to 8D schema."""
+    wizard_data: dict = Field(..., description="Full wizard output with hypothesis_cards, genealogy_cards, etc.")
+
+
+class WizardBridgeResponse(BaseModel):
+    """Response from wizard bridge operation."""
+    analyzed_concept_id: Optional[int] = None
+    analyses_created: int = 0
+    items_created: int = 0
+    relationships_created: int = 0
+    errors: List[str] = []
+
+
+@router.post("/bridge-wizard", response_model=WizardBridgeResponse)
+async def bridge_wizard_to_schema(
+    concept_id: int,
+    request: WizardBridgeRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Bridge wizard outputs to 8D schema for an existing analyzed concept.
+
+    This endpoint is useful for:
+    1. Retroactively populating 8D schema for concepts created before the bridge
+    2. Re-processing wizard outputs after schema updates
+    3. Testing the bridge logic
+
+    The wizard_data should include:
+    - hypothesis_cards: List of detected theses/claims
+    - genealogy_cards: List of thinker influences
+    - differentiation_cards: List of concept differentiations
+    - dimensional_signals: Per-dimension signals (quinean, sellarsian, etc.)
+    - epistemic_blind_spots: Areas needing clarification
+    - Stage answers: core_definition, problem_addressed, etc.
+    """
+    from .wizard_to_schema_bridge import bridge_wizard_to_schema as do_bridge
+
+    # Get the existing analyzed concept
+    result = await db.execute(
+        select(AnalyzedConcept).where(AnalyzedConcept.id == concept_id)
+    )
+    analyzed_concept = result.scalar_one_or_none()
+
+    if not analyzed_concept:
+        raise HTTPException(status_code=404, detail=f"Analyzed concept {concept_id} not found")
+
+    # Run the bridge
+    bridge_result = await do_bridge(
+        db=db,
+        concept_name=analyzed_concept.term,
+        wizard_data=request.wizard_data,
+        wizard_session_id=None  # No wizard session for retroactive bridge
+    )
+
+    return WizardBridgeResponse(
+        analyzed_concept_id=bridge_result.get("analyzed_concept_id"),
+        analyses_created=bridge_result.get("analyses_created", 0),
+        items_created=bridge_result.get("items_created", 0),
+        relationships_created=bridge_result.get("relationships_created", 0),
+        errors=bridge_result.get("errors", [])
+    )

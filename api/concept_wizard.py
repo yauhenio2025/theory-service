@@ -3849,20 +3849,24 @@ Please synthesize these answers into a comprehensive concept definition. If crit
 
 @router.post("/save")
 async def save_concept(request: SaveConceptRequest, db: AsyncSession = Depends(get_db)):
-    """Save the completed concept to the database."""
+    """Save the completed concept to the database.
+
+    This endpoint:
+    1. Creates the basic Concept record (legacy models.py)
+    2. Bridges wizard outputs to 8D schema (AnalyzedConcept, ConceptAnalysis, AnalysisItem)
+    """
     from .models import Concept, ConceptStatus
+    from .wizard_to_schema_bridge import finalize_wizard_concept
 
     concept_data = request.concept_data
 
-    # Create the main concept
+    # Create the main concept (legacy Concept model)
     concept = Concept(
         term=concept_data.get("name", "Untitled Concept"),
         definition=concept_data.get("definition", ""),
         category=concept_data.get("category"),
         status=ConceptStatus.DRAFT,
         source_id=request.source_id,
-        # Store Genesis data in metadata (or separate tables if they exist)
-        # For now, we'll add key fields to the definition
     )
 
     # Enrich definition with genesis info if available
@@ -3879,8 +3883,20 @@ async def save_concept(request: SaveConceptRequest, db: AsyncSession = Depends(g
     await db.commit()
     await db.refresh(concept)
 
-    # TODO: If Genesis dimension tables exist, populate them here
-    # For now, return success with the basic concept
+    # Bridge to 8D schema: Create AnalyzedConcept + ConceptAnalysis + AnalysisItem records
+    # This populates the structured analysis schema with wizard outputs
+    bridge_result = None
+    try:
+        bridge_result = await finalize_wizard_concept(
+            db=db,
+            concept_name=concept_data.get("name", "Untitled Concept"),
+            wizard_output=concept_data,
+            wizard_session_id=concept.id  # Use concept ID as session reference
+        )
+        logger.info(f"Bridged wizard to 8D schema: {bridge_result}")
+    except Exception as e:
+        logger.error(f"Error bridging wizard to 8D schema: {e}", exc_info=True)
+        # Don't fail the save - the basic concept is still saved
 
     return {
         "status": "success",
@@ -3892,7 +3908,8 @@ async def save_concept(request: SaveConceptRequest, db: AsyncSession = Depends(g
             "genesis_data": concept_data.get("genesis"),
             "differentiations": concept_data.get("differentiations"),
             "recognition_markers": concept_data.get("recognition_markers")
-        }
+        },
+        "schema_bridge": bridge_result  # Include bridge result in response
     }
 
 
