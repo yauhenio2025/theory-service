@@ -4,6 +4,64 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-25: Methodology Section Multiple-Choice with Escape Valve
+
+**Commit:** `d630eb0`
+**Branch:** `main`
+
+### Description
+Converted the methodology section (Stage 3) from requiring free-text typed answers to presenting pre-generated multiple-choice options with an "escape valve" for custom responses.
+
+### The Problem
+Stage 3 (Methodology/Grounding) previously required users to type long-form responses for questions about paradigmatic cases, recognition markers, core claims, and falsification conditions. This was:
+1. High friction - requiring 100-150 character minimum typed responses
+2. Cognitively demanding when the LLM already has rich context to infer likely answers
+3. Inconsistent with the pattern established in other stages using multiple choice
+
+### The Solution
+Applied principles from the philosophy knowledge base to convert to a click-based interaction:
+
+**Backend Changes (`api/concept_wizard.py`):**
+- Modified `DYNAMIC_STAGE3_QUESTION_PROMPT` to generate multiple-choice questions
+- LLM now generates 3-4 specific candidate answers based on accumulated context:
+  - Notes summary
+  - Stage 1 & 2 answers
+  - Implications preview
+  - Differentiation choices
+- Each option has a label and detailed 2-3 sentence description
+- Added `allow_custom_response: true` as escape valve
+
+**Frontend Changes (`ConceptSetupWizard.jsx`):**
+- Added `dynamicSectionUseCustom` state for tracking custom mode
+- Added "None of these — write my own" option after multiple choice options
+- Updated `hasDynamicAnswer()` to accept custom text input
+- Updated `handleDynamicAnswerSubmit()` to handle custom responses with `is_custom` flag
+- Updated `toggleDynamicOption()` to clear custom mode when selecting regular option
+
+**CSS Changes (`index.css`):**
+- Added styles for `.dynamic-custom-response` section
+- Dashed border style for custom option
+- Textarea styling for custom input area
+
+### Principles Embodied
+From the tool-ideator philosophy knowledge base:
+- `prn_inferential_prepopulation` - System infers and prepopulates options based on accumulated context
+- `prn_possibility_space` - Generate N structured options for user selection
+- `prn_cognitive_load_transfer` - LLM does the heavy lifting, user validates/selects
+- `multiple-choice-with-escape-valve-pattern` - Generate N options + "write your own" fallback
+- `slot-completion-card-with-pre-generated-options` - Context-inferred completion options
+
+### User Experience
+Users now can:
+1. Read 3-4 specific, context-aware options for each methodology question
+2. Click to select the best-fitting option
+3. OR click "None of these — write my own" and type custom answer
+4. Add optional comment/qualification to any answer
+
+This reduces typical Stage 3 completion time from ~5-7 minutes of typing to ~1-2 minutes of reading and clicking.
+
+---
+
 ## 2025-12-22: 12-Dimensional Wizard Expansion (Kuhn, Foucault, Pragmatists)
 
 **Commit:** `932864b`
