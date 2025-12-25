@@ -131,6 +131,17 @@ const CONCEPT_DIMENSIONS = [
   { id: 'dialectics', label: 'Dialectics', icon: '⚡' }
 ]
 
+// Dynamic section configuration for rolling question generation (sections 6-11)
+const DYNAMIC_SECTION_CONFIG = {
+  stage2: { label: 'Differentiation', target_questions: 5, max_questions: 8, min_questions: 3 },
+  stage3: { label: 'Methodology', target_questions: 5, max_questions: 7, min_questions: 3 },
+  implications: { label: 'Implications', target_questions: 4, max_questions: 6, min_questions: 2 },
+  genealogy: { label: 'Genealogy', target_questions: 4, max_questions: 6, min_questions: 2 },
+  philosophy_p1: { label: 'Philosophy P1', target_questions: 12, max_questions: 15, min_questions: 9 },
+  philosophy_p2: { label: 'Philosophy P2', target_questions: 6, max_questions: 9, min_questions: 4 },
+  philosophy_p3: { label: 'Philosophy P3', target_questions: 4, max_questions: 6, min_questions: 3 }
+}
+
 /**
  * Generate impact topology based on question and selected options
  * Maps how choices affect different concept dimensions
@@ -468,6 +479,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Zoom/scale state for text readability
+  const [wizardZoom, setWizardZoom] = useState(100) // percentage: 100 = normal
+  const wizardContainerRef = useRef(null)
+
   // Final concept data
   const [conceptData, setConceptData] = useState(null)
 
@@ -553,6 +568,21 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
   const [isCurating, setIsCurating] = useState(false)
   const [isSharpening, setIsSharpening] = useState(false)
   const [blindSpotsQuality, setBlindSpotsQuality] = useState(null)
+
+  // ==========================================================================
+  // DYNAMIC SECTION STATE - For sections 6-11 (Stage2, Stage3, Philosophy, etc.)
+  // Implements rolling question generation with pre-fetching
+  // ==========================================================================
+  const [dynamicSectionQueues, setDynamicSectionQueues] = useState({})  // {section_id: queue}
+  const [currentDynamicSectionId, setCurrentDynamicSectionId] = useState(null)
+  const [dynamicSectionAnswer, setDynamicSectionAnswer] = useState('')  // Current answer text
+  const [dynamicSectionSelectedOptions, setDynamicSectionSelectedOptions] = useState([])  // Selected MC options
+  const [dynamicSectionComment, setDynamicSectionComment] = useState('')  // Comment on answer
+  const [dynamicSectionUseCustom, setDynamicSectionUseCustom] = useState(false)  // Using custom write-in instead of options
+  const [isInitializingDynamicSection, setIsInitializingDynamicSection] = useState(false)
+  const [isSubmittingDynamicAnswer, setIsSubmittingDynamicAnswer] = useState(false)
+  const [dynamicPreGenCache, setDynamicPreGenCache] = useState({})  // {section_id: {slotIndex: question}}
+  const [dynamicPreGenerating, setDynamicPreGenerating] = useState(new Set())  // Currently generating section+index combos
 
   // Session persistence state
   const [hasSavedSession, setHasSavedSession] = useState(false)
@@ -654,6 +684,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     // Don't save if we're at the beginning or if no concept name
     if (stage === STAGES.NOTES || !conceptName) return
 
+    // Include dynamic section queues in session data
+    const dynamicQueueData = {}
+    for (const [sectionId, queue] of Object.entries(dynamicSectionQueues)) {
+      dynamicQueueData[`dynamic_queue_${sectionId}`] = queue
+    }
+
     const sessionData = {
       stage,
       conceptName,
@@ -670,6 +706,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
       interimAnalysis,
       blindSpotsQueue,
       curatorAllocation,
+      ...dynamicQueueData,  // Include all dynamic queues
       savedAt: new Date().toISOString()
     }
 
@@ -693,7 +730,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
         clearTimeout(serverSaveTimeoutRef.current)
       }
     }
-  }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex, interimAnalysis, blindSpotsQueue, curatorAllocation])
+  }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex, interimAnalysis, blindSpotsQueue, curatorAllocation, dynamicSectionQueues])
 
   // Restore from localStorage
   const restoreSession = () => {
@@ -758,6 +795,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     if (parsed.curatorAllocation) {
       setCuratorAllocation(parsed.curatorAllocation)
     }
+    // Restore dynamic section queues (stage2, stage3, etc.)
+    const dynamicQueues = {}
+    const dynamicQueueKeys = ['stage2', 'stage3', 'philosophy_p1', 'philosophy_p2', 'philosophy_p3']
+    for (const sectionId of dynamicQueueKeys) {
+      const queueKey = `dynamic_queue_${sectionId}`
+      if (parsed[queueKey]) {
+        dynamicQueues[sectionId] = parsed[queueKey]
+        console.log(`[Session Restore] Restored dynamic queue for ${sectionId}:`, parsed[queueKey].slots?.length, 'slots')
+      }
+    }
+    if (Object.keys(dynamicQueues).length > 0) {
+      setDynamicSectionQueues(dynamicQueues)
+    }
   }
 
   // Delete server session
@@ -789,6 +839,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
   const saveCheckpoint = async () => {
     if (!conceptName || stage === STAGES.NOTES) return
 
+    // Include dynamic section queues in session data
+    const dynamicQueueData = {}
+    for (const [sectionId, queue] of Object.entries(dynamicSectionQueues)) {
+      dynamicQueueData[`dynamic_queue_${sectionId}`] = queue
+    }
+
     const sessionData = {
       stage,
       conceptName,
@@ -805,6 +861,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
       interimAnalysis,
       blindSpotsQueue,
       curatorAllocation,
+      ...dynamicQueueData,  // Include all dynamic queues
       savedAt: new Date().toISOString(),
       isManualCheckpoint: true
     }
@@ -827,6 +884,43 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     } else {
       setProgress(prev => ({ ...prev, label: '✓ Saved locally (server unavailable)' }))
     }
+    setTimeout(() => setProgress(prev => ({ ...prev, label: originalLabel })), 2000)
+  }
+
+  // Refresh current stage data without closing modal
+  const refreshCurrentStage = async () => {
+    const originalLabel = progress.label
+    setProgress(prev => ({ ...prev, label: 'Refreshing...' }))
+
+    try {
+      // If we have a session key, try to fetch fresh data from server
+      if (currentSessionKey) {
+        const response = await fetch(`${API_URL}/concepts/wizard/sessions/${currentSessionKey}`)
+        if (response.ok) {
+          const session = await response.json()
+          // Apply the server state
+          applySessionData(session.session_state)
+          setProgress(prev => ({ ...prev, label: '✓ Refreshed from server!' }))
+          setTimeout(() => setProgress(prev => ({ ...prev, label: originalLabel })), 2000)
+          return
+        }
+      }
+
+      // Fallback: reload from localStorage
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        applySessionData(parsed)
+        setProgress(prev => ({ ...prev, label: '✓ Refreshed from local!' }))
+      } else {
+        // Just force a re-render by cycling a state
+        setProgress(prev => ({ ...prev, label: '✓ Refreshed!' }))
+      }
+    } catch (e) {
+      console.error('Error refreshing:', e)
+      setProgress(prev => ({ ...prev, label: '⚠ Refresh failed' }))
+    }
+
     setTimeout(() => setProgress(prev => ({ ...prev, label: originalLabel })), 2000)
   }
 
@@ -1304,6 +1398,419 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     }
   }
 
+  // ==========================================================================
+  // DYNAMIC SECTION FUNCTIONS
+  // For rolling question generation in sections 6-11
+  // ==========================================================================
+
+  /**
+   * Initialize a dynamic section - generates first 2 questions
+   * @param sectionId - The section identifier (stage2, stage3, philosophy_p1, etc.)
+   */
+  const initDynamicSection = async (sectionId) => {
+    console.log('[DynamicSection] Initializing section:', sectionId)
+    setIsInitializingDynamicSection(true)
+    setCurrentDynamicSectionId(sectionId)
+    resetDynamicSectionAnswer()
+
+    try {
+      // Build context from accumulated wizard state
+      const context = {
+        session_id: currentSessionKey,
+        section_id: sectionId,
+        concept_name: conceptName,
+        notes_summary: notes?.substring(0, 2000) || null,
+        stage1_answers: stageData?.stage1?.answers || null,
+        stage2_answers: stageData?.stage2?.answers || null,
+        stage3_answers: stageData?.stage3?.answers || null,
+        interim_analysis: interimAnalysis || null,
+        genealogy: genealogyHypotheses?.filter(g => g.approved) || null,
+        blind_spots_answers: blindSpotsQueue?.slots?.filter(s => s.status === 'answered')?.map(s => ({
+          question: s.question,
+          answer: s.answer
+        })) || null,
+        hypothesis_cards: hypothesisCards?.filter(h => h.approved) || null,
+        philosophy_p1_answers: deepCommitmentAnswers || null,
+        philosophy_p2_answers: phase2Answers || null
+      }
+
+      const response = await fetch(`${API_URL}/concepts/wizard/init-dynamic-section`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(context)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to initialize section: ${response.status}`)
+      }
+
+      // Process SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let queue = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            try {
+              const data = JSON.parse(line.slice(6))
+
+              if (data.type === 'status') {
+                console.log('[DynamicSection] Status:', data.message)
+              } else if (data.type === 'question_generated') {
+                console.log('[DynamicSection] Question generated:', data.index)
+              } else if (data.type === 'init_complete') {
+                queue = data.queue
+                console.log('[DynamicSection] Init complete with', queue.slots.length, 'questions')
+              } else if (data.type === 'error') {
+                throw new Error(data.error)
+              }
+            } catch (parseErr) {
+              console.warn('[DynamicSection] Parse error:', parseErr)
+            }
+          }
+        }
+      }
+
+      if (queue) {
+        // Store queue in state
+        setDynamicSectionQueues(prev => ({
+          ...prev,
+          [sectionId]: queue
+        }))
+
+        // Trigger pre-generation for next question(s)
+        triggerDynamicPreGeneration(sectionId, queue, queue.slots.length)
+      }
+
+    } catch (err) {
+      console.error('[DynamicSection] Init error:', err)
+      addToast?.(`Error initializing ${sectionId}: ${err.message}`)
+    } finally {
+      setIsInitializingDynamicSection(false)
+    }
+  }
+
+  /**
+   * Submit an answer to a dynamic section question
+   * @param sectionId - The section identifier
+   * @param slotId - The specific slot being answered
+   * @param answer - The answer object {selected, comment, custom_response}
+   */
+  const submitDynamicAnswer = async (sectionId, slotId, answer) => {
+    console.log('[DynamicSection] Submitting answer for', sectionId, slotId)
+    setIsSubmittingDynamicAnswer(true)
+
+    try {
+      const response = await fetch(`${API_URL}/concepts/wizard/submit-dynamic-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: currentSessionKey,
+          section_id: sectionId,
+          slot_id: slotId,
+          answer: answer
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to submit answer: ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('[DynamicSection] Submit result:', result)
+
+      // Update queue in state
+      if (result.queue) {
+        setDynamicSectionQueues(prev => ({
+          ...prev,
+          [sectionId]: result.queue
+        }))
+      }
+
+      // Reset answer input
+      resetDynamicSectionAnswer()
+
+      // Trigger pre-generation if we can generate more
+      if (result.can_generate_more && !result.section_complete) {
+        const queue = result.queue
+        triggerDynamicPreGeneration(sectionId, queue, queue.slots.length)
+      }
+
+      return result
+
+    } catch (err) {
+      console.error('[DynamicSection] Submit error:', err)
+      addToast?.(`Error submitting answer: ${err.message}`)
+      return { success: false, error: err.message }
+    } finally {
+      setIsSubmittingDynamicAnswer(false)
+    }
+  }
+
+  /**
+   * Pre-generate the next question for a dynamic section
+   * Called in background while user answers current question
+   */
+  const triggerDynamicPreGeneration = async (sectionId, queue, fromSlotIndex) => {
+    const genKey = `${sectionId}_${fromSlotIndex}`
+
+    // Skip if already generating or max reached
+    if (dynamicPreGenerating.has(genKey)) return
+    if (queue.slots.length >= queue.max_questions) return
+
+    // Mark as generating
+    setDynamicPreGenerating(prev => new Set([...prev, genKey]))
+
+    try {
+      // Get answered questions from queue
+      const sectionAnswers = queue.slots
+        .filter(s => s.status === 'answered')
+        .map(s => ({
+          question_text: s.question?.text || s.question?.question,
+          selected: s.answer?.selected,
+          comment: s.answer?.comment
+        }))
+
+      const response = await fetch(`${API_URL}/concepts/wizard/generate-next-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: currentSessionKey,
+          section_id: sectionId,
+          section_answers: sectionAnswers,
+          concept_name: conceptName,
+          notes_summary: notes?.substring(0, 2000) || null,
+          stage1_answers: stageData?.stage1?.answers || null,
+          stage2_answers: stageData?.stage2?.answers || null,
+          stage3_answers: stageData?.stage3?.answers || null,
+          genealogy: genealogyHypotheses?.filter(g => g.approved) || null,
+          philosophy_p1_answers: deepCommitmentAnswers || null,
+          philosophy_p2_answers: phase2Answers || null
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to pre-generate: ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('[DynamicSection] Pre-gen result:', result.success, result.section_complete)
+
+      // Update queue if new question was added
+      if (result.success && result.queue) {
+        setDynamicSectionQueues(prev => ({
+          ...prev,
+          [sectionId]: result.queue
+        }))
+      }
+
+    } catch (err) {
+      console.error('[DynamicSection] Pre-gen error:', err)
+    } finally {
+      setDynamicPreGenerating(prev => {
+        const next = new Set(prev)
+        next.delete(genKey)
+        return next
+      })
+    }
+  }
+
+  /**
+   * Reset the dynamic section answer input
+   */
+  const resetDynamicSectionAnswer = () => {
+    setDynamicSectionAnswer('')
+    setDynamicSectionSelectedOptions([])
+    setDynamicSectionComment('')
+    setDynamicSectionUseCustom(false)
+  }
+
+  /**
+   * Get the current question for a dynamic section
+   */
+  const getCurrentDynamicQuestion = (sectionId) => {
+    const queue = dynamicSectionQueues[sectionId]
+    if (!queue?.slots?.length) return null
+
+    const currentIndex = queue.current_index || 0
+    if (currentIndex >= queue.slots.length) return null
+
+    return queue.slots[currentIndex]?.question
+  }
+
+  /**
+   * Get the current slot for a dynamic section
+   */
+  const getCurrentDynamicSlot = (sectionId) => {
+    const queue = dynamicSectionQueues[sectionId]
+    if (!queue?.slots?.length) return null
+
+    const currentIndex = queue.current_index || 0
+    if (currentIndex >= queue.slots.length) return null
+
+    return queue.slots[currentIndex]
+  }
+
+  /**
+   * Handle answer submission for dynamic section
+   * Builds answer from current input state and submits
+   */
+  const handleDynamicAnswerSubmit = async (sectionId) => {
+    const slot = getCurrentDynamicSlot(sectionId)
+    if (!slot) return
+
+    const question = slot.question
+    const questionType = question?.type || 'open_ended'
+
+    // Build answer object
+    let answer = {}
+    if (questionType === 'multiple_choice' || questionType === 'multi_select') {
+      // Handle custom write-in response
+      if (dynamicSectionUseCustom && dynamicSectionAnswer.trim()) {
+        answer = {
+          selected: dynamicSectionAnswer.trim(),
+          selected_values: ['custom'],
+          custom_response: dynamicSectionAnswer.trim(),
+          is_custom: true,
+          comment: dynamicSectionComment
+        }
+      } else {
+        const selectedLabels = question.options
+          ?.filter(opt => dynamicSectionSelectedOptions.includes(opt.value))
+          ?.map(opt => opt.label)
+          ?.join(', ')
+        answer = {
+          selected: selectedLabels || dynamicSectionSelectedOptions.join(', '),
+          selected_values: dynamicSectionSelectedOptions,
+          comment: dynamicSectionComment
+        }
+      }
+    } else {
+      answer = {
+        selected: dynamicSectionAnswer,
+        comment: dynamicSectionComment
+      }
+    }
+
+    const result = await submitDynamicAnswer(sectionId, slot.slot_id, answer)
+
+    // Handle section completion
+    if (result.section_complete) {
+      console.log('[DynamicSection] Section complete:', sectionId)
+      handleDynamicSectionComplete(sectionId)
+    }
+  }
+
+  /**
+   * Handle completion of a dynamic section
+   * Transitions to the next stage in the wizard
+   */
+  const handleDynamicSectionComplete = async (sectionId) => {
+    console.log('[DynamicSection] Completing section:', sectionId)
+
+    // Store answers from the dynamic queue into stageData
+    // Transform to AnswerWithMeta format expected by backend
+    const queue = dynamicSectionQueues[sectionId]
+    const answers = queue?.slots
+      ?.filter(s => s.status === 'answered')
+      ?.map(s => ({
+        question_id: s.question?.id || s.slot_id,
+        selected_options: s.answer?.selected ? [s.answer.selected] : null,
+        text_answer: s.answer?.custom_response || null,
+        custom_response: s.answer?.comment || null,
+        is_dialectic: false
+      }))
+
+    if (sectionId === 'stage2') {
+      // Call analyzeStage2 which will generate implications preview and transition stage
+      // This calls the API to get the implications_preview data needed for the next screen
+      await analyzeStage2(answers)
+    } else if (sectionId === 'stage3') {
+      setStageData(prev => ({
+        ...prev,
+        stage3: { ...prev.stage3, answers: answers }
+      }))
+      // Move to genealogy
+      setProgress({ stage: 8, total: 9, label: 'Intellectual Genealogy' })
+      setStage(STAGES.GENEALOGY)
+    } else if (sectionId === 'philosophy_p1') {
+      // Store answers in deep commitment state
+      const answerMap = {}
+      queue?.slots?.filter(s => s.status === 'answered')?.forEach(s => {
+        answerMap[s.question?.id] = s.answer
+      })
+      setDeepCommitmentAnswers(answerMap)
+      // Move to Phase 2
+      initDynamicSection('philosophy_p2')
+      setStage(STAGES.GENERATING_PHASE2)
+    } else if (sectionId === 'philosophy_p2') {
+      const answerMap = {}
+      queue?.slots?.filter(s => s.status === 'answered')?.forEach(s => {
+        answerMap[s.question?.id] = s.answer
+      })
+      setPhase2Answers(answerMap)
+      // Move to Phase 3
+      initDynamicSection('philosophy_p3')
+      setStage(STAGES.GENERATING_PHASE3)
+    } else if (sectionId === 'philosophy_p3') {
+      const answerMap = {}
+      queue?.slots?.filter(s => s.status === 'answered')?.forEach(s => {
+        answerMap[s.question?.id] = s.answer
+      })
+      setPhase3Answers(answerMap)
+      // Finalize concept
+      finalizeConceptWorkflow(stageData?.stage3?.answers || [])
+    }
+  }
+
+  /**
+   * Toggle selection for dynamic section multiple choice
+   */
+  const toggleDynamicOption = (optionValue, allowMultiple = false) => {
+    // Clear custom mode when selecting a regular option
+    if (dynamicSectionUseCustom) {
+      setDynamicSectionUseCustom(false)
+      setDynamicSectionAnswer('')
+    }
+
+    if (allowMultiple) {
+      setDynamicSectionSelectedOptions(prev =>
+        prev.includes(optionValue)
+          ? prev.filter(v => v !== optionValue)
+          : [...prev, optionValue]
+      )
+    } else {
+      setDynamicSectionSelectedOptions(prev =>
+        prev.includes(optionValue) ? [] : [optionValue]
+      )
+    }
+  }
+
+  /**
+   * Check if dynamic section has valid answer
+   */
+  const hasDynamicAnswer = (sectionId) => {
+    const question = getCurrentDynamicQuestion(sectionId)
+    const questionType = question?.type || 'open_ended'
+
+    if (questionType === 'multiple_choice' || questionType === 'multi_select') {
+      // Accept selected options OR custom text input when using custom mode
+      if (dynamicSectionUseCustom) {
+        return dynamicSectionAnswer.trim().length > 0
+      }
+      return dynamicSectionSelectedOptions.length > 0
+    } else {
+      return dynamicSectionAnswer.trim().length > 0
+    }
+  }
+
   /**
    * Toggle selection of an answer option
    * Handles both mutually exclusive (single select) and non-exclusive (multi-select) modes
@@ -1684,19 +2191,19 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
             setGenealogyAnswers({})
             setUserInfluences([])
 
-            // Now proceed to Stage 1
-            setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
-            setStage(STAGES.STAGE1)
-            setCurrentQuestionIndex(0)
+            // NEW FLOW: Proceed to Document Upload stage (not directly to Stage 1)
+            setProgress({ stage: 4, total: 11, label: 'Upload Documents (Optional)' })
+            setStage(STAGES.DOCUMENT_UPLOAD)
             setThinking('')
           }
         }
       )
     } else {
-      // No granular feedback - proceed directly
-      setProgress({ stage: 3, total: 9, label: 'Stage 1: Genesis & Problem Space' })
-      setStage(STAGES.STAGE1)
-      setCurrentQuestionIndex(0)
+      // No granular feedback - proceed directly to Document Upload stage
+      // NEW FLOW: Understanding Validation → Document Upload → Stage 1 (via card-based flow)
+      console.log('[acceptUnderstandingAndContinue] Proceeding to Document Upload stage')
+      setProgress({ stage: 4, total: 11, label: 'Upload Documents (Optional)' })
+      setStage(STAGES.DOCUMENT_UPLOAD)
     }
   }
 
@@ -3503,13 +4010,13 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
 
   /**
    * Continue from interim analysis to Stage 2
+   * Now uses dynamic question generation
    */
-  const continueToStage2 = () => {
-    setQuestions(stageData.stage2.questions)
-    setCurrentQuestionIndex(0)
-    resetCurrentAnswer()
+  const continueToStage2 = async () => {
     setProgress({ stage: 6, total: 9, label: 'Stage 2: Differentiation & Clarification' })
     setStage(STAGES.STAGE2)
+    // Initialize dynamic section - this will generate first 2 questions
+    await initDynamicSection('stage2')
   }
 
   /**
@@ -3519,14 +4026,32 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     setStage(STAGES.ANALYZING_STAGE2)
     setProgress({ stage: 6, total: 9, label: 'Analyzing differentiations...' })
 
+    // Ensure stage1_answers are in AnswerWithMeta format or use empty array
+    const stage1Answers = (stageData.stage1?.answers || []).map(a => ({
+      question_id: a.question_id || a.questionId || 'stage1_q',
+      selected_options: a.selected_options || (a.answer ? [a.answer] : null),
+      text_answer: a.text_answer || a.text || null,
+      custom_response: a.custom_response || a.comment || null,
+      is_dialectic: a.is_dialectic || false
+    }))
+
+    // Build interim analysis object if not already in right format
+    // InterimAnalysis requires: understanding_summary, key_commitments, preliminary_definition
+    const interimAnalysisData = interimAnalysis || {
+      understanding_summary: `Analysis of ${conceptName} from notes and blind spots exploration.`,
+      key_commitments: [],
+      preliminary_definition: notesUnderstanding?.understanding || `Working definition of ${conceptName}`,
+      epistemic_blind_spots: []
+    }
+
     await streamWizardRequest(
       '/concepts/wizard/analyze-stage2',
       {
         concept_name: conceptName,
         notes: notes.trim() || null,
-        stage1_answers: stageData.stage1.answers,
+        stage1_answers: stage1Answers,
         stage2_answers: answers,
-        interim_analysis: interimAnalysis,
+        interim_analysis: interimAnalysisData,
         source_id: sourceId
       },
       {
@@ -3554,13 +4079,13 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
 
   /**
    * Continue from implications preview to Stage 3
+   * Now uses dynamic question generation
    */
-  const continueToStage3 = () => {
-    setQuestions(stageData.stage3.questions)
-    setCurrentQuestionIndex(0)
-    resetCurrentAnswer()
+  const continueToStage3 = async () => {
     setProgress({ stage: 8, total: 9, label: 'Stage 3: Grounding & Recognition' })
     setStage(STAGES.STAGE3)
+    // Initialize dynamic section - this will generate first 2 questions
+    await initDynamicSection('stage3')
   }
 
   /**
@@ -3921,13 +4446,42 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
               />
             </div>
             {stage !== STAGES.NOTES && conceptName && (
-              <button
-                className="save-checkpoint-btn"
-                onClick={saveCheckpoint}
-                title="Save checkpoint for later"
-              >
-                💾
-              </button>
+              <div className="wizard-action-btns">
+                {/* Zoom controls */}
+                <div className="zoom-controls">
+                  <button
+                    className="zoom-btn"
+                    onClick={() => setWizardZoom(z => Math.max(80, z - 10))}
+                    title="Decrease text size"
+                    disabled={wizardZoom <= 80}
+                  >
+                    A-
+                  </button>
+                  <span className="zoom-level" title="Current zoom level">{wizardZoom}%</span>
+                  <button
+                    className="zoom-btn"
+                    onClick={() => setWizardZoom(z => Math.min(150, z + 10))}
+                    title="Increase text size"
+                    disabled={wizardZoom >= 150}
+                  >
+                    A+
+                  </button>
+                </div>
+                <button
+                  className="refresh-stage-btn"
+                  onClick={refreshCurrentStage}
+                  title="Refresh current stage (reload data without closing)"
+                >
+                  🔄
+                </button>
+                <button
+                  className="save-checkpoint-btn"
+                  onClick={saveCheckpoint}
+                  title="Save checkpoint for later"
+                >
+                  💾
+                </button>
+              </div>
             )}
           </div>
           <div className="progress-label">{progress.label}</div>
@@ -3960,8 +4514,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
           })}
         </div>
 
-        {/* Main content */}
-        <div className="wizard-content">
+        {/* Main content - applies zoom scaling */}
+        <div className="wizard-content" style={{ zoom: wizardZoom / 100 }}>
           {/* Back button - appears when not on first stage */}
           {getPreviousStage() && !loading && (
             <button className="wizard-back-btn" onClick={goBack}>
@@ -4270,6 +4824,43 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
                 </div>
               )}
 
+              {/* Fallback when hypothesis cards haven't been generated yet */}
+              {hypothesisCards.length === 0 && differentiationCards.length === 0 && (
+                <div className="cards-missing-section">
+                  <div className="cards-missing-content">
+                    <h3>Hypothesis Cards Not Yet Generated</h3>
+                    {blindSpotsQueue.completedCount > 0 ? (
+                      <>
+                        <p>
+                          You've answered {blindSpotsQueue.completedCount} blind spot questions, but the hypothesis
+                          cards haven't been generated yet. This can happen if the generation was interrupted.
+                        </p>
+                        <button
+                          className="btn btn-primary"
+                          onClick={generateInformedHypotheses}
+                          disabled={loading}
+                        >
+                          {loading ? 'Generating...' : 'Generate Hypotheses Now'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p>
+                          Hypothesis cards are generated after you complete the Blind Spots stage.
+                          Please go back and answer the blind spot questions first.
+                        </p>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setStage(STAGES.BLIND_SPOTS_QUESTIONING)}
+                        >
+                          Go to Blind Spots
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Correction Input - at the very bottom */}
               <div className="uv-section uv-correction">
                 <h4>Add Corrections or Clarifications</h4>
@@ -4299,11 +4890,11 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
                 <button
                   className="btn btn-primary"
                   onClick={() => {
-                    console.log('[UI] Button clicked: Accept & Continue to Stage 1')
+                    console.log('[UI] Button clicked: Accept & Continue (to Document Upload)')
                     acceptUnderstandingAndContinue()
                   }}
                 >
-                  Accept & Continue to Questions →
+                  Accept & Continue →
                 </button>
               </div>
             </div>
@@ -4459,7 +5050,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
                               </div>
                               <div className="option-content">
                                 <span className={`stance-badge stance-${option.stance}`}>
-                                  {option.stance}
+                                  {option.label || option.stance.toUpperCase()}
                                 </span>
                                 <p className="option-text">{option.text}</p>
                               </div>
@@ -4912,8 +5503,226 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
             </div>
           )}
 
-          {/* STAGE: Questions (Stage 1, 2, or 3) */}
-          {(stage === STAGES.STAGE1 || stage === STAGES.STAGE2 || stage === STAGES.STAGE3) && currentQuestion && (
+          {/* DYNAMIC SECTION: Stage 2 or Stage 3 with dynamic question generation */}
+          {(stage === STAGES.STAGE2 || stage === STAGES.STAGE3) && (
+            <div className="wizard-stage dynamic-section">
+              {/* Loading state while initializing */}
+              {isInitializingDynamicSection && (
+                <div className="dynamic-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Generating questions tailored to your concept...</p>
+                </div>
+              )}
+
+              {/* Render dynamic question */}
+              {!isInitializingDynamicSection && (() => {
+                const sectionId = stage === STAGES.STAGE2 ? 'stage2' : 'stage3'
+                const queue = dynamicSectionQueues[sectionId]
+                const currentSlot = getCurrentDynamicSlot(sectionId)
+                const currentQuestion = currentSlot?.question
+
+                if (!queue || !currentQuestion) {
+                  return (
+                    <div className="dynamic-loading">
+                      <p>Loading questions...</p>
+                    </div>
+                  )
+                }
+
+                const questionType = currentQuestion.type || 'open_ended'
+                const sectionLabel = stage === STAGES.STAGE2 ? 'Differentiation' : 'Methodology'
+
+                return (
+                  <>
+                    <div className="question-counter">
+                      {sectionLabel}: Question {queue.completed_count + 1}
+                      {queue.slots.length > queue.completed_count + 1 && (
+                        <span className="question-upcoming"> (+{queue.slots.length - queue.completed_count - 1} ready)</span>
+                      )}
+                      {dynamicPreGenerating.size > 0 && (
+                        <span className="generating-indicator"> • generating more...</span>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="dynamic-progress">
+                      <div className="progress-bar">
+                        <div
+                          className="progress-fill"
+                          style={{ width: `${Math.min(100, (queue.completed_count / queue.target_questions) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="progress-text">
+                        {queue.completed_count} of ~{queue.target_questions} target questions answered
+                      </span>
+                    </div>
+
+                    <div className="question-card">
+                      <div className="question-header">
+                        {currentQuestion.rationale && (
+                          <span className="question-rationale" title={currentQuestion.rationale}>
+                            Why this question?
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="question-text">{currentQuestion.text}</h3>
+
+                      {currentQuestion.help && (
+                        <p className="question-help">{currentQuestion.help}</p>
+                      )}
+
+                      {/* Multiple Choice Options */}
+                      {(questionType === 'multiple_choice' || questionType === 'multi_select') && currentQuestion.options && (
+                        <div className="answer-options dynamic-options">
+                          {currentQuestion.options.map((opt, idx) => (
+                            <label
+                              key={opt.value || idx}
+                              className={`option-card ${dynamicSectionSelectedOptions.includes(opt.value) ? 'selected' : ''}`}
+                              onClick={() => toggleDynamicOption(opt.value, questionType === 'multi_select')}
+                            >
+                              <input
+                                type={questionType === 'multi_select' ? 'checkbox' : 'radio'}
+                                name={`dynamic_${sectionId}`}
+                                checked={dynamicSectionSelectedOptions.includes(opt.value)}
+                                onChange={() => {}}
+                              />
+                              <div className="option-content">
+                                <span className="option-label">{opt.label}</span>
+                                {opt.description && (
+                                  <span className="option-description">{opt.description}</span>
+                                )}
+                                {opt.implications && (
+                                  <span className="option-implications">
+                                    → {opt.implications}
+                                  </span>
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Custom Write-In Option (escape valve for multiple choice) */}
+                      {(questionType === 'multiple_choice' || questionType === 'multi_select') &&
+                       currentQuestion.allow_custom_response && (
+                        <div className="dynamic-custom-response">
+                          <label
+                            className={`option-card custom-option ${dynamicSectionUseCustom ? 'selected' : ''}`}
+                            onClick={() => {
+                              setDynamicSectionUseCustom(!dynamicSectionUseCustom)
+                              if (!dynamicSectionUseCustom) {
+                                // Switching to custom mode - clear selected options
+                                setDynamicSectionSelectedOptions([])
+                              } else {
+                                // Switching back - clear custom text
+                                setDynamicSectionAnswer('')
+                              }
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name={`dynamic_${currentDynamicSectionId}_custom`}
+                              checked={dynamicSectionUseCustom}
+                              onChange={() => {}}
+                            />
+                            <div className="option-content">
+                              <span className="option-label">✏️ None of these — write my own</span>
+                              <span className="option-description">
+                                Provide a custom answer if the options above don't capture your thinking
+                              </span>
+                            </div>
+                          </label>
+                          {dynamicSectionUseCustom && (
+                            <div className="custom-input-area">
+                              <textarea
+                                className="answer-textarea custom-textarea"
+                                value={dynamicSectionAnswer}
+                                onChange={(e) => setDynamicSectionAnswer(e.target.value)}
+                                placeholder="Type your custom response..."
+                                rows={4}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Open-ended Answer */}
+                      {questionType === 'open_ended' && (
+                        <div className="open-answer-section">
+                          {currentQuestion.example && (
+                            <div className="answer-example">
+                              <strong>Example:</strong> {currentQuestion.example}
+                            </div>
+                          )}
+                          <textarea
+                            className="answer-textarea"
+                            value={dynamicSectionAnswer}
+                            onChange={(e) => setDynamicSectionAnswer(e.target.value)}
+                            placeholder="Enter your response..."
+                            rows={currentQuestion.rows || 5}
+                          />
+                          {currentQuestion.min_length && dynamicSectionAnswer.length < currentQuestion.min_length && (
+                            <span className="char-hint">
+                              {dynamicSectionAnswer.length} / {currentQuestion.min_length} min characters
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Comment field (optional) */}
+                      <div className="comment-section">
+                        <label className="comment-label">
+                          <input
+                            type="checkbox"
+                            checked={dynamicSectionComment.length > 0}
+                            onChange={(e) => {
+                              if (!e.target.checked) setDynamicSectionComment('')
+                            }}
+                          />
+                          Add a comment or qualification
+                        </label>
+                        {dynamicSectionComment.length > 0 && (
+                          <textarea
+                            className="comment-textarea"
+                            value={dynamicSectionComment}
+                            onChange={(e) => setDynamicSectionComment(e.target.value)}
+                            placeholder="Any additional context or qualifications..."
+                            rows={2}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="wizard-actions">
+                      <button className="btn btn-secondary" onClick={onCancel}>
+                        Cancel
+                      </button>
+                      {queue.completed_count >= DYNAMIC_SECTION_CONFIG?.[sectionId]?.min_questions && (
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => handleDynamicSectionComplete(sectionId)}
+                        >
+                          Finish Section Early ({queue.completed_count} answered)
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => handleDynamicAnswerSubmit(sectionId)}
+                        disabled={!hasDynamicAnswer(sectionId) || isSubmittingDynamicAnswer}
+                      >
+                        {isSubmittingDynamicAnswer ? 'Submitting...' : 'Continue →'}
+                      </button>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          )}
+
+          {/* STAGE: Questions (Stage 1 only now - Stage 2/3 use dynamic sections above) */}
+          {stage === STAGES.STAGE1 && currentQuestion && (
             <div className="wizard-stage">
               <div className="question-counter">
                 Stage {getStageNumber()}: Question {currentQuestionIndex + 1} of {questions.length}
@@ -5561,8 +6370,8 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
             </div>
           )}
 
-          {/* No questions fallback */}
-          {(stage === STAGES.STAGE1 || stage === STAGES.STAGE2 || stage === STAGES.STAGE3) && !currentQuestion && (
+          {/* No questions fallback - only for STAGE1 since STAGE2/STAGE3 use dynamic sections now */}
+          {stage === STAGES.STAGE1 && !currentQuestion && (
             <div className="wizard-stage">
               <div className="wizard-error">
                 No questions loaded for this stage. Questions: {questions.length}, Index: {currentQuestionIndex}

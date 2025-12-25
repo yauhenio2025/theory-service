@@ -1831,6 +1831,594 @@ header h1 {
 
 
 /* =============================================================================
+   WIZARD LIGHT MODE OVERRIDE
+   Forces light theme on wizard regardless of page theme
+   ============================================================================= */
+
+.wizard-overlay {
+  /* Light mode overlay */
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.wizard-container {
+  /* Force light backgrounds */
+  --wizard-bg: #ffffff;
+  --wizard-bg-alt: #f8fafc;
+  --wizard-bg-surface: #f1f5f9;
+  --wizard-bg-elevated: #e2e8f0;
+  --wizard-text: #1e293b;
+  --wizard-text-muted: #64748b;
+  --wizard-text-heading: #0f172a;
+  --wizard-border: #e2e8f0;
+  --wizard-border-light: #f1f5f9;
+  --wizard-accent: #2563eb;
+
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container * {
+  /* Inherit light mode colors */
+  --bg: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-surface: #f1f5f9;
+  --bg-elevated: #e2e8f0;
+  --panel-bg: #ffffff;
+  --panel-bg-alt: #f8fafc;
+  --panel-surface: #f1f5f9;
+  --panel-elevated: #e2e8f0;
+  --panel-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --text-heading: #0f172a;
+  --text-body: #334155;
+  --text-secondary: #64748b;
+  --accent-blue: #2563eb;
+  --accent-blue-muted: #3b82f6;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --border-strong: #cbd5e1;
+  --code-bg: #f1f5f9;
+  --code-border: #e2e8f0;
+  --code-text: #334155;
+}
+
+.wizard-progress {
+  background: var(--wizard-bg-alt) !important;
+  border-bottom-color: var(--wizard-border) !important;
+}
+
+.wizard-content {
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-stage .stage-header h3 {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-stage .stage-header p {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for understanding validation panel */
+.understanding-validation-panel {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.uv-section {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.uv-section h4 {
+  color: var(--wizard-accent) !important;
+}
+
+.uv-section p,
+.uv-section .uv-summary-text,
+.uv-section .uv-definition-text {
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode for cards */
+.cards-review-section {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.cards-review-header h3 {
+  color: var(--wizard-accent) !important;
+}
+
+.cards-review-header p {
+  color: var(--wizard-text-muted) !important;
+}
+
+.hypothesis-card,
+.card-grid .hypothesis-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.hypothesis-card .card-claim {
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode for blind spots */
+.blind-spot-question-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.blind-spot-question-card .question-text {
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode for textareas and inputs */
+.wizard-container textarea,
+.wizard-container input[type="text"],
+.wizard-container .wizard-textarea,
+.wizard-container .wizard-input {
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container textarea::placeholder,
+.wizard-container input::placeholder {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for document upload */
+.document-upload-panel {
+  background: var(--wizard-bg-surface) !important;
+}
+
+/* Light mode for interim analysis */
+.interim-analysis-content {
+  background: var(--wizard-bg-surface) !important;
+}
+
+/* Light mode for stage navigation */
+.stage-nav-breadcrumb {
+  background: var(--wizard-bg-alt) !important;
+}
+
+.nav-stage-btn {
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text-muted) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.nav-stage-btn.current {
+  background: var(--wizard-accent) !important;
+  color: white !important;
+}
+
+.nav-stage-btn.completed {
+  background: var(--wizard-bg-elevated) !important;
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode for answer options */
+.answer-options-container {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.answer-option-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.answer-option-card.selected {
+  background: rgba(37, 99, 235, 0.1) !important;
+  border-color: var(--wizard-accent) !important;
+}
+
+/* Light mode for thinking panel */
+.wizard-container .thinking-panel {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .thinking-content {
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode progress label */
+.progress-label {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for interim analysis */
+.wizard-container .interim-panel {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .interim-section h4 {
+  color: var(--wizard-text-muted) !important;
+  border-bottom-color: var(--wizard-border) !important;
+}
+
+.wizard-container .interim-summary {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-container .preliminary-def {
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .tensions-intro {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for tension/blind spot cards */
+.wizard-container .tension-card,
+.wizard-container .blind-spot-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .tension-card p,
+.wizard-container .tension-description {
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .tension-poles .pole,
+.wizard-container .blind-spot-clarification .pole {
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: #1e40af !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+}
+
+.wizard-container .tension-poles .vs {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .tension-source {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for gaps list */
+.wizard-container .gaps-list {
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .gap-item {
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode for approved claims */
+.wizard-container .approved-claim-card {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode for commitment badges */
+.wizard-container .commitment-badge {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #166534 !important;
+}
+
+/* Light mode buttons in wizard */
+.wizard-container .btn-secondary {
+  background: var(--wizard-bg-elevated) !important;
+  color: var(--wizard-text) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .btn-secondary:hover {
+  background: #cbd5e1 !important;
+}
+
+/* Light mode for card stage tabs */
+.wizard-container .card-stage-tab {
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text-muted) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .card-stage-tab.active {
+  background: var(--wizard-accent) !important;
+  color: white !important;
+  border-color: var(--wizard-accent) !important;
+}
+
+/* Light mode for cards missing section */
+.wizard-container .cards-missing-section {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.05)) !important;
+}
+
+.wizard-container .cards-missing-content h3 {
+  color: #d97706 !important;
+}
+
+.wizard-container .cards-missing-content p {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for question cards (Differentiation stage etc.) */
+.wizard-container .question-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .question-card .question-text,
+.wizard-container .question-card h3,
+.wizard-container .question-card h4 {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-container .question-card p,
+.wizard-container .question-card .question-help {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .question-card .question-rationale {
+  color: #1d4ed8 !important;
+  background: rgba(37, 99, 235, 0.1) !important;
+  border-radius: 4px;
+}
+
+.wizard-container .question-card .question-text,
+.wizard-container .question-text {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-container .question-help {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .question-example {
+  background: var(--wizard-bg-surface) !important;
+  border-left-color: var(--wizard-border) !important;
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .char-count {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .answer-input textarea {
+  background: var(--wizard-bg) !important;
+  color: var(--wizard-text) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .question-header .question-stage-badge {
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: #1d4ed8 !important;
+}
+
+/* Light mode for answer options in question cards */
+.wizard-container .answer-option,
+.wizard-container .answer-option-item {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .answer-option:hover,
+.wizard-container .answer-option-item:hover {
+  background: var(--wizard-bg-elevated) !important;
+}
+
+.wizard-container .answer-option.selected,
+.wizard-container .answer-option-item.selected {
+  background: rgba(37, 99, 235, 0.1) !important;
+  border-color: var(--wizard-accent) !important;
+}
+
+.wizard-container .answer-option .option-title,
+.wizard-container .answer-option-item .option-title,
+.wizard-container .answer-option h4,
+.wizard-container .answer-option-item h4 {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-container .answer-option .option-description,
+.wizard-container .answer-option-item .option-description,
+.wizard-container .answer-option p,
+.wizard-container .answer-option-item p {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for commitment question cards */
+.wizard-container .commitment-question-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .commitment-question-card h3,
+.wizard-container .commitment-question-card h4 {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-container .commitment-question-card p {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for option cards (checkboxes in Differentiation etc.) */
+.wizard-container .option-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .option-card:hover {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-accent) !important;
+}
+
+.wizard-container .option-card.selected {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border-color: var(--wizard-accent) !important;
+}
+
+.wizard-container .option-card .option-content h4,
+.wizard-container .option-card .option-title {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-container .option-card .option-content p,
+.wizard-container .option-card .option-description {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .option-selector {
+  color: var(--wizard-accent) !important;
+}
+
+/* Light mode for answer options grid */
+.wizard-container .answer-options {
+  background: transparent !important;
+}
+
+.wizard-container .answer-options-grid {
+  background: transparent !important;
+}
+
+/* Light mode for generated option cards */
+.wizard-container .generated-option-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .generated-option-card.selected {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border-color: var(--wizard-accent) !important;
+}
+
+.wizard-container .generated-option-card .option-text {
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .generated-option-card .option-rationale {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for differentiation cards */
+.wizard-container .differentiation-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .diff-header {
+  color: #d97706 !important;
+}
+
+.wizard-container .diff-distinction {
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .diff-consequence {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .diff-consequence em {
+  color: var(--wizard-accent) !important;
+}
+
+/* Light mode for tensions */
+.wizard-container .tensions-remaining li {
+  color: var(--wizard-text) !important;
+}
+
+/* Light mode for impact topology panel */
+.wizard-container .impact-topology-panel {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-color: var(--wizard-border) !important;
+  border-left-color: var(--wizard-accent) !important;
+}
+
+.wizard-container .topology-header {
+  border-bottom-color: var(--wizard-border) !important;
+}
+
+.wizard-container .topology-header h4 {
+  color: var(--wizard-accent) !important;
+}
+
+.wizard-container .topology-empty {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .topology-card {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .topology-card:hover {
+  border-color: var(--wizard-accent) !important;
+}
+
+.wizard-container .topology-card-header .dim-name {
+  color: var(--wizard-text-heading) !important;
+}
+
+.wizard-container .topology-note {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for dialectic toggle */
+.wizard-container .dialectic-toggle {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .dialectic-toggle:hover {
+  border-color: #7c3aed !important;
+}
+
+.wizard-container .dialectic-toggle.active {
+  background: rgba(124, 58, 237, 0.1) !important;
+  border-color: #7c3aed !important;
+}
+
+.wizard-container .dialectic-toggle > span:nth-child(3) {
+  color: #7c3aed !important;
+}
+
+.wizard-container .dialectic-toggle .dialectic-hint {
+  color: var(--wizard-text-muted) !important;
+}
+
+/* Light mode for custom comment section */
+.wizard-container .mc-custom-section {
+  background: var(--wizard-bg-surface) !important;
+  border-color: var(--wizard-border) !important;
+}
+
+.wizard-container .mc-custom-label {
+  color: var(--wizard-text-muted) !important;
+}
+
+.wizard-container .mc-tag-btn {
+  background: var(--wizard-bg) !important;
+  border-color: var(--wizard-border) !important;
+  color: var(--wizard-text) !important;
+}
+
+.wizard-container .mc-tag-btn:hover {
+  background: var(--wizard-bg-elevated) !important;
+  border-color: var(--wizard-accent) !important;
+}
+
+
+/* =============================================================================
    ENHANCED CONCEPT WIZARD - Staged Adaptive Questioning
    ============================================================================= */
 
@@ -2090,6 +2678,51 @@ header h1 {
 .custom-textarea {
   margin-top: 0.5rem;
   background: #0d1117;
+}
+
+/* Dynamic Section Custom Response (escape valve for multiple choice) */
+.dynamic-custom-response {
+  margin-top: 0.75rem;
+  border-top: 1px dashed var(--wizard-border);
+  padding-top: 0.75rem;
+}
+
+.dynamic-custom-response .custom-option {
+  border-style: dashed;
+  background: var(--wizard-bg-surface);
+}
+
+.dynamic-custom-response .custom-option:hover {
+  border-color: var(--wizard-accent);
+}
+
+.dynamic-custom-response .custom-option.selected {
+  border-color: var(--wizard-accent);
+  border-style: solid;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.dynamic-custom-response .custom-input-area {
+  margin-top: 0.75rem;
+  padding-left: 2rem;
+}
+
+.dynamic-custom-response .custom-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--wizard-border);
+  background: var(--wizard-bg);
+  color: var(--wizard-text);
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.dynamic-custom-response .custom-textarea:focus {
+  outline: none;
+  border-color: var(--wizard-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 /* Dialectic Section */
@@ -4287,6 +4920,7 @@ header h1 {
   letter-spacing: 0.5px;
 }
 
+/* Epistemic Stances */
 .stance-assertive {
   background: rgba(34, 197, 94, 0.15);
   color: #22c55e;
@@ -4305,6 +4939,83 @@ header h1 {
 .stance-provocative {
   background: rgba(236, 72, 153, 0.15);
   color: #ec4899;
+}
+
+/* Relational Stances */
+.stance-synthetic {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+}
+
+.stance-contrastive {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.stance-concessive {
+  background: rgba(20, 184, 166, 0.15);
+  color: #14b8a6;
+}
+
+.stance-analogical {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+/* Methodological Stances */
+.stance-empirical {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+}
+
+.stance-theoretical {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+}
+
+.stance-pragmatic {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+.stance-genealogical {
+  background: rgba(161, 98, 7, 0.15);
+  color: #a16207;
+}
+
+/* Strategic Stances */
+.stance-diagnostic {
+  background: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+}
+
+.stance-prescriptive {
+  background: rgba(5, 150, 105, 0.15);
+  color: #059669;
+}
+
+.stance-agnostic {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+.stance-reframing {
+  background: rgba(217, 70, 239, 0.15);
+  color: #d946ef;
+}
+
+/* Wildcard/Custom types - use neutral styling */
+.stance-wildcard_1,
+.stance-wildcard_2,
+.stance-custom {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+/* Default fallback for any unknown stance type */
+.stance-badge:not([class*="stance-"]):not(.stance-assertive):not(.stance-exploratory):not(.stance-qualified):not(.stance-provocative):not(.stance-synthetic):not(.stance-contrastive):not(.stance-concessive):not(.stance-analogical):not(.stance-empirical):not(.stance-theoretical):not(.stance-pragmatic):not(.stance-genealogical):not(.stance-diagnostic):not(.stance-prescriptive):not(.stance-agnostic):not(.stance-reframing) {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
 }
 
 .option-text {
@@ -6619,6 +7330,38 @@ header h1 {
   border-radius: 12px;
 }
 
+/* Cards Missing Fallback Section */
+.cards-missing-section {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.05));
+  border: 1px dashed var(--warning, #f59e0b);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.cards-missing-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.cards-missing-content h3 {
+  color: var(--warning, #f59e0b);
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.cards-missing-content p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.cards-missing-content .btn {
+  min-width: 200px;
+}
+
 .cards-review-header {
   margin-bottom: 1.5rem;
 }
@@ -7418,6 +8161,78 @@ header h1 {
   flex: 1;
 }
 
+/* Wizard Action Buttons Container */
+.wizard-action-btns {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.refresh-stage-btn {
+  padding: 0.35rem 0.5rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+}
+
+.refresh-stage-btn:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.refresh-stage-btn:active {
+  transform: scale(0.95);
+}
+
+/* Zoom Controls for text scaling */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  padding: 0.2rem 0.4rem;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+}
+
+.zoom-btn {
+  padding: 0.2rem 0.5rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--wizard-accent, #6366f1);
+  transition: all 0.15s;
+  min-width: 28px;
+}
+
+.zoom-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.zoom-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zoom-level {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--wizard-text-muted, #64748b);
+  min-width: 36px;
+  text-align: center;
+}
+
 .save-checkpoint-btn {
   padding: 0.35rem 0.5rem;
   background: rgba(255, 255, 255, 0.08);
@@ -8149,4 +8964,180 @@ header h1 {
 
 .deep-commitments-stage.phase3 .stage-header h3 {
   color: #a78bfa;
+}
+
+/* =============================================================================
+   DYNAMIC SECTION STYLES
+   For rolling question generation in sections 6-11
+   ============================================================================= */
+
+.dynamic-section {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.dynamic-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-muted);
+}
+
+.dynamic-loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.dynamic-progress {
+  margin-bottom: 1.5rem;
+}
+
+.dynamic-progress .progress-bar {
+  height: 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.dynamic-progress .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+  transition: width 0.5s ease-out;
+}
+
+.dynamic-progress .progress-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.question-upcoming {
+  font-size: 0.8em;
+  color: var(--success);
+  margin-left: 0.5rem;
+}
+
+.generating-indicator {
+  font-size: 0.8em;
+  color: var(--warning);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.dynamic-options .option-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dynamic-options .option-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dynamic-options .option-card.selected {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.option-implications {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.open-answer-section {
+  margin-top: 1rem;
+}
+
+.open-answer-section .answer-example {
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.open-answer-section .answer-textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 120px;
+  transition: border-color 0.2s;
+}
+
+.open-answer-section .answer-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.char-hint {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.comment-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.comment-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.comment-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.comment-textarea {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  transition: all 0.2s;
+}
+
+.btn-outline:hover {
+  background: var(--bg-surface);
+  border-color: var(--primary);
+  color: var(--primary);
 }

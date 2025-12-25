@@ -376,7 +376,8 @@ class AnswerOption(BaseModel):
     """A single answer option for multiple choice."""
     id: str  # e.g., "opt_1"
     text: str  # The answer text
-    stance: str  # Brief label: "assertive", "exploratory", "qualified", "provocative"
+    stance: str  # Type key: "assertive", "synthetic", "genealogical", etc.
+    label: Optional[str] = None  # Display label: "ASSERTIVE", "SYNTHETIC", etc. (dynamically curated)
 
 
 class GenerateAnswerOptionsResponse(BaseModel):
@@ -6336,7 +6337,8 @@ async def submit_blind_spot_answer(request: SubmitBlindSpotAnswerRequest, db: As
         session_state = session.session_state or {}
         logger.info(f"[submit-blind-spot-answer] session_state keys: {list(session_state.keys())}")
 
-        queue = session_state.get('blind_spots_queue', {})
+        # Handle both camelCase (frontend) and snake_case naming
+        queue = session_state.get('blind_spots_queue') or session_state.get('blindSpotsQueue', {})
         slots = queue.get('slots', [])
         logger.info(f"[submit-blind-spot-answer] queue has {len(slots)} slots")
 
@@ -6427,7 +6429,8 @@ async def sharpen_question(request: SharpenQuestionRequest, db: AsyncSession = D
             session = result.scalar_one_or_none()
 
             session_state = session.session_state if session else {}
-            queue = session_state.get('blind_spots_queue', {})
+            # Handle both camelCase (frontend) and snake_case naming
+            queue = session_state.get('blind_spots_queue') or session_state.get('blindSpotsQueue', {})
             slots = queue.get('slots', [])
 
             # Find the original slot
@@ -6565,7 +6568,8 @@ async def finish_blind_spots(request: FinishBlindSpotsRequest, db: AsyncSession 
             raise HTTPException(status_code=404, detail="Session not found")
 
         session_state = session.session_state or {}
-        queue_data = session_state.get('blind_spots_queue', {})
+        # Handle both camelCase (frontend) and snake_case naming
+        queue_data = session_state.get('blind_spots_queue') or session_state.get('blindSpotsQueue', {})
         queue = BlindSpotsQueue(**queue_data)
 
         # Assess completion quality
@@ -6747,7 +6751,196 @@ async def generate_informed_hypotheses(request: GenerateInformedHypothesesReques
     )
 
 
-# Prompt for generating answer options
+# =============================================================================
+# DYNAMIC ANSWER TYPOLOGY SYSTEM
+# =============================================================================
+# Instead of fixed categories (assertive/exploratory/qualified/provocative),
+# we curate 4 types from a bank of 16+ based on the specific question context.
+
+ANSWER_TYPOLOGY_BANK = {
+    # Epistemic Stances
+    "assertive": {
+        "label": "ASSERTIVE",
+        "description": "A confident, definitive claim. 'I believe X because Y.'",
+        "best_for": ["definitional questions", "core commitments", "where user has clarity"]
+    },
+    "exploratory": {
+        "label": "EXPLORATORY",
+        "description": "Open questioning stance. 'I'm uncertain but drawn to...'",
+        "best_for": ["new territory", "genuine uncertainty", "early-stage thinking"]
+    },
+    "qualified": {
+        "label": "QUALIFIED",
+        "description": "Nuanced position with caveats. 'In some contexts X, but in others Y...'",
+        "best_for": ["complex tradeoffs", "context-dependent claims", "scope limitations"]
+    },
+    "provocative": {
+        "label": "PROVOCATIVE",
+        "description": "Counterintuitive or challenging take. 'Against common intuition...'",
+        "best_for": ["paradigm challenges", "contrarian positions", "disrupting assumptions"]
+    },
+
+    # Relational Stances
+    "synthetic": {
+        "label": "SYNTHETIC",
+        "description": "Combining or reconciling views. 'Both X and Y are true because...'",
+        "best_for": ["apparent contradictions", "multiple valid perspectives", "dialectical tensions"]
+    },
+    "contrastive": {
+        "label": "CONTRASTIVE",
+        "description": "Defining by what it's NOT. 'Unlike X, my concept emphasizes...'",
+        "best_for": ["differentiation questions", "competitor concepts", "boundary drawing"]
+    },
+    "concessive": {
+        "label": "CONCESSIVE",
+        "description": "Acknowledging valid criticism. 'Critics are right that X, but...'",
+        "best_for": ["addressing objections", "steel-manning opponents", "honest limitations"]
+    },
+    "analogical": {
+        "label": "ANALOGICAL",
+        "description": "Drawing illuminating parallels. 'This is like X in that...'",
+        "best_for": ["abstract concepts", "cross-domain insight", "making unfamiliar familiar"]
+    },
+
+    # Methodological Stances
+    "empirical": {
+        "label": "EMPIRICAL",
+        "description": "Evidence-based positioning. 'The data/cases suggest...'",
+        "best_for": ["factual disputes", "testable claims", "grounding in observation"]
+    },
+    "theoretical": {
+        "label": "THEORETICAL",
+        "description": "Conceptual/logical reasoning. 'The framework implies...'",
+        "best_for": ["abstract questions", "logical entailments", "definitional matters"]
+    },
+    "pragmatic": {
+        "label": "PRAGMATIC",
+        "description": "Focus on practical consequences. 'What matters is whether...'",
+        "best_for": ["action-oriented questions", "policy implications", "real-world stakes"]
+    },
+    "genealogical": {
+        "label": "GENEALOGICAL",
+        "description": "Tracing origins and development. 'This emerged from...'",
+        "best_for": ["historical questions", "intellectual lineage", "how concepts evolved"]
+    },
+
+    # Strategic Stances
+    "diagnostic": {
+        "label": "DIAGNOSTIC",
+        "description": "Identifying the real problem. 'The actual issue here is...'",
+        "best_for": ["problem framing", "root cause analysis", "reframing questions"]
+    },
+    "prescriptive": {
+        "label": "PRESCRIPTIVE",
+        "description": "Recommending action or approach. 'We should...'",
+        "best_for": ["normative questions", "recommendations", "what-to-do queries"]
+    },
+    "agnostic": {
+        "label": "AGNOSTIC",
+        "description": "Principled suspension of judgment. 'This may be undecidable...'",
+        "best_for": ["genuine unknowables", "where premature closure is risky", "epistemic humility"]
+    },
+    "reframing": {
+        "label": "REFRAMING",
+        "description": "Shifting the question itself. 'The better question is...'",
+        "best_for": ["poorly posed questions", "false dichotomies", "paradigm shifts"]
+    },
+
+    # Wildcards (curator can define custom types)
+    "wildcard_1": {
+        "label": "CUSTOM",
+        "description": "Curator-defined type tailored to this specific question",
+        "best_for": ["unusual questions", "domain-specific stances", "emergent categories"]
+    },
+    "wildcard_2": {
+        "label": "CUSTOM",
+        "description": "Curator-defined type tailored to this specific question",
+        "best_for": ["unusual questions", "domain-specific stances", "emergent categories"]
+    }
+}
+
+# Curator prompt: selects 4 best types for this question
+ANSWER_TYPE_CURATOR_PROMPT = """You are an epistemic curator helping select the most appropriate answer TYPES for a specific question.
+
+## The Question
+Concept: {concept_name}
+Category: {category}
+Question: {question}
+
+## User's Context
+{notes_context}
+
+{previous_answers_context}
+
+## Available Answer Types (pick 4)
+{typology_descriptions}
+
+## Your Task
+Analyze the question and context, then select the 4 answer types that would be MOST USEFUL for this specific question.
+
+Consider:
+1. What kind of epistemic move does this question call for?
+2. What stances would reveal the user's actual position most clearly?
+3. What would be genuinely distinct and helpful (not just variety for variety's sake)?
+4. Does the question suggest a particular domain (empirical vs theoretical, historical vs prescriptive)?
+
+You may also define up to 2 CUSTOM types if the standard types don't fit well.
+
+## Output Format
+Return valid JSON:
+{{
+  "selected_types": [
+    {{
+      "type_key": "assertive|exploratory|...|wildcard_1",
+      "label": "ASSERTIVE" or custom label,
+      "tailored_description": "How this type applies to THIS question specifically",
+      "why_selected": "Why this type is valuable for this question"
+    }},
+    ... (4 types total)
+  ],
+  "curation_rationale": "Brief explanation of why these 4 types form a useful set for this question"
+}}"""
+
+# Dynamic answer generation prompt (uses curated types)
+DYNAMIC_ANSWER_OPTIONS_PROMPT = """You are helping a user articulate their response to a question about their concept.
+
+## Context
+Concept: {concept_name}
+Category: {category}
+Question: {question}
+
+{notes_context}
+{previous_answers_context}
+
+## Curated Answer Types for This Question
+{curated_types_description}
+
+## Task
+Generate 4 answer options, one for each curated type above. Each option should:
+1. Be 2-3 sentences long
+2. Embody the specified stance/type authentically
+3. Be specific to THIS question and THIS concept (not generic)
+4. Help the user discover and articulate their actual position
+
+## Mutual Exclusivity
+Determine whether these options are mutually exclusive or can be combined.
+Default to mutually_exclusive: false unless the options are logically contradictory.
+
+## Output Format
+Return valid JSON:
+{{
+  "options": [
+    {{"id": "opt_1", "text": "...", "stance": "{type_1_key}", "label": "{type_1_label}"}},
+    {{"id": "opt_2", "text": "...", "stance": "{type_2_key}", "label": "{type_2_label}"}},
+    {{"id": "opt_3", "text": "...", "stance": "{type_3_key}", "label": "{type_3_label}"}},
+    {{"id": "opt_4", "text": "...", "stance": "{type_4_key}", "label": "{type_4_label}"}}
+  ],
+  "guidance": "Brief note on how these options differ and what choosing each would signal.",
+  "mutually_exclusive": false,
+  "exclusivity_reason": "Brief explanation"
+}}"""
+
+# Legacy prompt (kept for fallback)
 GENERATE_ANSWER_OPTIONS_PROMPT = """You are helping a user articulate their response to a question about their concept's epistemic blind spots.
 
 ## Context
@@ -6799,12 +6992,135 @@ Return valid JSON:
 Generate options that are genuinely distinct and would help the user discover which resonates with their actual thinking."""
 
 
+def _build_typology_descriptions() -> str:
+    """Build formatted description of all available answer types for the curator."""
+    lines = []
+    for key, data in ANSWER_TYPOLOGY_BANK.items():
+        if key.startswith("wildcard"):
+            continue  # Skip wildcards in the list - curator can use them if needed
+        lines.append(f"- **{key}** ({data['label']}): {data['description']}")
+        lines.append(f"  Best for: {', '.join(data['best_for'])}")
+    lines.append("")
+    lines.append("- **wildcard_1/wildcard_2**: Define your own custom type if needed")
+    return "\n".join(lines)
+
+
+async def _curate_answer_types(
+    client,
+    concept_name: str,
+    category: str,
+    question: str,
+    notes_context: str,
+    previous_answers_context: str
+) -> List[dict]:
+    """
+    Step 1: Use an LLM to curate which 4 answer types are most appropriate
+    for this specific question.
+    """
+    typology_descriptions = _build_typology_descriptions()
+
+    curator_prompt = ANSWER_TYPE_CURATOR_PROMPT.format(
+        concept_name=concept_name,
+        category=category,
+        question=question,
+        notes_context=notes_context,
+        previous_answers_context=previous_answers_context,
+        typology_descriptions=typology_descriptions
+    )
+
+    # Use Haiku for fast curation (it's just selecting types, not generating content)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1000,
+        messages=[{"role": "user", "content": curator_prompt}]
+    )
+
+    response_text = response.content[0].text.strip()
+
+    # Parse curator response
+    import re
+    json_match = re.search(r'\{[\s\S]*\}', response_text)
+    if json_match:
+        parsed = json.loads(json_match.group())
+        return parsed.get('selected_types', [])
+
+    # Fallback to default types if parsing fails
+    return [
+        {"type_key": "assertive", "label": "ASSERTIVE", "tailored_description": "A confident position"},
+        {"type_key": "exploratory", "label": "EXPLORATORY", "tailored_description": "An open exploration"},
+        {"type_key": "qualified", "label": "QUALIFIED", "tailored_description": "A nuanced stance"},
+        {"type_key": "provocative", "label": "PROVOCATIVE", "tailored_description": "A challenging take"}
+    ]
+
+
+async def _generate_options_for_curated_types(
+    client,
+    concept_name: str,
+    category: str,
+    question: str,
+    notes_context: str,
+    previous_answers_context: str,
+    curated_types: List[dict]
+) -> dict:
+    """
+    Step 2: Generate actual answer options using the curated types.
+    """
+    # Build description of curated types for the generator
+    curated_types_description = "\n".join([
+        f"{i+1}. **{t.get('label', t.get('type_key', 'TYPE').upper())}** ({t.get('type_key', 'unknown')})\n   {t.get('tailored_description', t.get('description', 'No description'))}"
+        for i, t in enumerate(curated_types[:4])
+    ])
+
+    # Build placeholder values for the prompt
+    type_keys = [t.get('type_key', f'type_{i}') for i, t in enumerate(curated_types[:4])]
+    type_labels = [t.get('label', t.get('type_key', 'TYPE').upper()) for t in curated_types[:4]]
+
+    # Pad if fewer than 4 types
+    while len(type_keys) < 4:
+        type_keys.append("fallback")
+        type_labels.append("FALLBACK")
+
+    generation_prompt = DYNAMIC_ANSWER_OPTIONS_PROMPT.format(
+        concept_name=concept_name,
+        category=category,
+        question=question,
+        notes_context=notes_context,
+        previous_answers_context=previous_answers_context,
+        curated_types_description=curated_types_description,
+        type_1_key=type_keys[0], type_1_label=type_labels[0],
+        type_2_key=type_keys[1], type_2_label=type_labels[1],
+        type_3_key=type_keys[2], type_3_label=type_labels[2],
+        type_4_key=type_keys[3], type_4_label=type_labels[3]
+    )
+
+    # Use Sonnet for the actual content generation
+    response = client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=1500,
+        messages=[{"role": "user", "content": generation_prompt}]
+    )
+
+    response_text = response.content[0].text.strip()
+
+    # Parse response
+    import re
+    json_match = re.search(r'\{[\s\S]*\}', response_text)
+    if json_match:
+        return json.loads(json_match.group())
+
+    return None
+
+
 @router.post("/generate-answer-options")
 async def generate_answer_options(request: GenerateAnswerOptionsRequest):
     """
     Generate multiple choice answer options for a blind spot question.
-    Implements prn_intent_formation_state_bifurcation - offering guided discovery
-    for users who need scaffolding to articulate their position.
+
+    Two-step process implementing prn_dynamic_typology_curation:
+    1. Curator LLM selects 4 best answer types from bank of 16+ for THIS question
+    2. Generator LLM creates answers for those dynamically-selected types
+
+    This avoids the straightjacket of fixed categories (assertive/exploratory/etc.)
     """
     try:
         client = get_claude_client()
@@ -6812,56 +7128,67 @@ async def generate_answer_options(request: GenerateAnswerOptionsRequest):
         # Build context sections
         notes_context = ""
         if request.notes_context:
-            notes_context = f"## User's Notes (context)\n{request.notes_context[:2000]}..."
+            notes_context = f"## User's Notes (context)\n{request.notes_context[:3000]}..."
 
         previous_answers_context = ""
         if request.previous_answers:
             answers_text = "\n".join([
                 f"- {a.get('question', 'Q')}: {a.get('answer', 'A')[:200]}"
-                for a in request.previous_answers[-3:]  # Last 3 answers for context
+                for a in request.previous_answers[-5:]  # Last 5 answers for richer context
             ])
             previous_answers_context = f"## Previous Answers\n{answers_text}"
 
-        prompt = GENERATE_ANSWER_OPTIONS_PROMPT.format(
-            concept_name=request.concept_name,
-            category=request.category,
-            question=request.question,
-            notes_context=notes_context,
-            previous_answers_context=previous_answers_context
+        # Step 1: Curate answer types for this question
+        logger.info(f"[generate-answer-options] Step 1: Curating types for question in category '{request.category}'")
+        curated_types = await _curate_answer_types(
+            client,
+            request.concept_name,
+            request.category,
+            request.question,
+            notes_context,
+            previous_answers_context
+        )
+        logger.info(f"[generate-answer-options] Curated types: {[t.get('label') for t in curated_types]}")
+
+        # Step 2: Generate answers for curated types
+        logger.info(f"[generate-answer-options] Step 2: Generating answers for curated types")
+        generated = await _generate_options_for_curated_types(
+            client,
+            request.concept_name,
+            request.category,
+            request.question,
+            notes_context,
+            previous_answers_context,
+            curated_types
         )
 
-        response = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}]
+        if generated:
+            # Ensure each option has a label (from curated types if not in response)
+            options = generated.get('options', [])
+            for i, opt in enumerate(options):
+                if 'label' not in opt and i < len(curated_types):
+                    opt['label'] = curated_types[i].get('label', opt.get('stance', 'TYPE').upper())
+
+            return GenerateAnswerOptionsResponse(
+                options=[AnswerOption(**opt) for opt in options],
+                guidance=generated.get('guidance', 'Choose the option that best resonates with your thinking.'),
+                mutually_exclusive=generated.get('mutually_exclusive', False),
+                exclusivity_reason=generated.get('exclusivity_reason', None)
+            )
+
+        # Fallback if generation fails
+        logger.warning("[generate-answer-options] Generation failed, using fallback")
+        return GenerateAnswerOptionsResponse(
+            options=[
+                AnswerOption(id="opt_1", text="I have a clear position on this that I can articulate.", stance="assertive", label="ASSERTIVE"),
+                AnswerOption(id="opt_2", text="I'm still exploring this area and don't have a fixed view yet.", stance="exploratory", label="EXPLORATORY"),
+                AnswerOption(id="opt_3", text="My position depends on the specific context or framing.", stance="qualified", label="QUALIFIED"),
+                AnswerOption(id="opt_4", text="I want to challenge the premise of this question.", stance="provocative", label="PROVOCATIVE")
+            ],
+            guidance="Select the stance that feels closest to your position, then refine the text.",
+            mutually_exclusive=False,
+            exclusivity_reason="These stances can be combined for a richer response."
         )
-
-        response_text = response.content[0].text.strip()
-
-        # Parse JSON from response
-        import re
-        json_match = re.search(r'\{[\s\S]*\}', response_text)
-        if json_match:
-            parsed = json.loads(json_match.group())
-            return GenerateAnswerOptionsResponse(
-                options=[AnswerOption(**opt) for opt in parsed.get('options', [])],
-                guidance=parsed.get('guidance', 'Choose the option that best resonates with your thinking, or use it as a starting point to write your own.'),
-                mutually_exclusive=parsed.get('mutually_exclusive', False),
-                exclusivity_reason=parsed.get('exclusivity_reason', None)
-            )
-        else:
-            # Fallback if parsing fails
-            return GenerateAnswerOptionsResponse(
-                options=[
-                    AnswerOption(id="opt_1", text="I have a clear position on this that I can articulate.", stance="assertive"),
-                    AnswerOption(id="opt_2", text="I'm still exploring this area and don't have a fixed view yet.", stance="exploratory"),
-                    AnswerOption(id="opt_3", text="My position depends on the specific context or framing.", stance="qualified"),
-                    AnswerOption(id="opt_4", text="I want to challenge the premise of this question.", stance="provocative")
-                ],
-                guidance="Select the stance that feels closest to your position, then refine the text.",
-                mutually_exclusive=False,
-                exclusivity_reason="These stances can be combined for a richer response."
-            )
 
     except Exception as e:
         logger.error(f"Error generating answer options: {e}", exc_info=True)
@@ -7097,4 +7424,816 @@ async def export_concept_for_ie(
         raise
     except Exception as e:
         logger.error(f"Error exporting concept: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# DYNAMIC QUESTION GENERATION SYSTEM
+# =============================================================================
+# This system implements rolling question generation for sections 6-11:
+# - Questions are generated one at a time (or in small batches)
+# - Pre-fetches 1-2 questions ahead while user answers current question
+# - User answers feed into subsequent question generation
+# - Uses Sonnet 4.5 for fast (~3-5s) generation
+# =============================================================================
+
+# Section configurations for dynamic generation
+DYNAMIC_SECTION_CONFIG = {
+    'stage2': {
+        'label': 'Differentiation',
+        'target_questions': 5,
+        'max_questions': 8,
+        'min_questions': 3,
+        'focus': 'differentiating concept from adjacent concepts and surfacing presuppositions'
+    },
+    'stage3': {
+        'label': 'Methodology',
+        'target_questions': 5,
+        'max_questions': 7,
+        'min_questions': 3,
+        'focus': 'grounding the concept with paradigmatic cases, recognition markers, and falsification conditions'
+    },
+    'implications': {
+        'label': 'Implications',
+        'target_questions': 4,
+        'max_questions': 6,
+        'min_questions': 2,
+        'focus': 'exploring what follows from the concept and what it enables or forecloses'
+    },
+    'genealogy': {
+        'label': 'Genealogy',
+        'target_questions': 4,
+        'max_questions': 6,
+        'min_questions': 2,
+        'focus': 'tracing intellectual influences, ancestors, and debates the concept engages with'
+    },
+    'philosophy_p1': {
+        'label': 'Philosophy P1',
+        'target_questions': 12,
+        'max_questions': 15,
+        'min_questions': 9,
+        'focus': 'probing the 12 philosophical dimensions (Quinean, Sellarsian, Brandomian, etc.)'
+    },
+    'philosophy_p2': {
+        'label': 'Philosophy P2',
+        'target_questions': 6,
+        'max_questions': 9,
+        'min_questions': 4,
+        'focus': 'targeted follow-up questions based on P1 answers'
+    },
+    'philosophy_p3': {
+        'label': 'Philosophy P3',
+        'target_questions': 4,
+        'max_questions': 6,
+        'min_questions': 3,
+        'focus': 'synthesis and verification of philosophical commitments'
+    }
+}
+
+
+class DynamicSectionSlot(BaseModel):
+    """A single question slot in a dynamic section queue."""
+    slot_id: str
+    status: str = 'pending'  # pending, answered, skipped
+    question: Optional[Dict[str, Any]] = None
+    answer: Optional[Dict[str, Any]] = None
+    generated_at: Optional[str] = None
+    answered_at: Optional[str] = None
+
+
+class DynamicSectionQueue(BaseModel):
+    """Queue state for a dynamic section."""
+    section_id: str
+    slots: List[DynamicSectionSlot] = []
+    current_index: int = 0
+    target_questions: int = 5
+    max_questions: int = 8
+    completed_count: int = 0
+    skipped_count: int = 0
+    generation_context: Optional[Dict[str, Any]] = None
+
+
+class InitDynamicSectionRequest(BaseModel):
+    """Request to initialize a dynamic section."""
+    session_id: str
+    section_id: str  # stage2, stage3, implications, genealogy, philosophy_p1, philosophy_p2, philosophy_p3
+    concept_name: str
+    notes_summary: Optional[str] = None
+    # Context from previous sections
+    stage1_answers: Optional[List[Dict[str, Any]]] = None
+    stage2_answers: Optional[List[Dict[str, Any]]] = None
+    stage3_answers: Optional[List[Dict[str, Any]]] = None
+    interim_analysis: Optional[Dict[str, Any]] = None
+    genealogy: Optional[List[Dict[str, Any]]] = None
+    blind_spots_answers: Optional[List[Dict[str, Any]]] = None
+    hypothesis_cards: Optional[List[Dict[str, Any]]] = None
+    philosophy_p1_answers: Optional[Dict[str, Any]] = None
+    philosophy_p2_answers: Optional[Dict[str, Any]] = None
+
+
+class SubmitDynamicAnswerRequest(BaseModel):
+    """Request to submit an answer to a dynamic section question."""
+    session_id: str
+    section_id: str
+    slot_id: str
+    answer: Dict[str, Any]  # {selected: str, comment: str, custom_response?: str}
+
+
+class GenerateNextQuestionRequest(BaseModel):
+    """Request to pre-generate the next question for a section."""
+    session_id: str
+    section_id: str
+    # Current accumulated answers in this section
+    section_answers: List[Dict[str, Any]]
+    # Full context
+    concept_name: str
+    notes_summary: Optional[str] = None
+    stage1_answers: Optional[List[Dict[str, Any]]] = None
+    stage2_answers: Optional[List[Dict[str, Any]]] = None
+    stage3_answers: Optional[List[Dict[str, Any]]] = None
+    genealogy: Optional[List[Dict[str, Any]]] = None
+    philosophy_p1_answers: Optional[Dict[str, Any]] = None
+    philosophy_p2_answers: Optional[Dict[str, Any]] = None
+
+
+# =============================================================================
+# PROMPTS FOR SINGLE-QUESTION DYNAMIC GENERATION
+# =============================================================================
+
+DYNAMIC_STAGE2_QUESTION_PROMPT = """You are Claude generating a SINGLE differentiation question for the concept "{concept_name}".
+
+## ACCUMULATED CONTEXT:
+Notes Summary: {notes_summary}
+Interim Analysis: {interim_analysis}
+Adjacent Concepts: {adjacent_concepts}
+Blind Spots Explored: {blind_spots_summary}
+
+## QUESTIONS ALREADY ASKED IN THIS SECTION:
+{previous_questions_summary}
+
+## ANSWERS SO FAR IN THIS SECTION:
+{section_answers_summary}
+
+## YOUR TASK:
+Generate ONE NEW differentiation question that:
+1. Is DIFFERENT from questions already asked (see list above)
+2. BUILDS ON the answers already given (see answers above)
+3. Addresses one of: presuppositions, paradigm positioning, ambiguities, anticipated misreadings, or adjacent concept distinctions
+4. Uses the accumulated context to make it SPECIFIC to this concept
+
+If {questions_asked} questions have been asked and answers are converging well, you may set "section_complete": true.
+
+Return JSON:
+{{
+  "question": {{
+    "id": "stage2_q{next_question_num}",
+    "text": "The specific question text referencing their prior answers...",
+    "type": "multiple_choice",
+    "options": [
+      {{"value": "opt_a", "label": "Option A", "description": "What this means...", "implications": "Choosing this implies..."}},
+      {{"value": "opt_b", "label": "Option B", "description": "What this means...", "implications": "Choosing this implies..."}},
+      {{"value": "opt_c", "label": "Option C", "description": "What this means...", "implications": "Choosing this implies..."}}
+    ],
+    "rationale": "Why this question matters given their prior answers",
+    "allow_custom_response": true,
+    "allow_comment": true
+  }},
+  "section_complete": false,
+  "completion_reason": null
+}}"""
+
+
+DYNAMIC_STAGE3_QUESTION_PROMPT = """You are Claude generating a SINGLE methodology/grounding question for the concept "{concept_name}".
+
+## ACCUMULATED CONTEXT:
+Notes Summary: {notes_summary}
+Differentiation Answers (Stage 2): {stage2_summary}
+Implications Preview: {implications_preview}
+
+## QUESTIONS ALREADY ASKED IN THIS SECTION:
+{previous_questions_summary}
+
+## ANSWERS SO FAR IN THIS SECTION:
+{section_answers_summary}
+
+## YOUR TASK:
+Generate ONE NEW methodology question that:
+1. Is DIFFERENT from questions already asked
+2. BUILDS ON the answers already given
+3. Addresses one of: paradigmatic cases, implicit domains, recognition markers, core claims, or falsification conditions
+4. Makes it SPECIFIC to this concept and their prior differentiation choices
+
+CRITICAL: You MUST generate MULTIPLE-CHOICE questions with PRE-POPULATED OPTIONS derived from context.
+DO NOT generate open-ended questions requiring free-text typing.
+
+For paradigmatic cases: Generate 3-4 specific candidate cases inferred from the notes and context.
+For recognition markers: Generate 4-5 specific linguistic/structural patterns inferred from the concept.
+For core claims: Generate 3-4 specific claims the concept makes, derived from context.
+For falsification conditions: Generate 3-4 specific conditions that would disprove the concept.
+For implicit domains: Generate 3-4 specific domains where the concept could apply.
+
+Each option should be DETAILED and SPECIFIC to this concept - not generic placeholders.
+The user should be able to select the best-fitting option without typing anything.
+Always include allow_custom_response: true so user CAN type if none fit.
+
+Return JSON:
+{{
+  "question": {{
+    "id": "stage3_q{next_question_num}",
+    "text": "The specific question...",
+    "type": "multiple_choice",
+    "options": [
+      {{
+        "value": "opt_a",
+        "label": "Short descriptive label",
+        "description": "Detailed 2-3 sentence description of this specific answer derived from the concept context"
+      }},
+      {{
+        "value": "opt_b",
+        "label": "Another specific option",
+        "description": "Detailed description showing you understand the concept..."
+      }},
+      {{
+        "value": "opt_c",
+        "label": "Third distinct option",
+        "description": "Another detailed, context-specific answer..."
+      }}
+    ],
+    "allow_multiple": false,  // true for recognition markers
+    "allow_custom_response": true,
+    "allow_comment": true,
+    "rationale": "Why this matters..."
+  }},
+  "section_complete": false,
+  "completion_reason": null
+}}"""
+
+
+DYNAMIC_PHILOSOPHY_QUESTION_PROMPT = """You are Claude generating a SINGLE philosophical dimension question for the concept "{concept_name}".
+
+## THE 12 PHILOSOPHICAL DIMENSIONS:
+1. QUINEAN (Inferential Web) - What follows logically? What contradicts?
+2. SELLARSIAN (Givenness) - What's treated as self-evident?
+3. BRANDOMIAN (Commitments) - What must you accept if you adopt this?
+4. DELEUZIAN (Problems & Becomings) - What transformations enabled/foreclosed?
+5. BACHELARDIAN (Rupture) - What framework is being replaced?
+6. CANGUILHEM (Normative Stakes) - Whose interests served?
+7. DAVIDSON (Reasoning Style) - What made visible/obscured?
+8. BLUMENBERG (Metaphorology) - What's the root metaphor?
+9. CAREY (Bootstrapping) - What simpler concepts is this built from?
+10. KUHNIAN (Paradigm Structure) - What paradigm? What anomalies?
+11. PRAGMATIST (Performative) - What can you DO with this concept?
+12. FOUCAULDIAN (Power-Knowledge) - What power relations naturalized?
+
+## ACCUMULATED CONTEXT:
+Notes Summary: {notes_summary}
+Genealogy: {genealogy_summary}
+Stage 1-3 Synthesis: {stages_summary}
+
+## DIMENSIONS ALREADY COVERED:
+{dimensions_covered}
+
+## QUESTIONS ALREADY ASKED:
+{previous_questions_summary}
+
+## ANSWERS SO FAR:
+{section_answers_summary}
+
+## YOUR TASK:
+Generate ONE NEW philosophical dimension question that:
+1. Covers a dimension NOT YET covered (see list above)
+2. Is SPECIFIC to this concept using accumulated context
+3. Has 3-5 distinct options representing real philosophical positions
+4. Builds on their prior answers where relevant
+
+Return JSON:
+{{
+  "question": {{
+    "id": "phil_q{next_question_num}",
+    "dimension": "quinean",  // the dimension being probed
+    "text": "If {concept_name} is valid, which of these claims would also follow?",
+    "options": [
+      {{"value": "opt_a", "label": "Position A", "description": "Why this follows..."}},
+      {{"value": "opt_b", "label": "Position B", "description": "Why this follows..."}},
+      {{"value": "opt_c", "label": "Position C", "description": "Why this follows..."}}
+    ],
+    "rationale": "Understanding what follows helps clarify...",
+    "allow_multiple": false,
+    "allow_comment": true
+  }},
+  "section_complete": false,
+  "completion_reason": null
+}}"""
+
+
+# =============================================================================
+# HELPER FUNCTIONS FOR DYNAMIC GENERATION
+# =============================================================================
+
+def _build_section_answers_summary(answers: List[Dict[str, Any]]) -> str:
+    """Build a summary of answers given in this section."""
+    if not answers:
+        return "(No answers yet)"
+
+    lines = []
+    for i, ans in enumerate(answers):
+        q_text = ans.get('question_text', ans.get('question', 'Unknown question'))
+        selected = ans.get('selected', ans.get('answer', '(no selection)'))
+        comment = ans.get('comment', '')
+        lines.append(f"Q{i+1}: {q_text}")
+        lines.append(f"A: {selected}")
+        if comment:
+            lines.append(f"Comment: {comment}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _build_previous_questions_summary(questions: List[Dict[str, Any]]) -> str:
+    """Build a summary of questions already asked."""
+    if not questions:
+        return "(No questions asked yet)"
+
+    lines = []
+    for i, q in enumerate(questions):
+        q_text = q.get('text', q.get('question', 'Unknown'))
+        q_type = q.get('type', 'unknown')
+        lines.append(f"{i+1}. [{q_type}] {q_text}")
+    return "\n".join(lines)
+
+
+def _get_dimensions_covered(answers: Dict[str, Any]) -> List[str]:
+    """Extract which philosophical dimensions have been covered."""
+    dimensions = []
+    for q_id, ans in answers.items():
+        if 'dimension' in ans:
+            dimensions.append(ans['dimension'])
+    return list(set(dimensions))
+
+
+async def _generate_single_question(
+    client,
+    section_id: str,
+    concept_name: str,
+    context: Dict[str, Any],
+    section_answers: List[Dict[str, Any]],
+    previous_questions: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Generate a single question for a dynamic section.
+    Uses Sonnet 4.5 for fast (~3-5s) generation.
+    """
+    questions_asked = len(previous_questions)
+    next_question_num = questions_asked + 1
+
+    # Build context strings
+    section_answers_summary = _build_section_answers_summary(section_answers)
+    previous_questions_summary = _build_previous_questions_summary(previous_questions)
+
+    # Select prompt based on section
+    if section_id == 'stage2':
+        prompt = DYNAMIC_STAGE2_QUESTION_PROMPT.format(
+            concept_name=concept_name,
+            notes_summary=context.get('notes_summary', '(No notes)'),
+            interim_analysis=json.dumps(context.get('interim_analysis', {}), indent=2)[:2000],
+            adjacent_concepts=json.dumps(context.get('adjacent_concepts', []))[:500],
+            blind_spots_summary=json.dumps(context.get('blind_spots_answers', []))[:1500],
+            previous_questions_summary=previous_questions_summary,
+            section_answers_summary=section_answers_summary,
+            questions_asked=questions_asked,
+            next_question_num=next_question_num
+        )
+    elif section_id == 'stage3':
+        prompt = DYNAMIC_STAGE3_QUESTION_PROMPT.format(
+            concept_name=concept_name,
+            notes_summary=context.get('notes_summary', '(No notes)'),
+            stage2_summary=json.dumps(context.get('stage2_answers', []))[:2000],
+            implications_preview=context.get('implications_preview', '(No preview)'),
+            previous_questions_summary=previous_questions_summary,
+            section_answers_summary=section_answers_summary,
+            next_question_num=next_question_num
+        )
+    elif section_id in ['philosophy_p1', 'philosophy_p2', 'philosophy_p3']:
+        dimensions_covered = _get_dimensions_covered(dict(enumerate(section_answers)))
+        stages_summary = f"""
+Stage 1: {json.dumps(context.get('stage1_answers', []))[:800]}
+Stage 2: {json.dumps(context.get('stage2_answers', []))[:800]}
+Stage 3: {json.dumps(context.get('stage3_answers', []))[:800]}
+"""
+        prompt = DYNAMIC_PHILOSOPHY_QUESTION_PROMPT.format(
+            concept_name=concept_name,
+            notes_summary=context.get('notes_summary', '(No notes)'),
+            genealogy_summary=json.dumps(context.get('genealogy', []))[:1000],
+            stages_summary=stages_summary,
+            dimensions_covered=", ".join(dimensions_covered) if dimensions_covered else "(None yet)",
+            previous_questions_summary=previous_questions_summary,
+            section_answers_summary=section_answers_summary,
+            next_question_num=next_question_num
+        )
+    else:
+        # Generic fallback
+        prompt = f"""Generate a single question for section '{section_id}' about concept '{concept_name}'.
+Previous questions: {previous_questions_summary}
+Previous answers: {section_answers_summary}
+Return JSON with 'question' and 'section_complete' fields."""
+
+    # Use Sonnet 4.5 for speed
+    response = client.messages.create(
+        model=SONNET_MODEL,
+        max_tokens=2000,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    response_text = response.content[0].text.strip()
+
+    # Parse JSON from response
+    json_start = response_text.find('{')
+    json_end = response_text.rfind('}') + 1
+    if json_start >= 0 and json_end > json_start:
+        return json.loads(response_text[json_start:json_end])
+
+    raise ValueError(f"Failed to parse question generation response: {response_text[:200]}")
+
+
+# =============================================================================
+# DYNAMIC SECTION ENDPOINTS
+# =============================================================================
+
+@router.post("/init-dynamic-section")
+async def init_dynamic_section(request: InitDynamicSectionRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Initialize a dynamic section with the first 2 questions.
+    This allows immediate display while more questions are pre-generated.
+    """
+    async def stream_init():
+        try:
+            section_id = request.section_id
+            config = DYNAMIC_SECTION_CONFIG.get(section_id)
+
+            if not config:
+                yield f"data: {json.dumps({'type': 'error', 'error': f'Unknown section: {section_id}'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'initializing_section', 'section': config['label']})}\n\n"
+
+            client = get_claude_client()
+
+            # Build context for question generation
+            context = {
+                'notes_summary': request.notes_summary,
+                'stage1_answers': request.stage1_answers,
+                'stage2_answers': request.stage2_answers,
+                'stage3_answers': request.stage3_answers,
+                'interim_analysis': request.interim_analysis,
+                'genealogy': request.genealogy,
+                'blind_spots_answers': request.blind_spots_answers,
+                'hypothesis_cards': request.hypothesis_cards,
+                'philosophy_p1_answers': request.philosophy_p1_answers,
+                'philosophy_p2_answers': request.philosophy_p2_answers
+            }
+
+            # Generate first 2 questions
+            initial_questions = []
+            for i in range(2):
+                yield f"data: {json.dumps({'type': 'status', 'message': f'Generating question {i+1}...'})}\n\n"
+
+                try:
+                    result = await _generate_single_question(
+                        client=client,
+                        section_id=section_id,
+                        concept_name=request.concept_name,
+                        context=context,
+                        section_answers=[],  # No answers yet for initial questions
+                        previous_questions=initial_questions
+                    )
+
+                    question = result.get('question')
+                    if question:
+                        initial_questions.append(question)
+                        yield f"data: {json.dumps({'type': 'question_generated', 'index': i, 'question': question})}\n\n"
+
+                    if result.get('section_complete'):
+                        break
+
+                except Exception as e:
+                    logger.error(f"Error generating initial question {i+1}: {e}")
+                    # Continue with fewer questions
+
+            if not initial_questions:
+                yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to generate initial questions'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            # Build queue structure
+            slots = []
+            for i, q in enumerate(initial_questions):
+                slots.append({
+                    'slot_id': f"{section_id}_slot_{i:02d}",
+                    'status': 'pending',
+                    'question': q,
+                    'answer': None,
+                    'generated_at': datetime.now().isoformat()
+                })
+
+            queue = {
+                'section_id': section_id,
+                'slots': slots,
+                'current_index': 0,
+                'target_questions': config['target_questions'],
+                'max_questions': config['max_questions'],
+                'completed_count': 0,
+                'skipped_count': 0,
+                'generation_context': context
+            }
+
+            # Save to database
+            try:
+                print(f"[init-dynamic-section] Saving queue for session_id={request.session_id}, section={section_id}", flush=True)
+                async with AsyncSessionLocal() as db_session:
+                    result = await db_session.execute(
+                        select(WizardSession).where(WizardSession.session_key == request.session_id)
+                    )
+                    session = result.scalar_one_or_none()
+                    if session:
+                        print(f"[init-dynamic-section] Found session id={session.id}, current stage={session.stage}", flush=True)
+
+                        # Get a fresh copy of session_state and add queue
+                        current_state = dict(session.session_state or {})
+                        queue_key = f'dynamic_queue_{section_id}'
+                        current_state[queue_key] = queue
+
+                        print(f"[init-dynamic-section] State keys before update: {list(current_state.keys())}", flush=True)
+
+                        # Use explicit UPDATE statement instead of ORM update
+                        from sqlalchemy import update
+                        await db_session.execute(
+                            update(WizardSession)
+                            .where(WizardSession.id == session.id)
+                            .values(session_state=current_state)
+                        )
+                        await db_session.commit()
+
+                        # Verify save
+                        verify_result = await db_session.execute(
+                            select(WizardSession.session_state).where(WizardSession.id == session.id)
+                        )
+                        verify_state = verify_result.scalar_one()
+                        print(f"[init-dynamic-section] VERIFIED - queue key exists: {queue_key in (verify_state or {})}", flush=True)
+                        print(f"[init-dynamic-section] COMMITTED queue for {section_id} with {len(slots)} questions", flush=True)
+                    else:
+                        print(f"[init-dynamic-section] SESSION NOT FOUND for session_id={request.session_id}", flush=True)
+            except Exception as e:
+                print(f"[init-dynamic-section] ERROR saving queue: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
+
+            yield f"data: {json.dumps({'type': 'init_complete', 'queue': queue})}\n\n"
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(f"Error initializing dynamic section: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_init(),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("/submit-dynamic-answer")
+async def submit_dynamic_answer(request: SubmitDynamicAnswerRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Submit an answer to a dynamic section question.
+    Updates queue state in database and returns next question info.
+    """
+    try:
+        logger.info(f"[submit-dynamic-answer] session={request.session_id}, section={request.section_id}, slot={request.slot_id}")
+
+        # Load session
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == request.session_id)
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        session_state = dict(session.session_state or {})
+        queue_key = f'dynamic_queue_{request.section_id}'
+        queue = session_state.get(queue_key)
+
+        if not queue:
+            raise HTTPException(status_code=404, detail=f"No dynamic queue found for section {request.section_id}")
+
+        # Find the slot and update it
+        slot_found = False
+        for slot in queue['slots']:
+            if slot['slot_id'] == request.slot_id:
+                slot['status'] = 'answered'
+                slot['answer'] = request.answer
+                slot['answered_at'] = datetime.now().isoformat()
+                slot_found = True
+                break
+
+        if not slot_found:
+            raise HTTPException(status_code=404, detail=f"Slot {request.slot_id} not found")
+
+        # Update queue stats
+        queue['completed_count'] = sum(1 for s in queue['slots'] if s['status'] == 'answered')
+        queue['current_index'] = queue['completed_count']  # Move to next unanswered
+
+        # Determine if section is complete
+        config = DYNAMIC_SECTION_CONFIG.get(request.section_id, {})
+        target = config.get('target_questions', 5)
+        max_q = config.get('max_questions', 8)
+
+        section_complete = (
+            queue['completed_count'] >= target or
+            queue['current_index'] >= len(queue['slots']) and len(queue['slots']) >= target
+        )
+
+        # Check if there are more questions available
+        has_next = queue['current_index'] < len(queue['slots'])
+        next_question = None
+        if has_next:
+            next_question = queue['slots'][queue['current_index']]['question']
+
+        # Can generate more?
+        can_generate_more = len(queue['slots']) < max_q
+
+        # Save updated queue using explicit UPDATE (more reliable for JSON columns)
+        session_state[queue_key] = queue
+        from sqlalchemy import update
+        await db.execute(
+            update(WizardSession)
+            .where(WizardSession.id == session.id)
+            .values(session_state=session_state)
+        )
+        await db.commit()
+
+        logger.info(f"[submit-dynamic-answer] Updated queue: completed={queue['completed_count']}, has_next={has_next}, section_complete={section_complete}")
+
+        return {
+            'success': True,
+            'queue': queue,
+            'has_next': has_next,
+            'next_question': next_question,
+            'section_complete': section_complete,
+            'can_generate_more': can_generate_more,
+            'completed_count': queue['completed_count'],
+            'total_slots': len(queue['slots'])
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting dynamic answer: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/generate-next-question")
+async def generate_next_question(request: GenerateNextQuestionRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Pre-generate the next question for a dynamic section.
+    Called in background while user is answering current question.
+    """
+    try:
+        logger.info(f"[generate-next-question] session={request.session_id}, section={request.section_id}")
+
+        # Load session
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == request.session_id)
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        session_state = dict(session.session_state or {})
+        queue_key = f'dynamic_queue_{request.section_id}'
+        queue = session_state.get(queue_key)
+
+        if not queue:
+            raise HTTPException(status_code=404, detail=f"No dynamic queue found for section {request.section_id}")
+
+        config = DYNAMIC_SECTION_CONFIG.get(request.section_id, {})
+        max_q = config.get('max_questions', 8)
+
+        # Check if we can generate more
+        if len(queue['slots']) >= max_q:
+            return {
+                'success': False,
+                'reason': 'max_questions_reached',
+                'queue': queue
+            }
+
+        # Build context
+        context = queue.get('generation_context', {})
+        context.update({
+            'notes_summary': request.notes_summary,
+            'stage1_answers': request.stage1_answers,
+            'stage2_answers': request.stage2_answers,
+            'stage3_answers': request.stage3_answers,
+            'genealogy': request.genealogy,
+            'philosophy_p1_answers': request.philosophy_p1_answers,
+            'philosophy_p2_answers': request.philosophy_p2_answers
+        })
+
+        # Get previous questions from queue
+        previous_questions = [s['question'] for s in queue['slots'] if s.get('question')]
+
+        # Generate next question
+        client = get_claude_client()
+        result = await _generate_single_question(
+            client=client,
+            section_id=request.section_id,
+            concept_name=request.concept_name,
+            context=context,
+            section_answers=request.section_answers,
+            previous_questions=previous_questions
+        )
+
+        question = result.get('question')
+        section_complete = result.get('section_complete', False)
+
+        if question and not section_complete:
+            # Add new slot to queue
+            new_slot = {
+                'slot_id': f"{request.section_id}_slot_{len(queue['slots']):02d}",
+                'status': 'pending',
+                'question': question,
+                'answer': None,
+                'generated_at': datetime.now().isoformat()
+            }
+            queue['slots'].append(new_slot)
+
+            # Save updated queue using explicit UPDATE (more reliable for JSON columns)
+            session_state[queue_key] = queue
+            from sqlalchemy import update
+            await db.execute(
+                update(WizardSession)
+                .where(WizardSession.id == session.id)
+                .values(session_state=session_state)
+            )
+            await db.commit()
+
+            logger.info(f"[generate-next-question] Added new question, queue now has {len(queue['slots'])} slots")
+
+            return {
+                'success': True,
+                'question': question,
+                'slot_id': new_slot['slot_id'],
+                'section_complete': False,
+                'queue': queue
+            }
+        else:
+            return {
+                'success': True,
+                'question': None,
+                'section_complete': True,
+                'completion_reason': result.get('completion_reason', 'Questions converged'),
+                'queue': queue
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating next question: {e}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dynamic-section-queue/{session_id}/{section_id}")
+async def get_dynamic_section_queue(session_id: str, section_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve the current queue state for a dynamic section.
+    Used for session restoration and status checks.
+    """
+    try:
+        result = await db.execute(
+            select(WizardSession).where(WizardSession.session_key == session_id)
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        session_state = session.session_state or {}
+        queue_key = f'dynamic_queue_{section_id}'
+        queue = session_state.get(queue_key)
+
+        if not queue:
+            return {
+                'exists': False,
+                'queue': None
+            }
+
+        return {
+            'exists': True,
+            'queue': queue
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting dynamic section queue: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
