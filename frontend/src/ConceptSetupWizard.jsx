@@ -3315,8 +3315,9 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
   /**
    * Proceed with validated cards - skip Stage 1 generic questions
    */
+  // v2 - cache bust 2025-12-26
   const proceedWithValidatedCards = async () => {
-    console.log('[proceedWithValidatedCards] Called! Stack trace:')
+    console.log('[proceedWithValidatedCards v2] Called! Stack trace:')
     console.trace()
 
     // Check if we have any approved cards

@@ -4,6 +4,271 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-26: User Experience Philosophy & Part 2 Grid Revision (Architectural Revision)
+
+**Branch:** `main`
+
+### Description
+Major revision to STRATEGIZER-IMPLEMENTATION-SPEC.md Part 2 (Multi-Grid Analytical Layer). Aligned with flexible unit system from Part 1, and fundamentally reconceived the user experience around "attention-only-on-friction" philosophy. The system now operates as a background speculation engine where grids are applied and filled automatically, with users only engaged when genuine framework tensions require human judgment.
+
+### The Core Philosophy
+
+**User attention is a scarce, depletable resource.** The system should:
+1. Process in background (LLM analysis, grid application, literature fetching)
+2. Auto-integrate high-confidence content without user attention
+3. Surface only genuine friction that requires value judgment
+4. Provide multiple resolution paths with commitment/foreclosure articulation
+
+### Key Changes
+
+**1. New Section 2.0: User Experience Philosophy**
+- The Speculative Engine concept — framework emergence from three sources
+- Three Sources of Framework Enrichment (LLM analysis, user questions, literature)
+- Attention Economics Principle (smooth vs friction operations)
+- Friction-Gated Surfacing with resolution paths UI mockup
+- What Grids Mean for Users (insights that surface, not forms to fill)
+
+**2. Section 2.1 Revised**
+- Updated from "5 unit types" to "Three-Tier Unit System"
+- Added "NOT something users actively interact with"
+- Emphasized grids operate in background, surfacing only on friction
+
+**3. Section 2.2 Flexible Grids Revised**
+- Reorganized from fixed unit types (CONCEPT, DIALECTIC, SCENARIO, ACTOR, INSTRUMENT) to Universal unit families (concept, tension, agent)
+- Added "When Applied" column showing background vs surface logic
+- Added Domain-Specific units table referencing Part 5 Domain Registry
+- Added EmergentGridAssignment schema for Tier 3 units
+
+**4. Section 2.5 GridSelector Completely Rewritten**
+- Renamed to "Grid Selection Logic (Background, Automatic)"
+- New `auto_apply_grids()` method that applies AND fills grids automatically
+- `_get_universal_type()` maps any unit to Universal family
+- `_apply_and_fill_grid()` fills from LLM analysis + literature
+- `_detect_grid_friction()` finds conflicts requiring user attention
+- Added "What Users See vs What Happens" diagram
+
+**5. Section 2.7 Example Completely Rewritten**
+- Changed from step-by-step user-driven approach to background processing
+- New Investor domain example (Alibaba domestic pivot thesis)
+- Shows: What User Does (paste notes) → What Happens in Background (6 units, 24 grids, 3 papers) → What User Sees (only 2 friction decisions)
+- Two full UI mockups for friction-resolution decisions with commitment/foreclosure
+- "OLD vs NEW APPROACH" comparison diagram
+- Key stat: "Total active work: ~5 minutes"
+
+### Principles Extracted (Added to tool-ideator knowledge base)
+
+- `prn_attention_scarcity_economics` — Treat user attention as depletable resource
+- `prn_fit_friction_detection_as_routing` — Fit/friction determines automation vs human judgment
+- `prn_resolution_path_multiplicity` — Present multiple resolution paths, not single recommendations
+- `prn_speculative_engine_architecture` — Build speculation engines, not just analytical frameworks
+
+### Features Extracted (Added to tool-ideator knowledge base)
+
+- `friction-gated-user-engagement-pattern` — System processes until friction detected, then surfaces
+- `emergent-conceptual-straightjacket-development` — Frameworks emerge from LLM processing, not imposed upfront
+- `multi-source-framework-enrichment` — Three sources: LLM, user questions, literature
+- `smooth-operation-background-processing` — Categorize as smooth (auto) vs friction (surface)
+
+### Files Modified
+- `documentation/STRATEGIZER-IMPLEMENTATION-SPEC.md` (Part 2: ~500 lines added/revised)
+  - Section 2.0: New "User Experience Philosophy" (~150 lines)
+  - Section 2.1: Updated references to Three-Tier Unit System
+  - Section 2.2: Reorganized grid taxonomy (~60 lines revised)
+  - Section 2.5: Complete rewrite of GridSelector (~200 lines)
+  - Section 2.7: Complete rewrite of example (~200 lines)
+
+### Relationship to Prior Documents
+- **Part 1 revision** — Part 2 now aligned with flexible unit system
+- **strategy-workflow-enhancement-memo.md** — Essay-flow patterns (refactoring dashboard, pending decisions) now foundational to grid friction surfacing
+
+---
+
+## 2025-12-26: Three-Tier Unit System & LLM-Powered Evolution (Architectural Revision)
+
+**Branch:** `main`
+
+### Description
+Major architectural revision to STRATEGIZER-IMPLEMENTATION-SPEC.md Part 1. Applied the same flexibility philosophy from the Three-Tier Grid System to the unit types themselves. If grids can be Required → Flexible → Wildcard, why should unit types be fixed at exactly 5? This revision introduces dynamic unit type evolution powered by background LLM friction detection.
+
+### The Problem
+The original spec defined 5 fixed unit types (Concept, Dialectic, Scenario, Actor, Instrument). But:
+1. Different domains need different vocabularies ("Thesis" vs "Frame" vs "Position")
+2. Some domains might need more/fewer/different unit types
+3. Users discover new unit types through use that don't fit the taxonomy
+4. The grids had three-tier flexibility, but units were rigid
+
+### The Solution: Three-Tier Unit System
+
+| Tier | Name | Count | Description |
+|------|------|-------|-------------|
+| **Tier 1** | Universal | 3 | Every domain needs these: Concept, Tension, Agent |
+| **Tier 2** | Domain | 4-8 | Configured per domain, can be renamed/hidden/merged/split |
+| **Tier 3** | Emergent | 0-N | Discovered through friction detection, promotable to Tier 2 |
+
+### Key Innovations
+
+**1. Universal Units with Domain Aliases**
+```python
+class ConceptUnit:
+    unit_type: str  # "concept" — the universal type
+    display_type: str  # "Thesis" — the domain alias
+    extensions: dict[str, Any]  # Domain-specific extensions
+```
+
+A "Concept" unit in Theory domain displays as "Thesis", in Brand domain as "Position", in Government domain as "Policy Frame", in Foundation domain as "Play", and in Investor domain as "Investment Thesis".
+
+**2. 5th Domain: Investor**
+Added Investor domain (hedge fund/VC working with investment hypotheses):
+- **Tier 1 Aliases:** Thesis, Signal Tension, Market Actor
+- **Tier 2 Units:** Signal, Catalyst, Comparable, Risk Factor, Valuation Driver, Trade Structure
+- Enables testing investment hypotheses against market phenomena
+
+**3. Unit Type Refactoring Operations**
+Seven operation types for unit type evolution:
+- **RENAME:** Change display name (Actor → Player)
+- **HIDE:** Suppress unused type from this project
+- **MERGE:** Combine two types (Response + Measure → Intervention)
+- **SPLIT:** Divide type into subspecies (Risk → Tail Risk + Basis Risk)
+- **PROMOTE:** Elevate emergent type to Tier 2
+- **CREATE:** Add entirely new Tier 2 type
+- **DEMOTE:** Move Tier 2 back to emergent for reconsideration
+
+**4. LLM-Powered Background Evolution**
+Friction detection runs in background, detecting:
+- **OTHER_OVERUSE:** "Other" selected >30% in type dropdowns
+- **CONTENT_MISMATCH:** Unit content doesn't match type schema
+- **NAME_EDITING:** Users repeatedly edit display names
+- **OVERLAP_CONFUSION:** Units frequently cross-referenced between types
+- **BIMODAL_DISTRIBUTION:** Type has two distinct usage patterns
+- **DISUSE:** Type rarely or never used
+- **FORCED_FIT:** Long comments explaining why type doesn't quite fit
+
+**5. Confidence-Based Routing**
+- High confidence (≥0.85) + non-destructive → auto-apply with notification
+- Medium confidence (0.5-0.85) → pending decisions with user review
+- Low confidence (<0.5) → logged for pattern accumulation
+
+**6. "Users Don't Need to Know" Principle**
+Most users won't even know about unit type evolution. The LLM handles it in background:
+- Detects when unit types don't fit reality
+- Proposes refactoring operations
+- Routes through Pending Decisions for ambiguous cases
+- System adapts to how users actually work
+
+### Integration with Essay-Flow Patterns
+| Essay-Flow Pattern | Strategizer Application |
+|--------------------|------------------------|
+| Refactoring Dashboard | Unit Type Refactoring Dashboard |
+| Pending Decisions | Type Operation Decisions |
+| Commitment/Foreclosure | "Merging commits you to..." / "You're passing on..." |
+| Evidence Dual-Track | Auto-apply vs Pending for type operations |
+| Skeleton Restructuring | Unit type restructuring suggestions |
+
+### Files Modified
+- `documentation/STRATEGIZER-IMPLEMENTATION-SPEC.md` (Part 1: ~500 lines added/revised)
+  - Section 1.1: Updated Layer 4 diagram to show THREE-TIER UNIT SYSTEM
+  - Section 1.2: Added 5th domain (Investor), domain unit vocabulary tables
+  - Section 1.3: Complete rewrite as "Three-Tier Unit System" with subsections for Universal, Domain, and Emergent units
+  - Section 1.4: New "Unit Type Refactoring Operations" section
+  - Section 1.5: New "LLM-Powered Background Evolution" section with friction detection, pending decisions UI mockups
+  - Section 1.6: Renumbered from old 1.4 "How Units Interact"
+
+### Principles Embodied
+- `prn_tiered_analytical_scaffolding` - Now applies to units, not just grids
+- `prn_validated_emergence_promotion` - Emergent unit types prove themselves through use
+- `prn_confidence_based_routing` - Auto-apply vs pending decisions based on confidence
+- `prn_possibility_as_foreclosure_warning` - Show what each type operation forecloses
+- `prn_friction_driven_generation` - New unit types emerge from detected friction
+
+### Relationship to Prior Documents
+- **STRATEGIZER-IMPLEMENTATION-SPEC.md** — This revision extends the core spec
+- **strategy-workflow-enhancement-memo.md** — Essay-flow patterns (refactoring dashboard, pending decisions) now applied to unit type evolution
+
+---
+
+## 2025-12-26: Comprehensive Strategizer Implementation Specification
+
+**Branch:** `main`
+
+### Description
+Created the authoritative implementation specification document (`STRATEGIZER-IMPLEMENTATION-SPEC.md`) — a ~3,500 line comprehensive guide that synthesizes all prior architecture work into a single buildable specification. This document can be handed to a new session to implement the system.
+
+### Document Structure (5 Parts)
+
+**Part 1: Core Architecture**
+- 6-Layer system stack (Artifact → Units → Multi-Grid → Shackle → Generative → Doctrine)
+- 4 Domains (Theory/Essay, Foundation, Brand, Government)
+- 5 Core Units with full Python schemas:
+  - ConceptUnit (crystallized meaning)
+  - DialecticUnit (productive tensions with poles)
+  - ScenarioUnit (Varsavsky-style value-laden futures)
+  - ActorUnit (entities with agency and response models)
+  - InstrumentUnit (available tools for action)
+- Unit interaction diagram
+
+**Part 2: Multi-Grid Analytical Layer**
+- Three-Tier Grid System:
+  - Tier 1 (Required): LOGICAL, ACTOR, TEMPORAL
+  - Tier 2 (Flexible): Domain-specific taxonomic grids
+  - Tier 3 (Wildcard): LLM-invented analytical lenses with promotion logic
+- GridInstance, SlotContent, CrossReference schemas
+- Grid operations (apply, fill, cross-reference, propose wildcard)
+- GridSelector and MultiGridView classes
+- Complete worked example (Dual Circulation concept)
+
+**Part 3: Epistemic Infrastructure (Shackle)**
+- SurpriseProfile (alternative to probability)
+- FocusGain/FocusLoss (what actually matters for decisions)
+- CrucialityAssessment (reversibility, repeatability, transformation)
+- KaleidicTrigger (events that reframe everything)
+- EpistemicStatus with assumptions and gap tracking
+- Research Commissioning pipeline:
+  - GapDetector → ResearchCommission → ResearchExecutor → ResearchIntegrator
+- Complete worked example (Moldova Services Hub scenario)
+
+**Part 4: Generative Process**
+- 6-stage pipeline: FRICTION → DIAGNOSIS → COIN → TEST → ABSTRACT → PROMOTE
+- FrictionDetector (5 trigger types)
+- Diagnoser with 15+ DiagnosisType categories
+- UnitCoiner with Hegelian sublation for false dialectics
+- UnitTester (interlocutor, edge case, consistency, usefulness testing)
+- Abstractor and PromotionEvaluator
+- Interlocutor Modeling:
+  - InterlocutorModel schema (commitments, moves, objections)
+  - InterlocutorSimulator (rule-based, LLM, hybrid)
+  - Example interlocutors for Theory, Foundation, Government domains
+
+**Part 5: Domain Instantiations & Implementation**
+- Domain instantiation pattern (vocabulary mapping, seed doctrine, custom grids)
+- Theory/Essay domain (full seed concepts, dialectics, interlocutors, custom grids)
+- Foundation Strategy domain (Plays, Strategic Tensions, Strategic Players)
+- Brand Strategy domain (Positions, Brand Tensions, Market Actors)
+- Government Planning domain (Policy Frames, Development Trade-offs, Development Actors)
+- 8-Phase Implementation Roadmap (18 weeks)
+- Database schema (6 tables with full SQL)
+- API endpoints (21 endpoints across 6 resource types)
+- Success criteria (MVP vs Full System)
+- Quick Reference appendix
+
+### Key Design Decisions
+
+1. **Multi-Grid as Layer 3 Only** — Grids are analytical lenses within units, not the whole system
+2. **Shackle is Orthogonal** — Epistemic infrastructure applies to ALL units, not a grid type
+3. **Three-Tier Promotion** — Wildcards prove themselves through use before joining taxonomy
+4. **Friction-Driven Generation** — New units emerge from detected gaps, not arbitrary creation
+5. **Interlocutor Testing** — All new units stress-tested against simulated actor responses
+6. **Research Integration** — Gap detection triggers commissioning with human review gate
+
+### Files Created
+- `documentation/STRATEGIZER-IMPLEMENTATION-SPEC.md` (~3,500 lines, 5 parts)
+
+### Relationship to Prior Documents
+- **ABSTRACT-STRATEGIZER-NOTES.md** — Original vision; this spec implements that vision
+- **unified-strategizer-architecture.md** — Reconciliation document; superseded by this spec
+- **multi-grid-strategizer-architecture.md** — Grid exploration; incorporated as Part 2
+
+---
+
 ## 2025-12-26: Unified Strategizer Architecture (Reconciliation)
 
 **Branch:** `main`
