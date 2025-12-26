@@ -2201,9 +2201,10 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     } else {
       // No granular feedback - proceed directly to Document Upload stage
       // NEW FLOW: Understanding Validation → Document Upload → Stage 1 (via card-based flow)
-      console.log('[acceptUnderstandingAndContinue] Proceeding to Document Upload stage')
+      console.log('[acceptUnderstandingAndContinue] Proceeding to Document Upload stage. Current stage before change:', stage)
       setProgress({ stage: 4, total: 11, label: 'Upload Documents (Optional)' })
       setStage(STAGES.DOCUMENT_UPLOAD)
+      console.log('[acceptUnderstandingAndContinue] setStage(DOCUMENT_UPLOAD) called')
     }
   }
 
@@ -3305,12 +3306,18 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
    * Proceed with validated cards - skip Stage 1 generic questions
    */
   const proceedWithValidatedCards = async () => {
+    console.log('[proceedWithValidatedCards] Called! Stack trace:')
+    console.trace()
+
     // Check if we have any approved cards
     const approvedHypotheses = hypothesisCards.filter(c => c.status === 'approved')
     const approvedDifferentiations = differentiationCards.filter(c => c.status === 'approved')
 
+    console.log('[proceedWithValidatedCards] Approved hypotheses:', approvedHypotheses.length, 'differentiations:', approvedDifferentiations.length)
+
     if (approvedHypotheses.length === 0 && approvedDifferentiations.length === 0) {
       // No cards approved - fall back to Stage 1 questions
+      console.warn('[proceedWithValidatedCards] NO APPROVED CARDS - Falling back to STAGE1. This is likely the bug!')
       setProgress({ stage: 3, total: 11, label: 'Stage 1: Genesis & Problem Space' })
       setStage(STAGES.STAGE1)
       setCurrentQuestionIndex(0)
@@ -3338,6 +3345,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
    * Skip document upload and continue with validated cards
    */
   const skipDocumentUpload = () => {
+    console.log('[skipDocumentUpload] Called! Current stage:', stage)
     proceedWithValidatedCards()
   }
 
@@ -3345,6 +3353,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
    * Continue from document upload with validated cards
    */
   const continueFromDocumentUpload = () => {
+    console.log('[continueFromDocumentUpload] Called! Current stage:', stage)
     proceedWithValidatedCards()
   }
 
@@ -6375,6 +6384,7 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
             <div className="wizard-stage">
               <div className="wizard-error">
                 No questions loaded for this stage. Questions: {questions.length}, Index: {currentQuestionIndex}
+                {console.error('[RENDER DEBUG] Stage is STAGE1 with no questions! stage=', stage, 'questions=', questions.length, 'currentQuestion=', currentQuestion)}
               </div>
             </div>
           )}

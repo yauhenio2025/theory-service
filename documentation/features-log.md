@@ -4,6 +4,167 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-26: Multi-Grid Strategizer Architecture (Paradigm Shift)
+
+**Branch:** `main`
+
+### Description
+Created a fundamentally new architecture document that shifts from fixed-slot to **generative multi-grid architecture**. The core innovation: there is no fixed grid. Instead, multiple analytical grids are generated dynamically based on domain, genre, and project-specific needs.
+
+### Key Contributions
+
+**1. The Multi-Grid Paradigm**
+- No fixed slots - grids are emergent artifacts based on project needs
+- Multiple simultaneous analytical lenses (logical, temporal, functional, etc.)
+- Each grid has: cells, relationships, saturation criteria, health metrics
+
+**2. Grid Type Taxonomy (10+ Types)**
+| Type | Purpose |
+|------|---------|
+| LOGICAL | Map argument soundness |
+| TEMPORAL | Map sequences and dependencies |
+| FUNCTIONAL | Map rhetorical/functional roles |
+| THROUGHLINE | Map argument threads |
+| EVIDENTIAL | Map evidence relationships |
+| ACTOR | Map stakeholder positions |
+| SCENARIO | Map future possibilities |
+| RESOURCE | Map resource flows |
+| NORMATIVE | Map values and trade-offs |
+| CAUSAL | Map causal mechanisms |
+
+**3. Multi-Agent Architecture**
+- **Grid Generator Agent:** Generates v0 of all grids from domain/genre/brief
+- **Gap Filler Agent:** Populates grids via evidence, questions, option generation
+- **Grid Refactorer Agent:** Proposes MERGE, SPLIT, NEW_GRID, CONSOLIDATE operations
+
+**4. Grid Maturation Pipeline**
+- Phase 1 (Foundation): ACTOR, CONTEXT, CONSTRAINT
+- Phase 2 (Analytical): LOGICAL, CAUSAL, TEMPORAL - requires Phase 1 ≥70%
+- Phase 3 (Strategic): SCENARIO, THEORY_OF_CHANGE - requires Phase 2 ≥70%
+- Phase 4 (Synthesis): THROUGHLINE, NARRATIVE - requires Phase 3 ≥70%
+- Phase 5 (Execution): EXECUTION_PLAN - requires Phase 4 ≥80%
+
+**5. Grid Health Metrics**
+Composite health = Saturation + Confidence + Coherence + Coverage + Tension count
+
+**6. Gating Rules**
+- Dependency Gating: Later grids READ-ONLY until foundational grids healthy
+- Propagation Gating: Changes cascade through dependent grids
+- Override with Acknowledgment: Users can override but must acknowledge
+
+### Principles Extracted to tool-ideator (6 new principles)
+- `prn_generative_analytical_structure` - Dynamic structure generation vs fixed
+- `prn_multi_lens_analytical_coverage` - Multiple orthogonal analytical lenses
+- `prn_maturation_gated_dependency` - Health thresholds gate dependent work
+- `prn_function_specialized_agents` - Distinct agents for distinct cognitive functions
+- `prn_cross_structure_tension_signaling` - Cross-grid tensions as valuable signals
+- `prn_user_structural_agency` - User control over frame of analysis, not just content
+
+### Features Extracted to tool-ideator (5 new features)
+- `grid-type-taxonomy-as-lens-library`
+- `multi-agent-function-decomposition`
+- `phased-maturation-with-health-gating`
+- `composite-health-metrics-with-override-acknowledgment`
+- `grid-refactoring-operations-vocabulary`
+
+### Files Created
+- `documentation/multi-grid-strategizer-architecture.md` (~1100 lines)
+
+### Relationship to Prior Documents
+This document **supersedes** the fixed-slot architecture in:
+- `strategy-workflow-enhancement-memo.md` (slot architecture → grid architecture)
+- `ABSTRACT-STRATEGIZER-NOTES.md` Part 6 (unified framework → multi-grid framework)
+
+**Prior innovations retained** as grid types or grid enhancements:
+- 12 philosophical signals → DIMENSIONAL grid
+- Varsavsky development styles → STYLE grid
+- Shackle uncertainty → SCENARIO grid enhancement
+- Evidence integration → applies to all grids
+- Refactoring dashboard → now grid-level operations
+
+---
+
+## 2025-12-26: Multi-Domain Strategizer Workflow Enhancement Memo (Major Expansion)
+
+**Branch:** `main`
+
+### Description
+Created and substantially expanded comprehensive design memo for enhancing the 4-domain strategizer framework (Theory/Essay, Foundation, Brand, Government) by transplanting sophisticated patterns from the essay-flow system's Evidence and Follow-ups II stages.
+
+### Key Contributions
+
+**1. Full 11-Stage Workflow Architecture**
+Documented the complete essay-flow 11-stage workflow and translated to strategizer:
+- Stage 0: Doctrine Base → Stage 1: Project Brief → Stage 2: Seeds → Stage 3: Interrogation
+- Stage 4: Emerging Structure → Stage 5: Throughlines → Stage 6: Functional Skeleton
+- Stage 7: Refinement → **Stage 8: Evidence Integration** → **Stage 9: Post-Evidence Resolution**
+- Stage 10: Final Artifact → Stage 11: Learning Capture
+
+**2. Evidence Integration Pipeline (NEW - Critical)**
+Documented essay-flow's sophisticated evidence handling:
+- **Dual-track processing:** Auto-integration (≥85% confidence) vs Pending Decisions (ambiguous)
+- **Idea vectors:** ILLUSTRATES, DEEPENS, CHALLENGES, LIMITS, BRIDGES, INVERTS
+- **Skeleton restructuring suggestions:** "new throughline", "gap detected", "reconsider" alerts
+- **Evidence Impact Assessment:** Auto-generated impact summaries
+
+**3. Multi-Path Pending Decisions with Commitment/Foreclosure (NEW)**
+- **Trend clustering:** Similar evidence grouped for batch decisions
+- **A/B/C/D paths** with confidence scores and AI pick indicator
+- **"PATH A COMMITS YOU TO:"** statements
+- **"A OVER B: YOU'RE PASSING ON:"** foreclosure statements
+- **Operation preview:** ADD/MOD/DEL changes shown before applying
+
+**4. Post-Evidence Tension Resolution (NEW)**
+- Tension detection: Contradictions, inconsistencies, weak content
+- Slot completion metrics: "8 Tensions Detected, 5 Resolved, 42 Slots Need Work, 24 Complete"
+- Session commitment tracking for audit trail
+- Quick actions: Detect Tensions, Assess Slot Quality, Refactoring Dashboard
+
+**5. Refactoring Dashboard (NEW)**
+Full structural operations toolkit:
+- **Operations:** SPLIT, MERGE, CLONE, REFRAME, BULK MOVE, CUT, + Create New
+- **Seed management:** Orphan seeds, seed mappings, redistribution
+- **Strategic Advisor:** AI recommendations for Overlaps, Gaps, Cleanup, Restructure
+
+**6. Theory Testing (NEW)**
+Testing throughlines/theories against evidence corpus with support/mixed/contradicted classification
+
+**7. Domain-Specific Workflow Examples**
+- **Foundation:** Moldova media strategy evidence integration with sustainability model revision
+- **Brand:** Gucci heritage vs disruption tension resolution
+- **Government:** Ghana planning office refactoring dashboard with doctrine restructuring
+
+**8. Feature Transplant Priorities (Expanded)**
+Now includes 30+ features in 5 priority tiers:
+- Priority 0: Critical new capabilities (evidence dual-track, multi-path decisions, tension detection, refactoring dashboard)
+- Priority 1: Core workflow features
+- Priority 2: Quality enhancement
+- Priority 3: Epistemic infrastructure
+- Priority 4: Structural operations
+
+### Files Modified
+- `documentation/strategy-workflow-enhancement-memo.md` - Expanded from ~550 lines to ~1000+ lines
+
+### Key Patterns Documented from Screenshots
+Based on live essay-flow UI analysis:
+1. Stage 8 Evidence with Auto-Integration Alerts and Skeleton Restructuring
+2. Pending Decisions with trend clusters and multi-path selection
+3. Commitment/Foreclosure articulation per path
+4. Stage 9 Follow-ups II with tension resolution
+5. Refactoring Dashboard with confirmed operations
+6. Strategic Advisor modal for AI-powered recommendations
+
+### Principles Embodied
+- `prn_evidence_as_idea_vector` - Evidence classified by relationship type
+- `prn_confidence_based_routing` - Dual-track based on confidence
+- `prn_possibility_as_foreclosure_warning` - Show what each choice forecloses
+- `prn_commitment_articulation` - Explicit commitment statements per path
+- `prn_tension_detection_after_integration` - Post-evidence contradiction detection
+- `prn_structural_operations_as_first_class` - Refactoring as first-class workflow
+- `prn_session_commitment_tracking` - Audit trail of decisions
+
+---
+
 ## 2025-12-25: Methodology Section Multiple-Choice with Escape Valve
 
 **Commit:** `d630eb0`

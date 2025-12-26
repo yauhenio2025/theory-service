@@ -1,0 +1,772 @@
+meta:
+  exported_at: '2025-12-26 11:05:03'
+  total_groundings: 70
+groundings_by_feature:
+  answer-options-pre-generation:
+  - id: grnd_answer-options-pre-generation_a312639f
+    file_path: /home/evgeny/projects/theory-service/frontend/src/ConceptSetupWizard.jsx
+    symbol: preGenerateOptionsForSlot
+    line_start: 1184
+    line_end: 1231
+    description: Background pre-generation function that fetches answer options for a specific slot index, caches 
+      results in preGeneratedOptionsCache state. Called from triggerPreGeneration.
+    status: candidate
+    total_score: 0.9
+    stale: false
+  continuation-vs-completion-binary-control:
+  - id: grnd_continuation-vs-completion-binary-control_53f1629c
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/refactoring_dashboard.html
+    symbol: requestMoreQuestions
+    line_start: 3138
+    line_end: 3203
+    description: User controls refinement depth via 'Next Questions' (go deeper) vs 'Generate Reframe' (use current 
+      answers). Two buttons give explicit control over when to stop refining.
+    status: candidate
+    total_score: 0.9
+    stale: false
+  answer-accumulating-question-batches:
+  - id: grnd_answer-accumulating-question-batches_6d7c76d6
+    file_path: /home/evgeny/projects/asc/web/routes/essay_flow_v3.py
+    symbol: generate_reframe_questions
+    line_start: 13887
+    line_end: 14025
+    description: Generates question batches where each batch incorporates all accumulated answers from prior batches, 
+      enabling progressive refinement of user intent.
+    status: candidate
+    total_score: 0.85
+    stale: false
+  input-modality-election-modal:
+  - id: grnd_input-modality-election-modal_e94a47ec
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/refactoring_dashboard.html
+    symbol: initiateReframe
+    line_start: 2910
+    line_end: 2937
+    description: Shows modal offering choice between 'I'll describe it' (free-form) and 'Guide me through it' 
+      (structured questioning) for reframing throughlines.
+    status: candidate
+    total_score: 0.9
+    stale: false
+  full-context-semantic-assessment-pattern:
+  - id: grnd_full-context-semantic-assessment-pattern_2d219178
+    file_path: /home/evgeny/projects/asc/web/services/staleness_service.py
+    symbol: build_staleness_assessment_prompt
+    line_start: 158
+    line_end: 285
+    description: Builds a comprehensive prompt with full transformation context (what changed), current state (remaining
+      throughlines with slots and seeds), and project context for LLM semantic judgment of staleness.
+    status: candidate
+    total_score: 0.85
+    stale: false
+  edit-impact-tracking:
+  - id: grnd_edit-impact-tracking_d5217be4
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/main.html
+    symbol: editSlot
+    line_start: 3064
+    line_end: 3137
+    description: editSlot, fetchEditImpact, and showEditImpactWarning functions - checks and displays impact before 
+      allowing slot edits
+    status: candidate
+    total_score: 0.9
+    stale: false
+  - id: grnd_edit-impact-tracking_e0579bf9
+    file_path: /home/evgeny/projects/asc/web/routes/essay_flow.py
+    symbol: get_edit_impact
+    line_start: 3046
+    line_end: 3057
+    description: API route for fetching slot edit impact, returns cascade analysis
+    status: candidate
+    total_score: 0.9
+    stale: false
+  - id: grnd_edit-impact-tracking_9297bdcf
+    file_path: /home/evgeny/projects/asc/gcis/db.py
+    symbol: get_slot_edit_impact
+    line_start: 12181
+    line_end: 12268
+    description: Database function calculating cascade impact of editing a slot - returns affected throughlines, 
+      strategic items, arguments, and sections
+    status: candidate
+    total_score: 0.9
+    stale: false
+  reasoning-chain-display:
+  - id: grnd_reasoning-chain-display_3de0a71c
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/main.html
+    symbol: thesis-options-rendering
+    line_start: 3995
+    line_end: 4012
+    description: Thesis option rendering updated to show derived_from sources and reasoning chain that led to each 
+      suggestion
+    status: candidate
+    total_score: 0.9
+    stale: false
+  critical-question-prioritization:
+  - id: grnd_critical-question-prioritization_84a0aa82
+    file_path: /home/evgeny/projects/asc/migrations/058_critical_question_prioritization.sql
+    symbol: migration-058
+    line_start: 1
+    line_end: 61
+    description: Database migration adding is_critical, priority_order, priority_reason columns to 
+      entry_questionnaire_questions
+    status: candidate
+    total_score: 0.9
+    stale: false
+  - id: grnd_critical-question-prioritization_f3b3112a
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/main.html
+    symbol: renderCurrentQuestion
+    line_start: 3750
+    line_end: 3765
+    description: JavaScript function updated to show priority indicators (★ for critical, ◆ for important) on questions
+    status: candidate
+    total_score: 0.9
+    stale: false
+  - id: grnd_critical-question-prioritization_32cf39fd
+    file_path: /home/evgeny/projects/asc/gcis/db.py
+    symbol: get_entry_questionnaire_questions
+    line_start: 11688
+    line_end: 11701
+    description: Database query updated to sort questions by is_critical and priority_order for front-loading critical 
+      decisions
+    status: candidate
+    total_score: 0.9
+    stale: false
+  slot-saturation-detection:
+  - id: grnd_slot-saturation-detection_e887841b
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/main.html
+    symbol: saturation-summary-panel
+    line_start: 907
+    line_end: 942
+    description: Jinja2 template section showing saturation summary with visual indicators for slot readiness
+    status: candidate
+    total_score: 0.9
+    stale: false
+  translation-map-display:
+  - id: grnd_translation-map-display_cbe2a689
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/main.html
+    symbol: toggleTranslationMap
+    line_start: 4202
+    line_end: 4212
+    description: Toggle function for showing/hiding translation map details
+    status: candidate
+    total_score: 0.9
+    stale: false
+  - id: grnd_translation-map-display_7c1cf8b4
+    file_path: /home/evgeny/projects/asc/web/templates/essay_flow/main.html
+    symbol: renderNotesResults
+    line_start: 3951
+    line_end: 3981
+    description: JavaScript function to render translation map UI showing how each note excerpt maps to essay slots
+    status: candidate
+    total_score: 0.9
+    stale: false
+  - id: grnd_translation-map-display_0620bf9e
+    file_path: /home/evgeny/projects/asc/web/routes/essay_flow.py
+    symbol: analyze_notes
+    line_start: 2592
+    line_end: 2628
+    description: LLM prompt updated to include translation_map in response, showing how user notes map to functional 
+      slots
+    status: candidate
+    total_score: 0.9
+    stale: false
+  trans-cluster-operations:
+  - id: gr_2a629283591ba088
+    file_path: generate-viewer.js
+    symbol: generateViewer
+    line_start: 0
+    line_end: 0
+    description: Generates HTML viewer for trans-cluster results (reads from test-trans-cluster-result.json), displaying
+      aggregated papers across all clusters
+    status: approved
+    total_score: 0.76
+    stale: false
+  research-mode-pre-selection:
+  - id: gr_e18ce0ba1f6883b1
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateModeIDAlignment
+    line_start: 0
+    line_end: 0
+    description: Validates that frontend mode detection matches backend mode IDs, ensuring the mode selection interface 
+      correctly aligns with available backend mode configurations for pre-selection.
+    status: approved
+    total_score: 0.7
+    stale: false
+  - id: gr_20ebaf64713b4027
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateModeIDs
+    line_start: 0
+    line_end: 0
+    description: Defines and validates the complete list of available research modes (venn_diagram_explicit, 
+      venn_diagram_implicit, question_driven, conceptual_trajectories, etc.) that users can pre-select from before 
+      beginning research queries.
+    status: approved
+    total_score: 0.8200000000000001
+    stale: false
+  multi-strategy-research-slicing:
+  - id: gr_717a0ffdcd46114d
+    file_path: backend/agents/clustering-agent.js
+    symbol: ClusteringAgent
+    line_start: 0
+    line_end: 0
+    description: Clusters papers into multiple thematic collections and generates alternative approaches. The JSON 
+      structure shows it returns collections, crossCuttingThemes, and what appears to be 'alternative' strategies, 
+      presenting multiple ways to organize/slice the research corpus.
+    status: approved
+    total_score: 0.76
+    stale: false
+  mid-card-evaluation-and-pivot:
+  - id: gr_15092b3d3803e2dc
+    file_path: backend/test-integration-pagination-effectors.js
+    symbol: runIntegrationTests
+    line_start: 0
+    line_end: 0
+    description: Orchestrates integration tests validating that pagination effectors are properly integrated into query 
+      continuation logic for early abandonment and budget savings
+    status: approved
+    total_score: 0.7
+    stale: false
+  - id: gr_0d2447f9efe9a202
+    file_path: backend/test-pagination-effectors.js
+    symbol: testCase4_NoFalsePositives
+    line_start: 0
+    line_end: 0
+    description: Tests that evaluation logic doesn't incorrectly abandon legitimate interdisciplinary research, ensuring
+      pivot decisions are accurate
+    status: approved
+    total_score: 0.76
+    stale: false
+  - id: gr_63801327d46b7d6d
+    file_path: backend/test-pagination-effectors.js
+    symbol: testCase1_DomainDriftDetection
+    line_start: 0
+    line_end: 0
+    description: Tests domain drift detection effector that evaluates whether results match target domain and decides to
+      abandon when papers drift to wrong domain (physics/chemistry vs. expected finance)
+    status: approved
+    total_score: 0.85
+    stale: false
+  meta-learning-module:
+  - id: gr_b182a7d23973f6db
+    file_path: backend/agents/learning-phase-orchestrator.js
+    symbol: LearningPhaseOrchestrator
+    line_start: 0
+    line_end: 0
+    description: Orchestrates the learning infrastructure with 7 query generators (ST-2 to ST-8) and 7 meta techniques 
+      (MT-1 to MT-7). While not performing meta-analysis itself, it provides the framework of strategies and technique 
+      combinations that the meta-learning module would refine.
+    status: approved
+    total_score: 0.73
+    stale: false
+  - id: gr_82cdbb20d2dcf80a
+    file_path: backend/agents/venn-execution-strategy.js
+    symbol: VennExecutionStrategy
+    line_start: 0
+    line_end: 0
+    description: Implements feedback-driven strategy improvement by analyzing technique results (success rates) and 
+      calculating proportional allocation for future queries. Filters techniques with >30% success and adjusts strategy 
+      weights, feeding learned improvements back into execution planning.
+    status: approved
+    total_score: 0.79
+    stale: false
+  - id: gr_fd323b4a74682c4d
+    file_path: backend/agents/reflection-generator.js
+    symbol: ReflectionGeneratorAgent
+    line_start: 0
+    line_end: 0
+    description: Directly implements meta-learning by analyzing session feedback - categorizes rated papers, analyzes 
+      query performance, analyzes cluster performance, and extracts experimental strategies from memos. Uses Claude to 
+      generate reflection memos that identify patterns in results and suggest improvements.
+    status: approved
+    total_score: 0.91
+    stale: false
+  llm-batch-ranking:
+  - id: gr_a16877ecd1dccf87
+    file_path: backend/rank-all-433-streaming.js
+    symbol: loadPreRankingCheckpoint
+    line_start: 0
+    line_end: 0
+    description: Loads the pre-ranking checkpoint containing all harvested global papers that will be batch-ranked by 
+      the LLM
+    status: approved
+    total_score: 0.91
+    stale: false
+  - id: gr_114b0369005de8f6
+    file_path: backend/rank-all-433-streaming.js
+    symbol: rankAllWithStreaming
+    line_start: 0
+    line_end: 0
+    description: Primary implementation of LLM batch ranking - ranks all 433 papers using Claude with extended thinking 
+      (32k tokens), loads papers from pre-ranking checkpoint, prepares research context, and uses a Handlebars template 
+      for the ranking prompt
+    status: approved
+    total_score: 1.0
+    stale: false
+  hierarchical-strategy-structure:
+  - id: gr_dbe00303c4d7a20d
+    file_path: backend/rerank-session.js
+    symbol: rerankSession
+    line_start: 0
+    line_end: 0
+    description: Loads session checkpoints containing clusters with papers, rebuilding the hierarchy from stored data. 
+      Shows session→clusters→papers structure with global paper aggregation across clusters.
+    status: approved
+    total_score: 0.7
+    stale: false
+  - id: gr_1cf913c23a57cebd
+    file_path: test-trans-cluster-from-checkpoints.js
+    symbol: testTransClusterFromCheckpoints
+    line_start: 0
+    line_end: 0
+    description: Shows hierarchical organization with a session containing multiple clusters (sub-strategies), each with
+      id and name. Demonstrates the strategy→cluster relationship for trans-cluster execution.
+    status: approved
+    total_score: 0.79
+    stale: false
+  four-phase-cluster-execution:
+  - id: gr_2996479c086df277
+    file_path: load-from-checkpoints.js
+    symbol: loadFromCheckpoints
+    line_start: 0
+    line_end: 0
+    description: Loads cluster checkpoint data including 'phases_completed' array, tracking which of the four phases 
+      have completed for each cluster during execution.
+    status: approved
+    total_score: 0.73
+    stale: false
+  - id: gr_4e2a537b8030a00e
+    file_path: test-v2-week2-e2e.js
+    symbol: runE2ETest
+    line_start: 0
+    line_end: 0
+    description: "End-to-end test explicitly named 'COMPLETE 4-PHASE FLOW' that validates all four phase executors are initialized
+      ('Phase executors: 4') and tests the complete orchestrated execution through all phases."
+    status: approved
+    total_score: 0.91
+    stale: false
+  - id: gr_d8d06afdb7e56f57
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateProgressState
+    line_start: 0
+    line_end: 0
+    description: Explicitly validates the four-phase structure by checking for requiredPhases = ['phase0', 'phase1', 
+      'phase2', 'phase3'] and validates that ProgressTracker initializes with the correct phase state structure 
+      including status, progress, and message for each phase.
+    status: approved
+    total_score: 0.9400000000000001
+    stale: false
+  fixed-and-flexible-categories:
+  - id: gr_035f5d39b0574c9b
+    file_path: shared/validation/validate-family.js
+    symbol: validateFamilyDefinition
+    line_start: 0
+    line_end: 0
+    description: Validates the structure that enables fixed and flexible categorization. Ensures family definitions 
+      include applicability.modes (which can be 'all' for universal categories or specific mode lists for 
+      domain-adaptive categories), creating the validation layer for the fixed/flexible category architecture.
+    status: approved
+    total_score: 0.73
+    stale: false
+  - id: gr_9009c440c5d2b0fd
+    file_path: shared/validation/validate-family.js
+    symbol: checkFamilyApplicability
+    line_start: 0
+    line_end: 0
+    description: Implements the core pattern of fixed vs. flexible applicability. Checks if families apply to 'all' 
+      modes (universal/fixed) or only specific modes (domain-adaptive). Also validates phase applicability and role 
+      availability, creating a scaffold that is partly stable (all-mode families) and partly adaptive to the research 
+      context.
+    status: approved
+    total_score: 0.76
+    stale: false
+  family-strategies-system:
+  - id: gr_47d0156fd2c4a773
+    file_path: test-v2-production.js
+    symbol: testMode
+    line_start: 0
+    line_end: 0
+    description: Tests mode execution including family counts per phase (P1, P2, P3 families). Shows how Family 
+      Strategies are organized by phase and validates their configuration in mode settings.
+    status: approved
+    total_score: 0.73
+    stale: false
+  - id: gr_8bce6a934542a711
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateComponentContracts
+    line_start: 0
+    line_end: 0
+    description: Validates that progress tracking includes 'activeFamilies' field, demonstrating that Family Strategies 
+      are tracked during execution. Also validates phase configurations which organize families.
+    status: approved
+    total_score: 0.73
+    stale: false
+  - id: gr_c2493b5e72837c43
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateFamilyNames
+    line_start: 0
+    line_end: 0
+    description: Validates that Family file names match class IDs and that mode configs reference families that actually
+      exist. Directly supports the Family Strategies infrastructure by ensuring naming consistency and valid family 
+      references.
+    status: approved
+    total_score: 0.8200000000000001
+    stale: false
+  - id: gr_d98a8823fef9f66d
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateSemanticRoles
+    line_start: 0
+    line_end: 0
+    description: Validates semantic role definitions (concepts, scholars, entities, policies, initiatives, methods, 
+      sources, canonical, debates, geography) that form the building blocks for Family Strategies. These semantic roles 
+      are the 'semantic units' that get combined in family strategies.
+    status: approved
+    total_score: 0.85
+    stale: false
+  effectors-system:
+  - id: gr_b31ed3df6ae95684
+    file_path: backend/rank-all-433-streaming.js
+    symbol: prepareResearchContext
+    line_start: 0
+    line_end: 0
+    description: Prepares research context including yearRange and exclusions fields that feed into effector parameters 
+      for date restriction and exclude operators.
+    status: approved
+    total_score: 0.7
+    stale: false
+  cards-as-tactical-units:
+  - id: gr_39456a551322d524
+    file_path: backend/test-pagination-effectors.js
+    symbol: testCase5_EffectorPerformance
+    line_start: 0
+    line_end: 0
+    description: Tests efficient Card abandonment decisions without LLM calls - implements fast evaluation checkpoints 
+      that can abandon Cards based on domain mismatch
+    status: approved
+    total_score: 0.7
+    stale: false
+  - id: gr_ee339bc0476e9cd6
+    file_path: backend/test-pagination-effectors.js
+    symbol: testCase3_PhaseSpecificThresholds
+    line_start: 0
+    line_end: 0
+    description: Tests phase-specific thresholds (phase1 needs 5+, phase2 needs 3+, phase3 needs 2+) for Card 
+      evaluation, implementing different abandonment criteria per discovery phase
+    status: approved
+    total_score: 0.7
+    stale: false
+  - id: gr_36902f46a5754817
+    file_path: backend/test-pagination-effectors.js
+    symbol: testCase2_MinimumResultsThreshold
+    line_start: 0
+    line_end: 0
+    description: Tests minimum results threshold that triggers Card abandonment - implements the evaluation checkpoint 
+      that determines if a Card should be abandoned based on insufficient results
+    status: approved
+    total_score: 0.7
+    stale: false
+  - id: gr_8d7c322ba2a80052
+    file_path: backend/test-integration-pagination-effectors.js
+    symbol: integrationTest4_PhaseContextExtraction
+    line_start: 0
+    line_end: 0
+    description: Tests phase context extraction from Card context, validating that Cards operate with phase-specific 
+      thresholds and evaluation rules
+    status: approved
+    total_score: 0.76
+    stale: false
+  - id: gr_0dad96ff887b07cc
+    file_path: backend/test-integration-pagination-effectors.js
+    symbol: integrationTest3_PassThroughToLLM
+    line_start: 0
+    line_end: 0
+    description: Tests Card evaluation checkpoint where effectors pass and LLM evaluation is triggered, using 
+      cardContext with objective and remaining_budget - implements the evaluation checkpoint mechanism for Cards
+    status: approved
+    total_score: 0.8200000000000001
+    stale: false
+  - id: gr_96a817238ce67207
+    file_path: backend/test-integration-pagination-effectors.js
+    symbol: integrationTest2_DomainDriftIntegration
+    line_start: 0
+    line_end: 0
+    description: Tests Card abandonment due to domain drift with cardContext containing objective, remaining_budget, and
+      phase - implements query-level evaluation and abandonment when results drift from target domain
+    status: approved
+    total_score: 0.88
+    stale: false
+  - id: gr_4b08d7c639e636e6
+    file_path: backend/test-integration-pagination-effectors.js
+    symbol: integrationTest1_MinimumThresholdIntegration
+    line_start: 0
+    line_end: 0
+    description: Tests Card context (cardContext) with objective, remaining_budget, and phase - demonstrates Card 
+      abandonment when results are below minimum threshold, implementing the 'abandoned mid-execution if results are 
+      disappointing' requirement
+    status: approved
+    total_score: 0.88
+    stale: false
+  - id: gr_b1b56122716216b1
+    file_path: shared/validation/validate-family.js
+    symbol: validateExperimentCard
+    line_start: 0
+    line_end: 0
+    description: Directly validates Card structure including card_id, query_budget (1-50 integer), objective, modifiers 
+      (search tactics), space (scholar/citation), and roles_used - implementing the Card as a tactical unit with budget 
+      allocation and specific search strategy
+    status: approved
+    total_score: 0.97
+    stale: false
+  anti-recency-discovery-phase:
+  - id: gr_c99f0922e86ab747
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateModifierRegistry
+    line_start: 0
+    line_end: 0
+    description: Validates existence of key modifiers including 'ExcludeKnown' (for removing known authors), 
+      'TimeWindow' (for date filtering), and 'RecencyBoost' - all building blocks for the anti-recency discovery 
+      strategy.
+    status: approved
+    total_score: 0.7
+    stale: false
+  - id: gr_4b951b3c626a641a
+    file_path: test-v2-frontend-backend-contract.js
+    symbol: validateDateFiltering
+    line_start: 0
+    line_end: 0
+    description: Validates that the TimeWindow modifier correctly implements date filtering using URL parameters 
+      (as_ylo/as_yhi), ensuring the infrastructure for recent date filtering in the anti-recency discovery phase works 
+      correctly.
+    status: approved
+    total_score: 0.73
+    stale: false
+  - id: gr_d33b61360c7cadc6
+    file_path: backend/scholar-year-filter-working.js
+    symbol: searchScholarWithYearFilter
+    line_start: 0
+    line_end: 0
+    description: Implements year filtering for Google Scholar searches using as_ylo/as_yhi URL parameters, which enables
+      filtering to recent dates (e.g., last five years) to surface recent work that may be missing from LLM training 
+      data.
+    status: approved
+    total_score: 0.76
+    stale: false
+  accelerated-domain-modeling:
+  - id: gr_cd63bf493fbefa33
+    file_path: backend/demo_operations.py
+    symbol: demo_initial_broadcast
+    line_start: 0
+    line_end: 0
+    description: Sets up the initial conditions for accelerated domain modeling by creating isolated contexts for each 
+      LLM. While it starts with isolation, it establishes the infrastructure that will later enable rapid domain 
+      learning through controlled exposure to multiple solution trajectories via context visibility changes.
+    status: approved
+    total_score: 0.76
+    stale: false
+  - id: gr_e7f32f8c4c57d35c
+    file_path: backend/app.py
+    symbol: update_context_visibility
+    line_start: 0
+    line_end: 0
+    description: Enables accelerated domain modeling by dynamically controlling what each LLM can see. By adjusting 
+      visibility rules (sees_other_threads, sees_summaries), the system can expose models to multiple solution 
+      trajectories and critique patterns at strategic points, compressing the learning process without requiring each 
+      model to discover patterns independently.
+    status: approved
+    total_score: 0.85
+    stale: false
+  probabilistic-regularity-assumption:
+  - id: gr_92fe40038b3e62ce
+    file_path: backend/operations/context_builder.py
+    symbol: ContextBuilder.build_context
+    line_start: 0
+    line_end: 0
+    description: This method supports the probabilistic regularity assumption by systematically controlling what context
+      each LLM sees based on visibility rules. It assumes that carefully structured exposure to other models' outputs 
+      (own thread, other threads, summaries) will produce predictable learning patterns, treating context exposure as a 
+      controllable variable that reliably influences LLM behavior in systematic ways.
+    status: approved
+    total_score: 0.85
+    stale: false
+  multi-model-cross-examination:
+  - id: gr_3d0a47103f8dc068
+    file_path: backend/orchestrator.py
+    symbol: evaluate_conversation_state
+    line_start: 0
+    line_end: 0
+    description: Uses Gemini to evaluate conversation state and suggest next steps in multi-model interactions. Provides
+      orchestration intelligence for determining when cross-examination phases should occur and assessing convergence 
+      across models.
+    status: approved
+    total_score: 0.76
+    stale: false
+  - id: gr_f7de705cb81d3890
+    file_path: backend/workflow_executor.py
+    symbol: WorkflowExecutor
+    line_start: 0
+    line_end: 0
+    description: Orchestrates multi-step workflows that can include cross-examination operations. Executes sequences of 
+      operations including initial_broadcast, cross_review, and ranking steps, enabling the structured orchestration 
+      required for multi-model cross-examination workflows.
+    status: approved
+    total_score: 0.8200000000000001
+    stale: false
+  meta-exposure-to-peer-work:
+  - id: gr_55fd1d4896b4ae05
+    file_path: backend/app.py
+    symbol: get_context_visibility
+    line_start: 0
+    line_end: 0
+    description: Provides the infrastructure for controlling meta-exposure. The 'sees_other_threads' flag determines 
+      whether models can see peer work and critiques. This is the configuration mechanism that enables or disables the 
+      meta-level learning environment.
+    status: approved
+    total_score: 0.76
+    stale: false
+  iterative-revision-rounds:
+  - id: gr_8cc74f65094c827b
+    file_path: backend/app.py
+    symbol: create_workflow_profile
+    line_start: 0
+    line_end: 0
+    description: API endpoint enabling users to create custom workflow profiles with configurable revision rounds. Users
+      can define the 'steps' array to specify how many revision cycles and what operations to run in each round.
+    status: approved
+    total_score: 0.76
+    stale: false
+  - id: gr_b4f9e62d40baf4c4
+    file_path: backend/workflow_executor.py
+    symbol: run_workflow
+    line_start: 0
+    line_end: 0
+    description: Convenience function that executes the complete workflow with all configured revision rounds. Provides 
+      the entry point for running user-defined workflows with varying numbers of iteration cycles.
+    status: approved
+    total_score: 0.79
+    stale: false
+  - id: gr_caf629ba9fefdc05
+    file_path: backend/models.py
+    symbol: WorkflowStepResult
+    line_start: 0
+    line_end: 0
+    description: Records results of individual revision rounds within a workflow. Each step can represent a revision 
+      cycle, with 'step_order' maintaining dependencies and 'message_ids' tracking outputs that feed into subsequent 
+      rounds.
+    status: approved
+    total_score: 0.91
+    stale: false
+  - id: gr_edae4c69737e703f
+    file_path: backend/models.py
+    symbol: WorkflowRun
+    line_start: 0
+    line_end: 0
+    description: Tracks execution of workflows with configurable depth. The 'current_step' and 'total_steps' fields 
+      enable tracking progress through multiple revision rounds, while 'profile_id' links to the workflow definition 
+      that specifies the number and type of iterations.
+    status: approved
+    total_score: 0.9400000000000001
+    stale: false
+  - id: gr_ae946f30ed765f71
+    file_path: backend/models.py
+    symbol: WorkflowProfile
+    line_start: 0
+    line_end: 0
+    description: Defines the structure for user-configurable workflows with varying numbers of revision cycles. The 
+      'steps' JSONB field stores an array of operations with order specifications, allowing users to design workflows 
+      with custom revision rounds and dependencies.
+    status: approved
+    total_score: 0.97
+    stale: false
+  - id: gr_376b329a8cf341e7
+    file_path: backend/workflow_executor.py
+    symbol: WorkflowExecutor.execute
+    line_start: 0
+    line_end: 0
+    description: Core implementation of iterative revision rounds. Executes workflow steps sequentially from a profile 
+      definition, iterating through each step in order. This enables multiple rounds of refinement as defined in the 
+      workflow profile's steps array.
+    status: approved
+    total_score: 1.0
+    stale: false
+  collaborative-implementation-planning:
+  - id: gr_8152c86696f81461
+    file_path: backend/app.py
+    symbol: op_full_cross_review
+    line_start: 0
+    line_end: 0
+    description: This function enables all three LLMs to review each other's responses simultaneously in parallel, which
+      supports collaborative implementation planning. While it can be used at various stages, it provides the mechanism 
+      for models to contribute their insights to implementation approaches, particularly in 'meta' mode where each LLM 
+      sees all threads and can learn from collective intelligence.
+    status: approved
+    total_score: 0.91
+    stale: false
+  blind-parallel-evaluation:
+  - id: gr_cb5bd88402e3e89f
+    file_path: backend/app.py
+    symbol: op_post_rank_cross_review
+    line_start: 0
+    line_end: 0
+    description: Supports the feature by providing post-evaluation functionality. This operation is designed to be used 
+      AFTER blind ranking has occurred, allowing models to review and refine based on the independent evaluation 
+      results. The comment states 'This variant is designed to be used AFTER blind ranking, where models have been 
+      independently evaluated.'
+    status: approved
+    total_score: 0.8200000000000001
+    stale: false
+  - id: gr_9078d347f1bad6fb
+    file_path: backend/app.py
+    symbol: op_ranking_adjudication
+    line_start: 0
+    line_end: 0
+    description: "Implements the complete blind evaluation workflow described in the feature. Phase 1 has all 3 LLMs independently
+      rank responses in a 'blind test', then Phase 2 adjudicates. The comment explicitly mentions 'Phase 1: All 3 LLMs independently
+      rank responses (blind test)' which directly matches the feature's requirement for concealing authorship during evaluation."
+    status: approved
+    total_score: 0.97
+    stale: false
+  - id: gr_36987ed2def45def
+    file_path: backend/app.py
+    symbol: op_full_ranking
+    line_start: 0
+    line_end: 0
+    description: This is the core implementation of blind parallel evaluation. All three LLMs independently rank all 
+      responses without knowing authorship. The function executes full_ranking() which has all models evaluate solutions
+      in parallel, and the comment explicitly states 'This gives you three independent ranking opinions instead of just 
+      one, allowing you to see consensus vs disagreement across models.'
+    status: approved
+    total_score: 1.0
+    stale: false
+  best-shot-formulation:
+  - id: gr_b29f48496cb3adb3
+    file_path: backend/orchestrator.py
+    symbol: get_operation_description
+    line_start: 0
+    line_end: 0
+    description: While this function doesn't directly implement best shot, it provides operation descriptions including 
+      'synthesis' and 'final_integration' which are conceptually related to producing final best solutions. However, it 
+      doesn't explicitly mention 'best_shot' operation, suggesting the best_shot feature may be a newer addition.
+    status: approved
+    total_score: 0.76
+    stale: false
+  - id: gr_e5cff583f7590944
+    file_path: backend/app.py
+    symbol: op_produce_deliverable
+    line_start: 0
+    line_end: 0
+    description: This operation generates final deliverables from all 3 models after all cross-reviews, rankings, and 
+      refinements are complete. Each model produces a polished, production-ready document. This represents the 
+      culmination of the learning process into final outputs, which aligns with the best shot concept of synthesizing 
+      everything learned into a final solution.
+    status: approved
+    total_score: 0.8200000000000001
+    stale: false
+  - id: gr_6663aa86004f2b14
+    file_path: backend/app.py
+    symbol: op_best_shot
+    line_start: 0
+    line_end: 0
+    description: This is the primary implementation of the Best Shot Formulation feature. It executes the best_shot 
+      operation where all three LLMs create their best possible implementation in parallel, receiving ALL previous 
+      conversation context and being asked to create their BEST POSSIBLE implementation considering all prior feedback 
+      and approaches. This is explicitly described as 'typically used after cross-review rounds to ask each model to 
+      produce their most refined, complete answer.'
+    status: approved
+    total_score: 1.0
+    stale: false
