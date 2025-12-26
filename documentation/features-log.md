@@ -4,6 +4,105 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-26: LLM-First Architectural Refactoring (All Parts)
+
+**Branch:** `main`
+
+### Description
+Comprehensive refactoring of STRATEGIZER-IMPLEMENTATION-SPEC.md to replace Python-first patterns (hardcoded thresholds, rule-based logic) with LLM-first patterns (holistic assessment, evidence-then-judgment). The core principle: **Python gathers data → LLM makes judgments → Python executes decisions.**
+
+### The Problem
+The original specification had ~60+ instances of Python-first patterns that encoded arbitrary thresholds as if they were principled:
+- `if other_ratio > 0.20` — Why 0.20 and not 0.19?
+- `if confidence >= 0.85` — Why 85% and not 84%?
+- `if uses_count >= 5` — Why 5 and not 4?
+- `Severity.HIGH` hardcoded — Why is contradiction always HIGH?
+
+These thresholds encode nuanced judgments that should be contextual, not rigid.
+
+### The Solution: LLM-First Principle
+
+Added new Section 1.5.0 establishing the LLM-First Principle:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  PYTHON-FIRST (What We DON'T Do)                                            │
+│  • Hardcoded thresholds: if other_ratio > 0.20                              │
+│  • Numeric cutoffs: if confidence >= 0.85                                   │
+│  • Rule-based pattern matching: if usage_count >= 5                         │
+│                                                                              │
+│  LLM-FIRST (What We Do)                                                      │
+│  • LLM assessment: "Does this pattern suggest we need a new unit type?"     │
+│  • LLM judgment: "Is this change significant enough to surface to user?"    │
+│  • LLM holistic evaluation                                                  │
+│                                                                              │
+│  Python gathers data → LLM makes judgments → Python executes decisions      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Revisions by Part
+
+**Part 1: Unit Evolution**
+- `FrictionDetector.scan_project()` — Gathers evidence, then LLM assesses friction holistically
+- Routing Logic — Changed from threshold-based (≥85%, <60%) to LLM-assessed routes
+- Learning Capture — Stores decisions as training examples instead of updating thresholds
+
+**Part 2: Grid Operations**
+- `evaluate_wildcard_promotion()` — LLM holistic evaluation instead of `uses_count < 3, avg >= 4.0`
+- `apply_grid()` — LLM compatibility assessment instead of type-matching
+- `fill_slot()` — LLM saturation assessment instead of `confidence >= 0.8, evidence >= 2`
+- `_detect_grid_friction()` — LLM friction detection instead of `confidence < 0.6`
+- Literature fit analysis — LLM auto-integrate decision instead of `confidence >= 0.85`
+
+**Part 3: Epistemic Infrastructure**
+- `GapDetector.scan_for_gaps()` — LLM holistic gap detection instead of rule-based priority
+- `ResearchExecutor.execute()` — LLM confidence assessment instead of `_assess_confidence()`
+
+**Part 4: Generative Process**
+- `FrictionDetector.detect_friction()` — LLM holistic severity instead of hardcoded `Severity.MEDIUM`, `Severity.HIGH`
+- `UnitTester.test()` — LLM holistic test evaluation instead of `score >= 0.6`, `score >= 0.4`
+- `PromotionEvaluator.evaluate()` — LLM holistic promotion decision instead of `confidence < 0.5`
+- `InterlocutorIntegrator.process_responses()` — LLM objection assessment instead of `severity == Severity.HIGH`
+
+### Pattern Applied Throughout
+
+Each revision follows the same structure:
+```python
+# PYTHON: Gather all evidence
+evidence = EvidencePackage(
+    raw_data=...,
+    context=...,
+    signals=...  # Note: "confidence_signal" not "confidence_threshold"
+)
+
+# LLM: Holistic assessment
+prompt = f"""
+Analyze this evidence holistically.
+Consider [domain-specific factors].
+Not by thresholds, but by: "[meaningful question]"
+Return structured analysis with reasoning.
+"""
+
+response = await llm.generate(prompt)
+return parse_structured_response(response)
+```
+
+### Files Modified
+- `documentation/STRATEGIZER-IMPLEMENTATION-SPEC.md` (~300 lines revised across all 5 parts)
+  - Section 1.5.0: New "LLM-First Principle" explanation
+  - Part 1: FrictionDetector, Routing, Learning Capture revised
+  - Part 2: Wildcard promotion, grid application, slot saturation, grid friction revised
+  - Part 3: GapDetector, ResearchExecutor revised
+  - Part 4: FrictionDetector, UnitTester, PromotionEvaluator, InterlocutorIntegrator revised
+
+### Principles Embodied
+- **LLM-First Design** — LLM makes nuanced judgments, Python handles data and execution
+- **Evidence-Then-Judgment** — Separate evidence gathering (Python) from judgment (LLM)
+- **Signals Not Thresholds** — Pass confidence as signal for LLM to interpret, not as threshold to check
+- **Holistic Contextual Assessment** — LLM considers full context, not isolated metrics
+
+---
+
 ## 2025-12-26: User Experience Philosophy & Part 2 Grid Revision (Architectural Revision)
 
 **Branch:** `main`

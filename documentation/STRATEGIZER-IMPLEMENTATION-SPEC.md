@@ -1581,35 +1581,54 @@ class GridSelector:
 
     async def _detect_grid_friction(
         self,
-        instances: list[GridInstance]
+        instances: list[GridInstance],
+        llm: LLM
     ) -> list[GridFriction]:
         """
-        Look for conflicts across grids that require user attention.
+        LLM-FIRST: Look for conflicts across grids that require user attention.
+
+        No hardcoded confidence thresholds (< 0.6).
+        LLM holistically assesses whether any friction warrants user attention.
         """
 
-        friction = []
+        # PYTHON: Gather evidence about all grid instances
+        evidence = GridFrictionEvidence(
+            instances=[{
+                "grid_type": inst.grid_type,
+                "filled_slots": {
+                    slot: {
+                        "value_summary": content.value[:200] if content.value else None,
+                        "source": content.source,
+                        "confidence_signal": content.confidence  # Signal, not threshold
+                    }
+                    for slot, content in inst.filled_slots.items()
+                }
+            } for inst in instances]
+        )
 
-        # Cross-grid contradiction detection
-        for i, grid_a in enumerate(instances):
-            for grid_b in instances[i+1:]:
-                conflicts = await self.llm.detect_conflicts(grid_a, grid_b)
-                friction.extend(conflicts)
+        # LLM: Holistic friction detection
+        prompt = f"""
+        Analyze these grid instances for friction that warrants user attention.
 
-        # Confidence below threshold
-        for instance in instances:
-            low_confidence_slots = [
-                slot for slot, content in instance.filled_slots.items()
-                if content.confidence < 0.6 and content.value
-            ]
-            if low_confidence_slots:
-                friction.append(GridFriction(
-                    type="low_confidence",
-                    grid=instance.grid_type,
-                    slots=low_confidence_slots,
-                    requires_user=True
-                ))
+        Grid Evidence:
+        {evidence.to_json()}
 
-        return friction
+        Look for:
+        1. Cross-grid contradictions (e.g., one grid says X, another implies not-X)
+        2. Slots where the content seems uncertain, vague, or potentially wrong
+        3. Missing connections between grids that should reference each other
+        4. Slots filled with content that doesn't quite fit the slot's purpose
+
+        For each friction point, explain:
+        - What the friction is
+        - Why it matters to the user
+        - Whether it truly requires user attention or can be resolved automatically
+
+        Return structured friction analysis.
+        """
+
+        response = await llm.generate(prompt)
+        return parse_grid_friction(response)
 ```
 
 ### What Users See vs What Happens
@@ -1779,14 +1798,22 @@ relevant_papers = await fetch_literature(
 )
 
 for paper in relevant_papers:
-    fit_analysis = await llm.analyze_fit(paper, project.framework)
+    # LLM-FIRST: LLM decides whether to auto-integrate or queue for user
+    # No hardcoded threshold (>= 0.85). LLM reasons about fit holistically.
+    fit_decision = await llm.analyze_fit(
+        paper,
+        project.framework,
+        instruction="""
+        Analyze whether this paper should be auto-integrated or reviewed by user.
+        Consider: Does it clearly support, clearly challenge, or ambiguously relate?
+        Auto-integrate only when the fit is unambiguous and non-controversial.
+        """
+    )
 
-    if fit_analysis.confidence >= 0.85:
-        # HIGH FIT → Auto-integrate
+    if fit_decision.auto_integrate:
         await auto_integrate_evidence(paper, project)
     else:
-        # LOW FIT → Queue for user attention
-        await queue_pending_decision(paper, fit_analysis, project)
+        await queue_pending_decision(paper, fit_decision, project)
 
 # 4. DETECT FRICTION ACROSS ALL GRIDS
 friction = await detect_project_friction(project)
@@ -2323,45 +2350,67 @@ When the system detects gaps in epistemic status or needs_research flags, it can
 ```python
 class GapDetector:
     """
-    Identify epistemic gaps that need research.
+    LLM-FIRST: Identify epistemic gaps that need research.
+
+    No hardcoded thresholds (confidence < 0.6) or rule-based priority.
+    LLM holistically assesses what gaps exist and how urgent they are.
     """
 
-    def scan_for_gaps(self, unit: Unit) -> list[ResearchGap]:
-        gaps = []
+    async def scan_for_gaps(self, unit: Unit, llm: LLM) -> list[ResearchGap]:
+        # PYTHON: Gather all evidence about the unit's epistemic state
+        evidence = GapDetectionEvidence(
+            unit_id=unit.id,
+            unit_type=unit.type,
+            unit_content_summary=unit.content[:500] if unit.content else None,
+            epistemic_status={
+                "known_unknowns": unit.epistemic_status.known_unknowns,
+                "suspected_unknowns": unit.epistemic_status.suspected_unknowns,
+                "blind_spots": unit.epistemic_status.blind_spots,
+                "evidence_type": unit.epistemic_status.evidence_type,
+                "evidence_quality": unit.epistemic_status.evidence_quality,
+                "confidence": unit.epistemic_status.confidence,
+                "confidence_rationale": unit.epistemic_status.confidence_rationale
+            },
+            grid_slots=[{
+                "grid_type": gi.grid_type,
+                "slot_name": slot_name,
+                "has_content": bool(slot_content.value),
+                "needs_research_flag": slot_content.needs_research,
+                "confidence_signal": slot_content.confidence
+            } for gi in unit.grid_instances
+              for slot_name, slot_content in gi.filled_slots.items()],
+            assumptions=[{
+                "statement": a.statement,
+                "confidence_signal": a.confidence,
+                "what_if_wrong": a.what_if_wrong,
+                "test_conditions": a.test_conditions,
+                "has_test_data": self._has_test_data(a)
+            } for a in unit.epistemic_status.critical_assumptions]
+        )
 
-        # Check epistemic status
-        if unit.epistemic_status.known_unknowns:
-            for unknown in unit.epistemic_status.known_unknowns:
-                gaps.append(ResearchGap(
-                    unit_id=unit.id,
-                    gap_type=GapType.KNOWN_UNKNOWN,
-                    description=unknown,
-                    priority=self._assess_priority(unknown, unit)
-                ))
+        # LLM: Holistic gap detection and prioritization
+        prompt = f"""
+        Analyze this unit's epistemic state to identify research gaps.
 
-        # Check grid slots with needs_research=True
-        for grid_instance in unit.grid_instances:
-            for slot_name, slot_content in grid_instance.filled_slots.items():
-                if slot_content.needs_research:
-                    gaps.append(ResearchGap(
-                        unit_id=unit.id,
-                        gap_type=GapType.SLOT_GAP,
-                        description=f"Grid {grid_instance.grid_type}, slot {slot_name}: needs research",
-                        priority=self._assess_priority(slot_name, unit),
-                        grid_context=(grid_instance.grid_type, slot_name)
-                    ))
+        Unit Evidence:
+        {evidence.to_json()}
 
-        # Check for critical assumptions without test data
-        for assumption in unit.epistemic_status.critical_assumptions:
-            if assumption.confidence < 0.6 and not self._has_test_data(assumption):
-                gaps.append(ResearchGap(
-                    unit_id=unit.id,
-                    gap_type=GapType.UNTESTED_ASSUMPTION,
-                    description=f"Assumption: {assumption.statement}",
-                    priority=Priority.HIGH if assumption.what_if_wrong else Priority.MEDIUM
-                ))
+        For each gap you identify:
+        1. What is the gap? (known unknown, slot needing research, untested assumption)
+        2. How critical is this gap to the unit's usefulness?
+        3. What would happen if we proceed without filling this gap?
+        4. How urgent is addressing it? (Consider: stakes, dependencies, cost of delay)
 
-        return gaps
+        Prioritize holistically - not by thresholds but by reasoning about:
+        - What makes this unit actionable or not
+        - What risks are we taking with incomplete knowledge
+        - What the user would want to know
+
+        Return structured gap analysis with priorities.
+        """
+
+        response = await llm.generate(prompt)
+        return parse_research_gaps(response)
 ```
 
 ### Research Commission Generation
@@ -2396,10 +2445,12 @@ class ResearchCommission:
 
 class ResearchExecutor:
     """
-    Execute research commissions.
+    LLM-FIRST: Execute research commissions.
+
+    LLM assesses confidence in findings holistically, not via rule-based scoring.
     """
 
-    def execute(self, commission: ResearchCommission) -> ResearchResult:
+    async def execute(self, commission: ResearchCommission, llm: LLM) -> ResearchResult:
         """
         Execute a research commission.
 
@@ -2407,27 +2458,45 @@ class ResearchExecutor:
         1. Formulate search/research strategy
         2. Execute (web search, LLM analysis, or both)
         3. Synthesize findings
-        4. Format for integration
+        4. LLM assesses confidence in findings
         5. Return result for human review
         """
 
         if commission.assigned_to == "web_search":
-            raw_findings = self.web_search(commission.research_question)
+            raw_findings = await self.web_search(commission.research_question)
         elif commission.assigned_to == "llm_deep_dive":
-            raw_findings = self.llm_analyze(commission.research_question, commission.scope)
+            raw_findings = await self.llm_analyze(commission.research_question, commission.scope)
         else:
             # Hybrid
-            search_results = self.web_search(commission.research_question)
-            raw_findings = self.llm_synthesize(search_results, commission.scope)
+            search_results = await self.web_search(commission.research_question)
+            raw_findings = await self.llm_synthesize(search_results, commission.scope)
 
         # Format for target
         formatted = self.format_for_integration(raw_findings, commission.integration_target)
+
+        # LLM-FIRST: Assess confidence holistically
+        confidence_assessment = await llm.generate(f"""
+        Assess confidence in these research findings:
+
+        Research Question: {commission.research_question}
+        Findings: {formatted[:2000]}
+        Sources: {raw_findings.sources}
+
+        Consider:
+        1. Source quality and credibility
+        2. Consistency across sources
+        3. How directly the findings answer the question
+        4. What's still uncertain or contested
+        5. Recency and relevance of sources
+
+        Return a confidence assessment with rationale.
+        """)
 
         return ResearchResult(
             commission_id=commission.id,
             findings=formatted,
             sources=raw_findings.sources,
-            confidence=self._assess_confidence(raw_findings),
+            confidence_assessment=parse_confidence_assessment(confidence_assessment),
             needs_human_review=True  # Always require human review
         )
 ```
@@ -2692,58 +2761,52 @@ Friction is when the current conceptual apparatus doesn't fit the material. Some
 ```python
 class FrictionDetector:
     """
-    Detect when the system is encountering friction.
+    LLM-FIRST: Detect when the system is encountering friction.
+
+    No hardcoded severities (MEDIUM, HIGH). LLM holistically assesses
+    what friction exists and how severe it is based on context.
     """
 
-    def detect_friction(self, context: AnalysisContext) -> list[FrictionEvent]:
-        frictions = []
+    async def detect_friction(self, context: AnalysisContext, llm: LLM) -> list[FrictionEvent]:
+        # PYTHON: Gather all potential friction signals
+        evidence = FrictionEvidence(
+            orphan_content=self._find_orphan_content(context),
+            forced_fits=self._find_forced_fits(context),
+            contradictions=self._find_contradictions(context),
+            repeated_workarounds=self._find_repeated_workarounds(context),
+            interlocutor_surprises=self._find_interlocutor_surprises(context),
+            context_summary={
+                "project_type": context.project.domain,
+                "active_grids": [g.grid_type for g in context.active_grids],
+                "recent_units": [u.type for u in context.recent_units[-10:]]
+            }
+        )
 
-        # 1. Orphan content — material that doesn't fit any slot
-        orphans = self._find_orphan_content(context)
-        for orphan in orphans:
-            frictions.append(FrictionEvent(
-                type=FrictionType.ORPHAN_CONTENT,
-                description=f"Content doesn't fit existing grids: {orphan[:100]}...",
-                severity=self._assess_severity(orphan)
-            ))
+        # LLM: Holistic friction detection and severity assessment
+        prompt = f"""
+        Analyze this context for conceptual friction that needs attention.
 
-        # 2. Forced fit — content that was shoehorned into wrong slot
-        forced_fits = self._find_forced_fits(context)
-        for ff in forced_fits:
-            frictions.append(FrictionEvent(
-                type=FrictionType.FORCED_FIT,
-                description=f"Slot {ff.slot} contains content that doesn't belong: {ff.content[:100]}...",
-                severity=Severity.MEDIUM
-            ))
+        Evidence Package:
+        {evidence.to_json()}
 
-        # 3. Contradiction — grids give conflicting views
-        contradictions = self._find_contradictions(context)
-        for c in contradictions:
-            frictions.append(FrictionEvent(
-                type=FrictionType.CONTRADICTION,
-                description=f"Grids {c.grid_a} and {c.grid_b} contradict on: {c.issue}",
-                severity=Severity.HIGH
-            ))
+        For each friction signal:
+        1. Is this genuine friction or just normal variance?
+        2. How severe is it? Consider:
+           - Does it block progress?
+           - Does it indicate a fundamental conceptual gap?
+           - Is it a local annoyance or a systemic problem?
+        3. What makes this friction worth surfacing to the user?
 
-        # 4. Repeated workaround — same hack used multiple times
-        workarounds = self._find_repeated_workarounds(context)
-        for w in workarounds:
-            frictions.append(FrictionEvent(
-                type=FrictionType.REPEATED_WORKAROUND,
-                description=f"Same workaround used {w.count} times: {w.description}",
-                severity=Severity.HIGH  # Pattern suggests missing abstraction
-            ))
+        Not every mismatch is friction. Only flag things where:
+        - The conceptual apparatus genuinely doesn't fit the material
+        - There's a pattern suggesting missing abstraction
+        - The user would benefit from knowing about this
 
-        # 5. Interlocutor surprise — responses that don't match model
-        surprises = self._find_interlocutor_surprises(context)
-        for s in surprises:
-            frictions.append(FrictionEvent(
-                type=FrictionType.MODEL_FAILURE,
-                description=f"Actor {s.actor_id} responded unexpectedly: {s.response[:100]}...",
-                severity=Severity.HIGH
-            ))
+        Return structured friction analysis with holistic severity reasoning.
+        """
 
-        return frictions
+        response = await llm.generate(prompt)
+        return parse_friction_events(response)
 ```
 
 ### Output
@@ -3017,62 +3080,81 @@ New units must be stress-tested before promotion. We test against:
 ```python
 class UnitTester:
     """
-    Stress test newly coined units.
+    LLM-FIRST: Stress test newly coined units.
+
+    No hardcoded thresholds (score >= 0.6, >= 0.4) or rule-based severity.
+    LLM holistically evaluates whether the unit passes each test dimension.
     """
 
-    def test(self, unit: Unit, context: AnalysisContext) -> TestResult:
+    async def test(self, unit: Unit, context: AnalysisContext, llm: LLM) -> TestResult:
         """
-        Run all tests on a unit.
+        Run all tests on a unit via LLM holistic evaluation.
         """
 
-        results = []
-
-        # 1. Interlocutor testing
-        for interlocutor in context.get_relevant_interlocutors(unit):
-            response = self._simulate_interlocutor_response(unit, interlocutor)
-            results.append(TestResult(
-                test_type=TestType.INTERLOCUTOR,
-                passed=response.is_satisfactory,
-                details=response.critique,
-                severity=response.severity
-            ))
-
-        # 2. Edge case testing
-        edge_cases = self._generate_edge_cases(unit)
-        for case in edge_cases:
-            holds = self._test_edge_case(unit, case)
-            results.append(TestResult(
-                test_type=TestType.EDGE_CASE,
-                passed=holds,
-                details=f"Edge case: {case.description}",
-                severity=Severity.MEDIUM if not holds else Severity.NONE
-            ))
-
-        # 3. Consistency testing
-        conflicts = self._check_consistency(unit, context.all_units)
-        for conflict in conflicts:
-            results.append(TestResult(
-                test_type=TestType.CONSISTENCY,
-                passed=False,
-                details=f"Conflicts with {conflict.other_unit}: {conflict.description}",
-                severity=Severity.HIGH
-            ))
-
-        # 4. Usefulness testing
-        usefulness = self._test_usefulness(unit, context)
-        results.append(TestResult(
-            test_type=TestType.USEFULNESS,
-            passed=usefulness.score >= 0.6,
-            details=usefulness.explanation,
-            severity=Severity.LOW if usefulness.score >= 0.4 else Severity.MEDIUM
-        ))
-
-        return TestResult(
-            unit_id=unit.id,
-            individual_results=results,
-            overall_passed=all(r.passed for r in results if r.severity == Severity.HIGH),
-            recommended_action=self._recommend_action(results)
+        # PYTHON: Gather all test evidence
+        test_evidence = TestEvidence(
+            unit={
+                "id": unit.id,
+                "type": unit.type,
+                "content": unit.content[:1000] if unit.content else None,
+                "epistemic_status": unit.epistemic_status.to_dict()
+            },
+            interlocutors=[{
+                "id": i.id,
+                "perspective": i.perspective,
+                "known_objections": i.known_objections
+            } for i in context.get_relevant_interlocutors(unit)],
+            edge_cases=self._generate_edge_cases(unit),
+            related_units=[{
+                "id": u.id,
+                "type": u.type,
+                "summary": u.content[:200] if u.content else None
+            } for u in context.all_units[:20]],  # Sample for context
+            usage_context={
+                "project_domain": context.project.domain,
+                "how_used": self._get_usage_examples(unit)
+            }
         )
+
+        # LLM: Holistic test evaluation
+        prompt = f"""
+        Evaluate this unit across four test dimensions:
+
+        Unit and Context:
+        {test_evidence.to_json()}
+
+        Test Dimensions:
+
+        1. INTERLOCUTOR TEST: How would the listed critics respond?
+           - Would they find obvious flaws?
+           - Are there objections the unit can't handle?
+           - Rate not by threshold, but by: "Would this embarrass us?"
+
+        2. EDGE CASE TEST: Does the concept hold at its margins?
+           - Consider the edge cases listed
+           - Are there definitional problems at the boundaries?
+           - Rate by: "Does this remain coherent under stress?"
+
+        3. CONSISTENCY TEST: Does it contradict other units?
+           - Look at the related units
+           - Any logical conflicts?
+           - Rate by: "Can these coexist in the same framework?"
+
+        4. USEFULNESS TEST: Does it actually help thinking?
+           - Given the usage context
+           - Does this concept earn its place?
+           - Rate by: "Would removing this make the analysis worse?"
+
+        For each dimension:
+        - Provide reasoning, not just pass/fail
+        - Assess severity of any issues holistically
+        - Consider: would this issue block promotion or just need noting?
+
+        Return structured test results with overall recommendation.
+        """
+
+        response = await llm.generate(prompt)
+        return parse_test_result(response)
 ```
 
 ---
@@ -3141,52 +3223,80 @@ Validated, abstracted units join the stable doctrine. They become available for 
 ```python
 class PromotionEvaluator:
     """
-    Determine if a unit should be promoted to doctrine.
+    LLM-FIRST: Determine if a unit should be promoted to doctrine.
+
+    No hardcoded thresholds (confidence < 0.5) or rule-based rejection.
+    LLM holistically evaluates whether the unit deserves promotion.
     """
 
-    def evaluate(self, unit: Unit, test_results: TestResult, abstracted: AbstractedUnit) -> PromotionDecision:
+    async def evaluate(
+        self,
+        unit: Unit,
+        test_results: TestResult,
+        abstracted: AbstractedUnit,
+        llm: LLM
+    ) -> PromotionDecision:
         """
-        Should this unit be promoted to stable doctrine?
+        LLM-FIRST: Should this unit be promoted to stable doctrine?
         """
 
-        # Check test results
-        if not test_results.overall_passed:
-            return PromotionDecision(
-                approved=False,
-                reason="Failed critical tests",
-                blocking_issues=test_results.failures
-            )
-
-        # Check abstraction quality
-        if not abstracted.conditions_for_transfer:
-            return PromotionDecision(
-                approved=False,
-                reason="Cannot identify transfer conditions; too project-specific"
-            )
-
-        # Check for duplicates
-        similar = self._find_similar_in_doctrine(abstracted)
-        if similar:
-            return PromotionDecision(
-                approved=False,
-                reason=f"Similar to existing doctrine: {similar.id}",
-                recommendation="Consider merging or differentiating"
-            )
-
-        # Check epistemic status
-        if abstracted.epistemic_status.confidence < 0.5:
-            return PromotionDecision(
-                approved=False,
-                reason="Confidence too low for doctrine",
-                recommendation="Gather more evidence before promoting"
-            )
-
-        # All checks passed
-        return PromotionDecision(
-            approved=True,
-            recommended_placement=self._determine_placement(abstracted),
-            recommended_tags=self._suggest_tags(abstracted)
+        # PYTHON: Gather all evaluation evidence
+        evidence = PromotionEvidence(
+            unit={
+                "id": unit.id,
+                "type": unit.type,
+                "content_summary": unit.content[:500] if unit.content else None
+            },
+            test_results=test_results.to_dict(),
+            abstraction={
+                "conditions_for_transfer": abstracted.conditions_for_transfer,
+                "project_specific_notes": abstracted.project_specific_notes,
+                "general_elements": abstracted.general_elements
+            },
+            epistemic_status=abstracted.epistemic_status.to_dict(),
+            similar_in_doctrine=[{
+                "id": s.id,
+                "summary": s.content[:200] if s.content else None,
+                "similarity_reason": self._explain_similarity(abstracted, s)
+            } for s in self._find_similar_in_doctrine(abstracted)]
         )
+
+        # LLM: Holistic promotion evaluation
+        prompt = f"""
+        Evaluate whether this unit should be promoted to stable doctrine.
+
+        Evidence:
+        {evidence.to_json()}
+
+        Consider:
+
+        1. TEST QUALITY: Did it pass testing? Are the test results convincing?
+           - Not just "did it pass" but "should we trust those passes?"
+
+        2. TRANSFERABILITY: Can this be used in other projects?
+           - Are the transfer conditions clear and meaningful?
+           - Or is this too project-specific?
+
+        3. UNIQUENESS: Does this add something new to doctrine?
+           - Look at similar existing doctrine
+           - Does this differentiate enough to warrant separate entry?
+           - Or should it be merged with existing?
+
+        4. EPISTEMIC QUALITY: How confident are we in this?
+           - Not a threshold check, but: "Would we stake decisions on this?"
+           - Is the evidence base strong enough for doctrine status?
+
+        For each dimension, reason about quality holistically.
+
+        Return:
+        - approved: boolean
+        - reasoning: Why or why not
+        - if approved: recommended_placement, recommended_tags
+        - if not approved: what would need to change
+        """
+
+        response = await llm.generate(prompt)
+        return parse_promotion_decision(response)
 
     def promote(self, unit: Unit, decision: PromotionDecision) -> None:
         """
@@ -3326,56 +3436,74 @@ class InterlocutorSimulator:
 ```python
 class InterlocutorIntegrator:
     """
-    Use interlocutor responses to improve our work.
+    LLM-FIRST: Use interlocutor responses to improve our work.
+
+    No rule-based severity checks (if severity == HIGH).
+    LLM holistically evaluates which objections warrant action.
     """
 
-    def process_responses(
+    async def process_responses(
         self,
         unit: Unit,
-        responses: list[SimulatedResponse]
+        responses: list[SimulatedResponse],
+        llm: LLM
     ) -> InterlocutorAnalysis:
         """
-        Analyze what we learned from simulated responses.
+        LLM-FIRST: Analyze what we learned from simulated responses.
         """
 
-        # Categorize objections
-        all_objections = []
-        for response in responses:
-            all_objections.extend(response.objections)
-
-        categorized = self._categorize_objections(all_objections)
-
-        # Identify patterns
-        common_objections = self._find_common_objections(categorized)
-        unique_insights = self._find_unique_insights(responses)
-        blind_spots = self._identify_blind_spots(responses)
-
-        # Generate recommendations
-        recommendations = []
-
-        for objection in common_objections:
-            if objection.severity == Severity.HIGH:
-                recommendations.append(Recommendation(
-                    type=RecommendationType.REVISE,
-                    target=objection.target,
-                    action=f"Address objection: {objection.description}"
-                ))
-
-        for blind_spot in blind_spots:
-            recommendations.append(Recommendation(
-                type=RecommendationType.ADD,
-                target="epistemic_status.blind_spots",
-                action=f"Add blind spot: {blind_spot}"
-            ))
-
-        return InterlocutorAnalysis(
-            unit_id=unit.id,
-            responses_analyzed=len(responses),
-            common_objections=common_objections,
-            unique_insights=unique_insights,
-            blind_spots_discovered=blind_spots,
-            recommendations=recommendations
+        # PYTHON: Gather all response evidence
+        evidence = InterlocutorEvidence(
+            unit={
+                "id": unit.id,
+                "type": unit.type,
+                "content_summary": unit.content[:500] if unit.content else None
+            },
+            responses=[{
+                "interlocutor_id": r.interlocutor_id,
+                "interlocutor_perspective": r.perspective,
+                "objections": [{
+                    "description": o.description,
+                    "target": o.target,
+                    "severity_signal": o.severity  # Signal, not threshold
+                } for o in r.objections],
+                "insights": r.insights,
+                "would_accept": r.would_accept,
+                "conditions_for_acceptance": r.conditions_for_acceptance
+            } for r in responses]
         )
+
+        # LLM: Holistic analysis of interlocutor feedback
+        prompt = f"""
+        Analyze these simulated interlocutor responses to improve the unit.
+
+        Evidence:
+        {evidence.to_json()}
+
+        Determine:
+
+        1. COMMON OBJECTIONS: What do multiple interlocutors object to?
+           - Which objections are serious enough to require revision?
+           - Not by severity enum, but by: "Would this objection embarrass us?"
+
+        2. UNIQUE INSIGHTS: What did we learn from specific interlocutors?
+           - What perspectives did they bring that we missed?
+           - What would strengthen our work?
+
+        3. BLIND SPOTS: What are we systematically missing?
+           - What are interlocutors seeing that we're not?
+           - What assumptions are we making that they question?
+
+        4. RECOMMENDATIONS: What should we do?
+           - Which objections require revision vs acknowledgment vs dismissal?
+           - What blind spots should we add to epistemic status?
+           - Reason about each recommendation holistically.
+
+        Return structured interlocutor analysis with prioritized recommendations.
+        """
+
+        response = await llm.generate(prompt)
+        return parse_interlocutor_analysis(response)
 ```
 
 ### Interlocutor Examples by Domain
