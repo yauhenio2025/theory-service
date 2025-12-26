@@ -767,8 +767,18 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
 
   // Apply session data to state (shared between local and server restore)
   const applySessionData = (parsed) => {
-    console.log('[Session Restore] Restoring stage:', parsed.stage, 'blindSpotsQueue:', parsed.blindSpotsQueue)
-    setStage(parsed.stage)
+    console.log('[Session Restore] Restoring stage:', parsed.stage, 'questions:', parsed.questions?.length, 'blindSpotsQueue:', parsed.blindSpotsQueue)
+
+    // BUGFIX: Handle invalid stage/questions combinations
+    // If stage is STAGE1 but questions array is empty, this is an invalid state
+    // that will cause "No questions loaded" error. Fall back to a safe stage.
+    let stageToRestore = parsed.stage
+    if (parsed.stage === STAGES.STAGE1 && (!parsed.questions || parsed.questions.length === 0)) {
+      console.warn('[Session Restore] STAGE1 with empty questions detected! Falling back to DOCUMENT_UPLOAD')
+      stageToRestore = STAGES.DOCUMENT_UPLOAD
+    }
+
+    setStage(stageToRestore)
     setConceptName(parsed.conceptName)
     setNotes(parsed.notes || '')
     setStageData(parsed.stageData || { stage1: { questions: [], answers: [] }, stage2: { questions: [], answers: [] }, stage3: { questions: [], answers: [] } })
@@ -6383,8 +6393,24 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
           {stage === STAGES.STAGE1 && !currentQuestion && (
             <div className="wizard-stage">
               <div className="wizard-error">
-                No questions loaded for this stage. Questions: {questions.length}, Index: {currentQuestionIndex}
                 {console.error('[RENDER DEBUG] Stage is STAGE1 with no questions! stage=', stage, 'questions=', questions.length, 'currentQuestion=', currentQuestion)}
+                <h3>Session State Issue</h3>
+                <p>Stage 1 has no questions loaded. This usually happens when restoring an old session.</p>
+                <p><small>Debug: Questions: {questions.length}, Index: {currentQuestionIndex}</small></p>
+                <div className="wizard-actions" style={{marginTop: '1rem'}}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setStage(STAGES.DOCUMENT_UPLOAD)}
+                  >
+                    Go to Documents Stage
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setStage(STAGES.UNDERSTANDING_VALIDATION)}
+                  >
+                    Go to Understanding Validation
+                  </button>
+                </div>
               </div>
             </div>
           )}

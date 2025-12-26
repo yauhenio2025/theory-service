@@ -4,6 +4,68 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-26: Unified Strategizer Architecture (Reconciliation)
+
+**Branch:** `main`
+
+### Description
+Created reconciliation document that corrects the over-scoping of multi-grid architecture by restoring the full vision from ABSTRACT-STRATEGIZER-NOTES.md. Key insight: **multi-grids are one layer of a larger system, not the whole system.**
+
+### The Problem
+The multi-grid exploration collapsed rich architectural distinctions:
+- 5 distinct unit types → became "grid types"
+- Varsavsky's Scenarios → demoted to "SCENARIO grid"
+- Shackle's Epistemic Infrastructure → demoted to "grid enhancement"
+- Generative Process → lost entirely
+- Interlocutor Modeling → barely mentioned
+
+### The Corrected Architecture
+
+**6 Layers:**
+
+| Layer | What It Is | Role |
+|-------|------------|------|
+| Layer 5 | **Artifact** | Essay, Strategy Doc, Brand Plan, Development Plan |
+| Layer 4 | **5 Core Units** | Concept, Dialectic, Scenario, Actor, Instrument |
+| Layer 3 | **Multi-Grid Analysis** | Analytical lenses WITHIN each unit type |
+| Layer 2 | **Epistemic Infrastructure** | Shackle (surprise, cruciality, triggers) |
+| Layer 1 | **Generative Process** | Friction → Coin → Test → Abstract → Promote |
+| Layer 0 | **Stable Doctrine** | Accumulated validated units |
+
+**5 Core Units (Not Grid Types):**
+
+| Unit | What It Captures | Example |
+|------|------------------|---------|
+| **Concept** | Crystallized meaning | "Media Ecosystem Resilience" — a new play |
+| **Dialectic** | Productive tension | "Visibility ↔ Protection" — must navigate, not resolve |
+| **Scenario** | Value-laden future path (Varsavsky) | "Industrial Champion" vs "Services Leapfrog" |
+| **Actor** | Entity with agency | IMF, civil society, competitors |
+| **Instrument** | Available action | Grant, regulate, reposition, tax |
+
+**Where Multi-Grid Actually Lives:**
+- Layer 3 — analytical lenses WITHIN each unit type
+- CONCEPT units get analyzed via LOGICAL, FUNCTIONAL, THROUGHLINE grids
+- ACTOR units get analyzed via INTEREST, CAPABILITY, COALITION grids
+- SCENARIO units get analyzed via TEMPORAL, TRADE-OFF, BRANCHING grids
+
+**What Was Restored:**
+1. Varsavsky's Scenarios as a distinct unit type (value-laden, internally coherent futures)
+2. Shackle as orthogonal concern (applies to ALL units, not a grid type)
+3. The Generative Process (friction-based workflow for creating new units)
+4. Interlocutor Modeling (response simulation from harvested materials)
+5. Research Commissioning (gap detection → AI research → integration)
+6. The Hegelian Move (sublation of dialectics into higher-order concepts)
+
+### Files Created
+- `documentation/unified-strategizer-architecture.md` (~600 lines)
+
+### Relationship to Prior Documents
+- **ABSTRACT-STRATEGIZER-NOTES.md** — The authoritative vision; this document is the ground truth
+- **multi-grid-strategizer-architecture.md** — Now scoped to Layer 3 only; should be renamed to `analytical-grid-layer-architecture.md`
+- **strategy-workflow-enhancement-memo.md** — Slot architecture patterns remain useful, translatable to unit+grid structure
+
+---
+
 ## 2025-12-26: Multi-Grid Strategizer Architecture (Paradigm Shift)
 
 **Branch:** `main`
@@ -69,6 +131,63 @@ Composite health = Saturation + Confidence + Coherence + Coverage + Tension coun
 
 ### Files Created
 - `documentation/multi-grid-strategizer-architecture.md` (~1100 lines)
+
+---
+
+## 2025-12-26: Three-Tier Grid System with Wildcard Mechanism (Refinement)
+
+**Branch:** `main`
+
+### Description
+Refined the multi-grid architecture to distinguish between three tiers of analytical grids, balancing accumulated wisdom with emergent discovery.
+
+### The Three Tiers
+
+| Tier | Name | Description | Example |
+|------|------|-------------|---------|
+| **Tier 1** | Required | Always present, non-negotiable foundations | LOGICAL, ACTOR, TEMPORAL |
+| **Tier 2** | Flexible | From learned taxonomy, recommended based on domain/genre | FUNCTIONAL, SCENARIO, CAUSAL, RESOURCE |
+| **Tier 3** | Wildcard | LLM-invented for this specific project, genuinely novel | DIASPORA_INFLUENCE (Moldova example) |
+
+### Key Mechanisms
+
+**1. Required Grids (Tier 1)**
+- LOGICAL: Every project needs sound argument structure
+- ACTOR: Every project has stakeholders whose positions matter
+- TEMPORAL: Everything unfolds in time with dependencies
+- Cannot be removed by user; form irreducible foundation
+
+**2. Flexible Grids (Tier 2)**
+- Grid Generator recommends based on domain + genre + brief signals
+- User can approve, reject, or defer
+- Examples: FUNCTIONAL, THROUGHLINE, SCENARIO, CAUSAL, EVIDENTIAL, RESOURCE, NORMATIVE
+
+**3. Wildcard Grids (Tier 3)**
+- LLM proposes when it detects patterns not captured by existing grids
+- Full proposal UI with rationale, cell types, relationship types
+- User can Accept, Modify, Reject, or Merge into existing grid
+
+**4. Wildcard-to-Taxonomy Promotion**
+```python
+def should_promote_to_taxonomy(self):
+    return (
+        self.usage_count >= 3 and
+        len(self.projects_used_in) >= 2 and
+        avg(self.user_ratings) >= 4.0
+    )
+```
+
+### Principles Extracted to tool-ideator (3 new principles)
+- `prn_tiered_analytical_scaffolding` - Required vs flexible vs emergent scaffolding
+- `prn_emergent_analytical_lens_invention` - AI should invent novel lenses when needed
+- `prn_validated_emergence_promotion` - Promote validated wildcards to taxonomy
+
+### Features Extracted to tool-ideator (2 new features)
+- `three-tier-grid-system` - The tiered approach to grid generation
+- `wildcard-to-taxonomy-promotion` - Graduation mechanism for successful wildcards
+
+### Files Modified
+- `documentation/multi-grid-strategizer-architecture.md` - Added Part 1 Three-Tier System section
 
 ### Relationship to Prior Documents
 This document **supersedes** the fixed-slot architecture in:

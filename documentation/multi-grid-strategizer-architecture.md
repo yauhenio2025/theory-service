@@ -25,6 +25,125 @@ Previous approaches assumed a universal slot architecture:
 2. Genre conventions (what does this type of deliverable require?)
 3. Project specifics (what does THIS particular project need?)
 
+### The Three-Tier Grid System
+
+Not all grids are created equal. We distinguish:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   THREE-TIER GRID SYSTEM                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  TIER 1: REQUIRED GRIDS (Always present, non-negotiable)        │
+│  ├─ LOGICAL — Every project needs sound argument structure      │
+│  ├─ ACTOR — Every project has stakeholders whose positions      │
+│  │          and responses matter                                │
+│  └─ TEMPORAL — Everything unfolds in time with dependencies     │
+│                                                                 │
+│  These grids are ALWAYS instantiated. The Grid Generator        │
+│  populates them from project brief; user cannot remove them.    │
+│  They form the irreducible foundation of strategic analysis.    │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  TIER 2: FLEXIBLE GRIDS (From taxonomy, recommended)            │
+│  ├─ Domain-typical grids suggested by Grid Generator            │
+│  ├─ Examples: FUNCTIONAL, THROUGHLINE, SCENARIO, CAUSAL,        │
+│  │           EVIDENTIAL, RESOURCE, NORMATIVE...                 │
+│  └─ User can approve, reject, or defer                          │
+│                                                                 │
+│  These grids come from our learned taxonomy — patterns that     │
+│  have proven useful across projects. Grid Generator recommends  │
+│  based on domain + genre + brief signals.                       │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  TIER 3: WILDCARD GRIDS (LLM-proposed, emergent)                │
+│  ├─ Novel grid types invented FOR THIS PROJECT                  │
+│  ├─ Not from taxonomy — genuinely new analytical lenses         │
+│  ├─ LLM explains: "This project needs a grid we don't have..."  │
+│  └─ If validated, can be promoted to Tier 2 taxonomy            │
+│                                                                 │
+│  This is where genuine innovation happens. The LLM might see    │
+│  a pattern in the project brief that doesn't fit any existing   │
+│  grid type and propose something new.                           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why this matters:**
+
+| Tier | Purpose | Example |
+|------|---------|---------|
+| **Required** | Ensures minimum analytical rigor | "You can't skip logical coherence check" |
+| **Flexible** | Leverages accumulated wisdom | "Foundation projects usually need SCENARIO grids" |
+| **Wildcard** | Enables project-specific insight | "This Moldova project needs a DIASPORA_INFLUENCE grid we've never used before" |
+
+**The Wildcard Mechanism:**
+
+When the Grid Generator analyzes a project brief, it can propose wildcard grids:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  WILDCARD GRID PROPOSAL                                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Grid Generator has identified a pattern not captured by        │
+│  existing grid types:                                           │
+│                                                                 │
+│  PROPOSED: "DIASPORA_INFLUENCE" grid                            │
+│                                                                 │
+│  Rationale:                                                     │
+│  "The project brief mentions Moldova's large diaspora (25% of   │
+│   population abroad), remittance flows, and dual citizenship    │
+│   patterns. This creates a unique analytical dimension not      │
+│   captured by ACTOR (which focuses on domestic stakeholders)    │
+│   or RESOURCE (which focuses on financial flows). A dedicated   │
+│   DIASPORA_INFLUENCE grid would track:                          │
+│   - Diaspora communities by location                            │
+│   - Information channels (media consumption, social networks)   │
+│   - Remittance patterns and economic influence                  │
+│   - Political engagement (voting, advocacy)                     │
+│   - Return migration dynamics"                                  │
+│                                                                 │
+│  Proposed Cell Types:                                           │
+│  - COMMUNITY (diaspora population cluster)                      │
+│  - CHANNEL (information/influence pathway)                      │
+│  - FLOW (remittance or resource movement)                       │
+│  - ENGAGEMENT (political participation mode)                    │
+│                                                                 │
+│  Proposed Relationships:                                        │
+│  - INFLUENCES, FUNDS, INFORMS, MOBILIZES                        │
+│                                                                 │
+│  [Accept Grid] [Modify] [Reject] [Merge into ACTOR]            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Wildcard-to-Taxonomy Promotion:**
+
+If a wildcard grid proves useful across multiple projects, it can be promoted to Tier 2:
+
+```python
+class WildcardGrid:
+    def __init__(self, name, rationale, cell_types, relationship_types):
+        self.name = name
+        self.rationale = rationale
+        self.cell_types = cell_types
+        self.relationship_types = relationship_types
+        self.usage_count = 0
+        self.projects_used_in = []
+        self.user_ratings = []
+
+    def should_promote_to_taxonomy(self):
+        """Promote to Tier 2 if consistently useful"""
+        return (
+            self.usage_count >= 3 and
+            len(self.projects_used_in) >= 2 and
+            avg(self.user_ratings) >= 4.0
+        )
+```
+
 ### What IS a Grid?
 
 A grid is a **structured analytical lens** that:
