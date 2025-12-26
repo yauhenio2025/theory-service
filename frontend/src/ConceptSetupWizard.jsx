@@ -3322,16 +3322,24 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     // Check if we have any approved cards
     const approvedHypotheses = hypothesisCards.filter(c => c.status === 'approved')
     const approvedDifferentiations = differentiationCards.filter(c => c.status === 'approved')
+    const totalCards = hypothesisCards.length + differentiationCards.length
 
-    console.log('[proceedWithValidatedCards] Approved hypotheses:', approvedHypotheses.length, 'differentiations:', approvedDifferentiations.length)
+    console.log('[proceedWithValidatedCards] Approved hypotheses:', approvedHypotheses.length, 'differentiations:', approvedDifferentiations.length, 'total cards:', totalCards)
 
     if (approvedHypotheses.length === 0 && approvedDifferentiations.length === 0) {
-      // No cards approved - fall back to Stage 1 questions
-      console.warn('[proceedWithValidatedCards] NO APPROVED CARDS - Falling back to STAGE1. This is likely the bug!')
-      setProgress({ stage: 3, total: 11, label: 'Stage 1: Genesis & Problem Space' })
-      setStage(STAGES.STAGE1)
-      setCurrentQuestionIndex(0)
-      return
+      // No cards approved
+      if (totalCards > 0) {
+        // Cards exist but none approved - warn user
+        console.warn('[proceedWithValidatedCards] Cards exist but none approved - showing warning')
+        setError('Please approve at least one hypothesis or differentiation card before continuing, or click "Accept All" to approve all cards.')
+        return
+      } else {
+        // No cards at all - this shouldn't happen, but skip card-based flow
+        console.warn('[proceedWithValidatedCards] No cards generated - skipping to interim analysis')
+        setProgress({ stage: 5, total: 11, label: 'Analyzing responses...' })
+        setStage(STAGES.INTERIM_ANALYSIS)
+        return
+      }
     }
 
     // Convert approved cards to answers format

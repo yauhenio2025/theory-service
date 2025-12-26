@@ -6935,13 +6935,13 @@ header h1 {
 
 .uploaded-docs-section {
   padding: 1rem;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 
 .uploaded-docs-section h4 {
-  color: #58a6ff;
+  color: var(--success);
   margin-bottom: 0.75rem;
 }
 
@@ -6956,8 +6956,8 @@ header h1 {
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: #0d1117;
-  border: 1px solid #238636;
+  background: var(--bg-card);
+  border: 1px solid var(--success);
   border-radius: 6px;
 }
 
@@ -6972,25 +6972,25 @@ header h1 {
 
 .uploaded-doc-card .doc-name {
   font-weight: 500;
-  color: #c9d1d9;
+  color: var(--text);
 }
 
 .uploaded-doc-card .doc-size {
   font-size: 0.75rem;
-  color: #8b949e;
+  color: var(--text-muted);
 }
 
 .uploaded-doc-card .doc-summary {
   flex: 1;
   font-size: 0.85rem;
-  color: #8b949e;
+  color: var(--text-muted);
   text-align: right;
 }
 
 .upload-section {
   padding: 1.5rem;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   text-align: center;
 }
@@ -7000,7 +7000,7 @@ header h1 {
 }
 
 .upload-help {
-  color: #8b949e;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-bottom: 1rem;
 }
@@ -7022,17 +7022,17 @@ header h1 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: #21262d;
-  border: 2px dashed #30363d;
+  background: var(--bg-elevated);
+  border: 2px dashed var(--border);
   border-radius: 8px;
-  color: #8b949e;
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .file-input-label:hover {
-  border-color: #58a6ff;
-  color: #58a6ff;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .selected-file-info {
@@ -7042,14 +7042,14 @@ header h1 {
   gap: 0.5rem;
   padding: 0.5rem;
   margin-bottom: 1rem;
-  background: #0d1117;
+  background: var(--bg-surface);
   border-radius: 4px;
   font-size: 0.85rem;
-  color: #c9d1d9;
+  color: var(--text);
 }
 
 .selected-file-info .file-size {
-  color: #8b949e;
+  color: var(--text-muted);
 }
 
 .upload-progress {
@@ -7059,16 +7059,16 @@ header h1 {
   gap: 0.5rem;
   margin-top: 1rem;
   padding: 0.75rem;
-  background: #0d1117;
+  background: var(--bg-surface);
   border-radius: 6px;
-  color: #58a6ff;
+  color: var(--primary);
   font-size: 0.9rem;
 }
 
 .extraction-preview {
   padding: 1rem;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 
@@ -7090,19 +7090,31 @@ header h1 {
   font-weight: 500;
 }
 
-.dim-badge.quinean { background: #1f3a5f; color: #58a6ff; }
-.dim-badge.sellarsian { background: #3f2f1f; color: #d29922; }
-.dim-badge.brandomian { background: #2f1f3f; color: #a371f7; }
-.dim-badge.deleuzian { background: #1f2f3f; color: #79c0ff; }
-.dim-badge.bachelardian { background: #3f1f2f; color: #f78166; }
-.dim-badge.canguilhem { background: #1f3f2f; color: #7ee787; }
-.dim-badge.davidson { background: #2f3f1f; color: #a5d6ff; }
-.dim-badge.blumenberg { background: #3f2f2f; color: #ffa657; }
-.dim-badge.carey { background: #2f1f2f; color: #ff7b72; }
+/* Light mode dimension badges - soft pastel backgrounds with darker text */
+.dim-badge.quinean { background: #dbeafe; color: #1e40af; }
+.dim-badge.sellarsian { background: #fef3c7; color: #92400e; }
+.dim-badge.brandomian { background: #ede9fe; color: #5b21b6; }
+.dim-badge.deleuzian { background: #e0f2fe; color: #075985; }
+.dim-badge.bachelardian { background: #fee2e2; color: #991b1b; }
+.dim-badge.canguilhem { background: #dcfce7; color: #166534; }
+.dim-badge.davidson { background: #e0e7ff; color: #3730a3; }
+.dim-badge.blumenberg { background: #ffedd5; color: #9a3412; }
+.dim-badge.carey { background: #fce7f3; color: #9d174d; }
+
+/* Dark mode dimension badges */
+[data-theme="dark"] .dim-badge.quinean { background: #1f3a5f; color: #58a6ff; }
+[data-theme="dark"] .dim-badge.sellarsian { background: #3f2f1f; color: #d29922; }
+[data-theme="dark"] .dim-badge.brandomian { background: #2f1f3f; color: #a371f7; }
+[data-theme="dark"] .dim-badge.deleuzian { background: #1f2f3f; color: #79c0ff; }
+[data-theme="dark"] .dim-badge.bachelardian { background: #3f1f2f; color: #f78166; }
+[data-theme="dark"] .dim-badge.canguilhem { background: #1f3f2f; color: #7ee787; }
+[data-theme="dark"] .dim-badge.davidson { background: #2f3f1f; color: #a5d6ff; }
+[data-theme="dark"] .dim-badge.blumenberg { background: #3f2f2f; color: #ffa657; }
+[data-theme="dark"] .dim-badge.carey { background: #2f1f2f; color: #ff7b72; }
 
 .extraction-note {
   font-size: 0.8rem;
-  color: #8b949e;
+  color: var(--text-muted);
   font-style: italic;
 }
 
