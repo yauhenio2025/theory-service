@@ -4,6 +4,97 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-27: Domain-Agnostic System (Domain Bootstrapping & Evolution)
+
+**Branch:** `main`
+
+### Description
+Made the Strategizer system fully domain-agnostic. Previously, the system supported 5 fixed domains (Theory, Foundation, Brand, Investment, Government). Now the system can work with ANY domain, with the ability to quickly bootstrap new domains from a project brief, evolve domains as understanding grows, and refactor domains when major restructuring is needed.
+
+### The Problem
+The original spec had 5 hardcoded domains:
+- Theory/Essay
+- Foundation Strategy
+- Brand Strategy
+- Investment Strategy
+- Government Planning
+
+This was limiting. What if a user wants to apply the Strategizer approach to:
+- Climate tech investment
+- Non-profit operations
+- Research lab management
+- Startup strategy
+- Personal career planning
+- Any other strategic domain?
+
+### The Solution: Domain-Agnostic with Bootstrapping
+
+**New Section 5.0: Domain Bootstrapping (Create Any Domain)**
+
+Added comprehensive domain lifecycle management:
+
+1. **LLM-Assisted Domain Discovery (5.0.1)** — `DomainBootstrapper.bootstrap_from_brief()` creates a domain from a project description. LLM proposes domain identity, vocabulary, grids, and seed content.
+
+2. **Minimal Viable Domain (5.0.2)** — `MinimalViableDomain` class defines the smallest useful domain specification. Start with just a name, core question, and basic vocabulary. Everything else emerges.
+
+3. **Template Cloning (5.0.3)** — `TemplateCloner` allows cloning existing domains and modifying them. Clone from Theory, Foundation, Brand, Government, or Investment templates.
+
+4. **Domain Evolution (5.0.4)** — `DomainEvolver` supports iterative refinement:
+   - `add_concept()` — Add new concepts as understanding grows
+   - `add_dialectic()` — Add new tensions discovered in practice
+   - `add_grid()` — Add analytical dimensions that matter
+   - `update_vocabulary()` — Rename unit types for the domain
+   - `refine_concept()` — Improve existing concepts
+
+5. **Domain Refactoring (5.0.5)** — `DomainRefactorer` handles major restructuring:
+   - `merge_domains()` — Merge two domains that turn out to be one
+   - `split_domain()` — Split one domain into two
+   - `rename_domain()` — Change domain name and vocabulary
+   - `extract_subdomain()` — Extract specialized subdomain
+
+6. **Domain Discovery from Materials (5.0.6)** — `DomainDiscoverer` infers domain structure from existing project materials (documents, notes, prior work).
+
+### Pattern: LLM-Driven Domain Modeling
+
+```python
+class DomainBootstrapper:
+    async def bootstrap_from_brief(self, project_brief: str, llm: LLM) -> MinimalViableDomain:
+        prompt = f"""
+        Analyze the brief and design a domain structure:
+        1. DOMAIN IDENTITY — Name, core question, success criteria
+        2. UNIT VOCABULARY — Map universal types to domain-specific terms
+        3. INITIAL GRIDS — What analytical dimensions matter?
+        4. SEED CONTENT — Starter concepts and key tensions
+        5. TEMPLATE PROXIMITY — Which existing domain is closest?
+        """
+        response = await llm.generate(prompt)
+        return parse_domain_spec(response)
+```
+
+### Section Updates
+
+**Section 1.2: "The 5 Domains" → "Domains (Extensible, Not Fixed)"**
+- Added "### 1.2.1 Example Domains (Templates)" subsection
+- Added note: "These are EXAMPLES, not limits. New domains can be created..."
+
+**Section 5.1: Updated description**
+- Clarified that 5.2-5.5 domains serve as **templates** for cloning
+- Referenced Section 5.0 for creating new domains
+
+### Files Modified
+- `documentation/STRATEGIZER-IMPLEMENTATION-SPEC.md`
+  - Section 1.2 revised to emphasize domain flexibility
+  - New Section 5.0 (~450 lines) added before 5.1
+  - Section 5.1 updated to reference bootstrapping
+
+### Principles Embodied
+- **LLM-First Domain Discovery** — LLM proposes domain structure from project context
+- **Minimal Viable Start** — Begin with just enough to start, evolve as understanding grows
+- **Template Inheritance** — Clone from proven domains, modify as needed
+- **Living Domain Structure** — Domains evolve with project understanding
+
+---
+
 ## 2025-12-26: LLM-First Architectural Refactoring (All Parts)
 
 **Branch:** `main`

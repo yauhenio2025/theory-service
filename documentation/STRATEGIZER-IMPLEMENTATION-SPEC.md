@@ -107,9 +107,11 @@ This is the **authoritative implementation specification** for building the Mult
 
 ---
 
-## 1.2 The 5 Domains
+## 1.2 Domains (Extensible, Not Fixed)
 
-The system serves five strategic domains with parallel but flexible structures:
+The system is **domain-agnostic**. Any strategic domain can be modeled. Below are five example domains we've developed — they serve as templates for new domain creation, not a fixed taxonomy.
+
+### 1.2.1 Example Domains (Templates)
 
 | Domain | Practitioner | Artifact | Core Challenge |
 |--------|--------------|----------|----------------|
@@ -118,6 +120,11 @@ The system serves five strategic domains with parallel but flexible structures:
 | **Brand** | Brand strategist | Brand strategy | Position in market; navigate tensions |
 | **Government** | Development planner | Development plan | Choose development path; coordinate actors |
 | **Investor** | Hedge fund/VC analyst | Investment thesis | Test hypotheses against phenomena; allocate capital |
+
+**These are EXAMPLES, not limits.** New domains can be created:
+- From scratch via LLM-assisted discovery (see Part 5.0)
+- By cloning and modifying an existing domain template
+- Iteratively as understanding of the domain grows
 
 ### Default Domain Unit Vocabulary
 
@@ -3599,9 +3606,607 @@ imf_perspective = InterlocutorModel(
 
 # PART 5: DOMAIN INSTANTIATIONS & IMPLEMENTATION
 
+## 5.0 Domain Bootstrapping (Create Any Domain)
+
+The system is **domain-agnostic**. This section explains how to create, evolve, and refactor domains. The five domains in sections 5.2-5.5 are templates — examples to clone and modify, not a fixed taxonomy.
+
+### 5.0.1 LLM-Assisted Domain Discovery
+
+When starting a new project in an unfamiliar domain, use LLM to discover the domain's structure from a project brief:
+
+```python
+class DomainBootstrapper:
+    """
+    LLM-FIRST: Create a new domain from a project brief.
+
+    No hardcoded domain templates. LLM analyzes the project context
+    and proposes an appropriate domain structure.
+    """
+
+    async def bootstrap_from_brief(
+        self,
+        project_brief: str,
+        llm: LLM
+    ) -> MinimalViableDomain:
+        """
+        Create a new domain from a project description.
+        """
+
+        prompt = f"""
+        A user is starting a new strategic project. Analyze the brief and
+        design a domain structure for the Strategizer system.
+
+        PROJECT BRIEF:
+        {project_brief}
+
+        Design a domain by answering:
+
+        1. DOMAIN IDENTITY
+           - What should this domain be called?
+           - What's the core strategic question this domain addresses?
+           - What does "success" look like in this domain?
+
+        2. UNIT VOCABULARY
+           Map the universal unit types to domain-specific terms:
+           - Concepts → What are core abstractions called in this domain?
+             (e.g., "Plays" in philanthropy, "Theses" in investing)
+           - Dialectics → What are the key tensions called?
+             (e.g., "Trade-offs", "Strategic tensions", "Paradoxes")
+           - Scenarios → What are possible futures called?
+             (e.g., "Pathways", "Strategies", "Bets")
+           - Actors → Who are the key players?
+             (e.g., "Stakeholders", "Interlocutors", "Market participants")
+           - Instruments → What are the tools of intervention?
+             (e.g., "Levers", "Tactics", "Mechanisms")
+
+        3. INITIAL GRIDS
+           Beyond the universal grids, what analytical dimensions matter?
+           Suggest 2-4 domain-specific grids with their slot structures.
+
+        4. SEED CONTENT
+           Suggest 2-3 starter concepts and 1-2 key dialectics that
+           any project in this domain would likely need to grapple with.
+
+        5. TEMPLATE PROXIMITY
+           Which existing domain template (Theory, Foundation, Brand,
+           Government, Investment) is closest? We'll clone and modify.
+           If none are close, we'll build from scratch.
+
+        Return structured YAML with your domain design.
+        """
+
+        response = await llm.generate(prompt)
+        domain_spec = parse_yaml(response)
+
+        return MinimalViableDomain(
+            name=domain_spec["identity"]["name"],
+            core_question=domain_spec["identity"]["core_question"],
+            vocabulary=domain_spec["unit_vocabulary"],
+            initial_grids=domain_spec["grids"],
+            seed_concepts=domain_spec.get("seed_concepts", []),
+            seed_dialectics=domain_spec.get("seed_dialectics", []),
+            template_base=domain_spec.get("template_proximity")
+        )
+```
+
+### 5.0.2 Minimal Viable Domain (MVD)
+
+You don't need a fully-specified domain to start. The MVD is just enough structure to begin working:
+
+```python
+class MinimalViableDomain:
+    """
+    The smallest useful domain specification.
+
+    Start with this, then evolve as understanding grows.
+    """
+
+    # Required (must have to start)
+    name: str                          # e.g., "Climate Tech Investment"
+    core_question: str                 # e.g., "Where to deploy capital for max climate impact?"
+    vocabulary: dict[UnitType, str]    # At minimum: what to call concepts
+
+    # Optional (can be empty, will emerge)
+    initial_grids: list[GridDefinition] = []  # Domain-specific grids
+    seed_concepts: list[ConceptUnit] = []     # Starter concepts
+    seed_dialectics: list[DialecticUnit] = [] # Key tensions
+    seed_actors: list[ActorUnit] = []         # Known players
+
+    # Template inheritance
+    template_base: Optional[str] = None       # Clone from existing domain
+
+    def to_full_domain(self) -> DomainInstantiation:
+        """
+        Expand MVD to full domain spec, using template if available.
+        """
+        if self.template_base:
+            return self._clone_and_modify_template()
+        else:
+            return self._build_from_scratch()
+
+    def _clone_and_modify_template(self) -> DomainInstantiation:
+        """
+        Start from existing domain, override with MVD specifics.
+        """
+        template = get_domain_template(self.template_base)
+
+        return DomainInstantiation(
+            domain=Domain(self.name),
+            name=self.name,
+            unit_vocabulary={**template.unit_vocabulary, **self.vocabulary},
+            default_grids={**template.default_grids},
+            custom_grids=self.initial_grids or template.custom_grids,
+            seed_concepts=self.seed_concepts or [],
+            seed_dialectics=self.seed_dialectics or [],
+            seed_interlocutors=self.seed_actors or []
+        )
+
+    def _build_from_scratch(self) -> DomainInstantiation:
+        """
+        Build domain with only universal structure + MVD content.
+        """
+        return DomainInstantiation(
+            domain=Domain(self.name),
+            name=self.name,
+            unit_vocabulary=self._default_vocabulary_with_overrides(),
+            default_grids=self._universal_grids_only(),
+            custom_grids=self.initial_grids,
+            seed_concepts=self.seed_concepts,
+            seed_dialectics=self.seed_dialectics,
+            seed_interlocutors=self.seed_actors
+        )
+```
+
+### 5.0.3 Template Cloning
+
+The existing domains (Theory, Foundation, Brand, Government, Investment) serve as templates. Clone the closest one and modify:
+
+```python
+class TemplateCloner:
+    """
+    Create new domain by cloning and modifying existing template.
+    """
+
+    TEMPLATES = {
+        "theory": TheoryDomainTemplate,
+        "foundation": FoundationDomainTemplate,
+        "brand": BrandDomainTemplate,
+        "government": GovernmentDomainTemplate,
+        "investment": InvestmentDomainTemplate,
+    }
+
+    async def clone_with_modifications(
+        self,
+        template_name: str,
+        modifications: dict,
+        llm: LLM
+    ) -> DomainInstantiation:
+        """
+        Clone a template and apply modifications.
+
+        Modifications can specify:
+        - new_name: str
+        - vocabulary_overrides: dict
+        - additional_grids: list[GridDefinition]
+        - remove_grids: list[str]
+        - seed_concept_descriptions: list[str]  # LLM will flesh out
+        - seed_dialectic_descriptions: list[str]
+        """
+
+        template = self.TEMPLATES[template_name]
+
+        # Start with template
+        new_domain = deepcopy(template)
+        new_domain.name = modifications.get("new_name", template.name)
+
+        # Override vocabulary
+        if "vocabulary_overrides" in modifications:
+            new_domain.unit_vocabulary.update(modifications["vocabulary_overrides"])
+
+        # Add/remove grids
+        if "additional_grids" in modifications:
+            new_domain.custom_grids.extend(modifications["additional_grids"])
+        if "remove_grids" in modifications:
+            new_domain.custom_grids = [
+                g for g in new_domain.custom_grids
+                if g.name not in modifications["remove_grids"]
+            ]
+
+        # Generate seed content from descriptions
+        if "seed_concept_descriptions" in modifications:
+            for desc in modifications["seed_concept_descriptions"]:
+                concept = await self._generate_concept_from_description(
+                    desc, new_domain, llm
+                )
+                new_domain.seed_concepts.append(concept)
+
+        return new_domain
+
+    async def _generate_concept_from_description(
+        self,
+        description: str,
+        domain: DomainInstantiation,
+        llm: LLM
+    ) -> ConceptUnit:
+        """
+        LLM generates full concept spec from brief description.
+        """
+
+        prompt = f"""
+        Create a seed concept for the {domain.name} domain.
+
+        Brief description: {description}
+
+        Generate the full concept specification:
+        1. Name (domain-appropriate terminology)
+        2. Definition (one paragraph)
+        3. What it enables (what becomes visible/possible)
+        4. What it forecloses (what becomes invisible/impossible)
+        5. Conditions of application
+
+        Format as YAML.
+        """
+
+        response = await llm.generate(prompt)
+        return parse_concept_from_yaml(response, domain)
+```
+
+### 5.0.4 Domain Evolution
+
+Domains evolve as understanding grows. Track changes and support iterative refinement:
+
+```python
+class DomainEvolver:
+    """
+    Evolve domains as project understanding deepens.
+
+    Domains are living structures that grow with the project.
+    """
+
+    async def add_concept(
+        self,
+        domain: DomainInstantiation,
+        concept_brief: str,
+        llm: LLM
+    ) -> ConceptUnit:
+        """Add a new concept to the domain vocabulary."""
+
+        prompt = f"""
+        Add a new concept to the {domain.name} domain.
+
+        Existing concepts: {[c.name for c in domain.seed_concepts]}
+
+        New concept brief: {concept_brief}
+
+        Generate full specification that fits coherently with existing concepts.
+        """
+
+        response = await llm.generate(prompt)
+        concept = parse_concept_from_yaml(response, domain)
+        domain.seed_concepts.append(concept)
+        return concept
+
+    async def add_dialectic(
+        self,
+        domain: DomainInstantiation,
+        tension_description: str,
+        llm: LLM
+    ) -> DialecticUnit:
+        """Add a new dialectic to the domain."""
+
+        prompt = f"""
+        Add a key tension to the {domain.name} domain.
+
+        Existing tensions: {[d.name for d in domain.seed_dialectics]}
+
+        New tension: {tension_description}
+
+        Generate:
+        1. Name (Pole A ↔ Pole B format)
+        2. Pole A description
+        3. Pole B description
+        4. 2-3 navigation strategies
+        """
+
+        response = await llm.generate(prompt)
+        dialectic = parse_dialectic_from_yaml(response, domain)
+        domain.seed_dialectics.append(dialectic)
+        return dialectic
+
+    async def add_grid(
+        self,
+        domain: DomainInstantiation,
+        grid_need: str,
+        llm: LLM
+    ) -> GridDefinition:
+        """Add a new analytical grid to the domain."""
+
+        prompt = f"""
+        Design a new analytical grid for the {domain.name} domain.
+
+        Existing grids: {[g.name for g in domain.custom_grids]}
+
+        Need: {grid_need}
+
+        Generate:
+        1. Grid name (SCREAMING_SNAKE_CASE)
+        2. Slots (what dimensions does this grid capture?)
+        3. Which unit types it applies to
+        4. Description of when to use this grid
+        """
+
+        response = await llm.generate(prompt)
+        grid = parse_grid_from_yaml(response)
+        domain.custom_grids.append(grid)
+        return grid
+
+    def update_vocabulary(
+        self,
+        domain: DomainInstantiation,
+        unit_type: UnitType,
+        new_term: str
+    ) -> None:
+        """Change how a unit type is named in this domain."""
+        domain.unit_vocabulary[unit_type] = new_term
+
+    async def refine_concept(
+        self,
+        domain: DomainInstantiation,
+        concept_id: str,
+        refinement_notes: str,
+        llm: LLM
+    ) -> ConceptUnit:
+        """Refine an existing concept based on new understanding."""
+
+        concept = next(c for c in domain.seed_concepts if c.id == concept_id)
+
+        prompt = f"""
+        Refine this concept based on new understanding:
+
+        Current concept:
+        - Name: {concept.name}
+        - Definition: {concept.definition}
+        - What it enables: {concept.what_it_enables}
+        - What it forecloses: {concept.what_it_forecloses}
+
+        Refinement notes: {refinement_notes}
+
+        Generate updated specification. Preserve what still works,
+        adjust what needs adjustment.
+        """
+
+        response = await llm.generate(prompt)
+        updated = parse_concept_from_yaml(response, domain)
+        updated.id = concept.id  # Preserve ID
+        updated.version = concept.version + 1
+
+        # Replace in domain
+        domain.seed_concepts = [
+            updated if c.id == concept_id else c
+            for c in domain.seed_concepts
+        ]
+
+        return updated
+```
+
+### 5.0.5 Domain Refactoring
+
+When major restructuring is needed, use these operations:
+
+```python
+class DomainRefactorer:
+    """
+    Major structural changes to domains.
+
+    Use when initial domain modeling was wrong or when
+    understanding has shifted significantly.
+    """
+
+    async def merge_domains(
+        self,
+        domain_a: DomainInstantiation,
+        domain_b: DomainInstantiation,
+        new_name: str,
+        llm: LLM
+    ) -> DomainInstantiation:
+        """
+        Merge two domains into one.
+
+        Use when you discover they're actually the same domain
+        with different vocabularies.
+        """
+
+        prompt = f"""
+        Merge these two domains into a unified domain:
+
+        Domain A: {domain_a.name}
+        - Vocabulary: {domain_a.unit_vocabulary}
+        - Concepts: {[c.name for c in domain_a.seed_concepts]}
+        - Dialectics: {[d.name for d in domain_a.seed_dialectics]}
+
+        Domain B: {domain_b.name}
+        - Vocabulary: {domain_b.unit_vocabulary}
+        - Concepts: {[c.name for c in domain_b.seed_concepts]}
+        - Dialectics: {[d.name for d in domain_b.seed_dialectics]}
+
+        New domain name: {new_name}
+
+        Create a merged domain that:
+        1. Unifies vocabulary (pick the better term for each unit type)
+        2. Merges concepts (combine similar, keep distinct)
+        3. Merges dialectics (avoid duplicates)
+        4. Reconciles grids
+
+        Return unified domain specification.
+        """
+
+        response = await llm.generate(prompt)
+        return parse_domain_from_yaml(response)
+
+    async def split_domain(
+        self,
+        domain: DomainInstantiation,
+        split_criteria: str,
+        llm: LLM
+    ) -> tuple[DomainInstantiation, DomainInstantiation]:
+        """
+        Split one domain into two.
+
+        Use when you discover the domain is actually two
+        distinct strategic contexts.
+        """
+
+        prompt = f"""
+        Split this domain into two separate domains:
+
+        Current domain: {domain.name}
+        - Concepts: {[c.name for c in domain.seed_concepts]}
+        - Dialectics: {[d.name for d in domain.seed_dialectics]}
+        - Grids: {[g.name for g in domain.custom_grids]}
+
+        Split criteria: {split_criteria}
+
+        Create two domains:
+        1. Each with appropriate subset of concepts, dialectics, grids
+        2. Vocabulary can differ between them
+        3. Some content may be duplicated if relevant to both
+
+        Return specifications for both domains.
+        """
+
+        response = await llm.generate(prompt)
+        specs = parse_domain_split_from_yaml(response)
+        return specs["domain_a"], specs["domain_b"]
+
+    async def rename_domain(
+        self,
+        domain: DomainInstantiation,
+        new_name: str,
+        vocabulary_updates: dict[UnitType, str],
+        llm: LLM
+    ) -> DomainInstantiation:
+        """
+        Rename domain and update vocabulary throughout.
+
+        Use when the original name no longer fits.
+        """
+
+        old_name = domain.name
+        domain.name = new_name
+        domain.unit_vocabulary.update(vocabulary_updates)
+
+        # Update all units to reference new domain
+        for concept in domain.seed_concepts:
+            concept.domain = new_name
+        for dialectic in domain.seed_dialectics:
+            dialectic.domain = new_name
+        for actor in domain.seed_interlocutors:
+            actor.domain = new_name
+
+        return domain
+
+    async def extract_subdomain(
+        self,
+        domain: DomainInstantiation,
+        extraction_criteria: str,
+        subdomain_name: str,
+        llm: LLM
+    ) -> tuple[DomainInstantiation, DomainInstantiation]:
+        """
+        Extract a subdomain while keeping the original.
+
+        Use when a portion of the domain has grown distinct enough
+        to warrant its own treatment, but the parent domain remains valid.
+        """
+
+        prompt = f"""
+        Extract a subdomain from this domain:
+
+        Parent domain: {domain.name}
+        - Concepts: {[(c.name, c.definition[:100]) for c in domain.seed_concepts]}
+        - Dialectics: {[d.name for d in domain.seed_dialectics]}
+
+        Extraction criteria: {extraction_criteria}
+        Subdomain name: {subdomain_name}
+
+        Create:
+        1. The subdomain with extracted content
+        2. The parent domain with appropriate references to subdomain
+        3. Cross-references where concepts span both domains
+
+        The subdomain should inherit the parent's vocabulary unless
+        different terminology is more appropriate.
+        """
+
+        response = await llm.generate(prompt)
+        specs = parse_subdomain_extraction(response)
+        return specs["parent"], specs["subdomain"]
+```
+
+### 5.0.6 Domain Discovery from Project Materials
+
+When you have existing project materials (documents, notes, prior work), LLM can infer the domain structure:
+
+```python
+class DomainDiscoverer:
+    """
+    Discover domain structure from existing project materials.
+    """
+
+    async def discover_from_materials(
+        self,
+        materials: list[str],  # Document contents
+        project_context: str,
+        llm: LLM
+    ) -> MinimalViableDomain:
+        """
+        Analyze project materials to infer domain structure.
+        """
+
+        # Sample materials if too large
+        sampled = self._sample_materials(materials, max_tokens=50000)
+
+        prompt = f"""
+        Analyze these project materials to discover the implicit domain structure.
+
+        PROJECT CONTEXT:
+        {project_context}
+
+        SAMPLE MATERIALS:
+        {sampled}
+
+        Discover:
+
+        1. DOMAIN IDENTITY
+           - What domain is this project actually in?
+           - What's the core strategic question?
+
+        2. IMPLICIT VOCABULARY
+           - What terms do they use for core concepts?
+           - What tensions/trade-offs appear repeatedly?
+           - Who are the key actors mentioned?
+
+        3. ANALYTICAL DIMENSIONS
+           - What grids are they implicitly using?
+           - What dimensions do they consistently analyze along?
+
+        4. EMERGING PATTERNS
+           - What concepts are they groping toward but haven't named?
+           - What dialectics are present but not explicit?
+
+        Generate a MinimalViableDomain specification that captures
+        the domain structure implicit in these materials.
+        """
+
+        response = await llm.generate(prompt)
+        return parse_mvd_from_yaml(response)
+```
+
+---
+
 ## 5.1 Domain Instantiation Patterns
 
-Each domain (Theory, Foundation, Brand, Government) shares the same architecture but with different vocabulary, examples, and emphases.
+Each domain shares the same architecture but with different vocabulary, examples, and emphases. The domains below (5.2-5.5) serve as **templates** — use Section 5.0 to create new domains by cloning and modifying these, or bootstrapping from scratch.
 
 ### The Instantiation Template
 
