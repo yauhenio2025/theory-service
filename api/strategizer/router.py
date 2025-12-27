@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from ..database import get_db
 from .models import (
@@ -26,9 +27,15 @@ from .schemas import (
     SeedAcceptReject, SeedContentResponse,
     UnitCreate, UnitUpdate, UnitResponse, UnitRefineRequest,
     DialogueAskRequest, DialogueResponse, DialogueTurnResponse, DialogueHistoryResponse,
-    SuggestRequest, SuggestionResponse, SuggestedAction, VocabularyMapping
+    SuggestRequest, SuggestionResponse, SuggestedAction, VocabularyMapping,
+    # Grid schemas
+    GridCreate, GridSlotUpdate, GridResponse, GridTier,
+    GridAutoApplyRequest, GridAutoApplyResponse,
+    FrictionEvent, FrictionDetectionResponse,
+    ApplicableGridsResponse, GridDefinitionResponse, SlotDefinition, SlotContent
 )
 from .services.llm import StrategizerLLM
+from .grids import get_grid_definition, get_applicable_grids, TIER_1_GRIDS, TIER_2_GRIDS
 
 router = APIRouter(prefix="/api/strategizer", tags=["strategizer"])
 
@@ -654,6 +661,470 @@ async def delete_unit(
     await db.commit()
 
     return {"message": "Unit deleted successfully"}
+
+
+# =============================================================================
+# GRIDS (Phase 2 - Multi-Grid Analytics)
+# =============================================================================
+
+@router.get("/grids/definitions")
+async def list_grid_definitions():
+    """List all available grid type definitions."""
+    all_grids = []
+
+    for grid_type, grid_def in TIER_1_GRIDS.items():
+        all_grids.append(GridDefinitionResponse(
+            grid_type=grid_type,
+            name=grid_def["name"],
+            description=grid_def["description"],
+            slots=[SlotDefinition(**s) for s in grid_def["slots"]],
+            tier="required",
+            applicable_to=grid_def["applicable_to"]
+        ))
+
+    for grid_type, grid_def in TIER_2_GRIDS.items():
+        all_grids.append(GridDefinitionResponse(
+            grid_type=grid_type,
+            name=grid_def["name"],
+            description=grid_def["description"],
+            slots=[SlotDefinition(**s) for s in grid_def["slots"]],
+            tier="flexible",
+            applicable_to=grid_def["applicable_to"]
+        ))
+
+    return all_grids
+
+
+@router.get("/grids/applicable/{unit_type}", response_model=ApplicableGridsResponse)
+async def get_grids_for_unit_type(unit_type: str):
+    """Get grids applicable to a specific unit type."""
+    applicable = get_applicable_grids(unit_type)
+
+    return ApplicableGridsResponse(
+        unit_type=unit_type,
+        required=[
+            GridDefinitionResponse(
+                grid_type=g["grid_type"],
+                name=g["name"],
+                description=g["description"],
+                slots=[SlotDefinition(**s) for s in g["slots"]],
+                tier="required",
+                applicable_to=g["applicable_to"]
+            )
+            for g in applicable["required"]
+        ],
+        flexible=[
+            GridDefinitionResponse(
+                grid_type=g["grid_type"],
+                name=g["name"],
+                description=g["description"],
+                slots=[SlotDefinition(**s) for s in g["slots"]],
+                tier="flexible",
+                applicable_to=g["applicable_to"]
+            )
+            for g in applicable["flexible"]
+        ]
+    )
+
+
+@router.post("/projects/{project_id}/units/{unit_id}/grids", response_model=GridResponse)
+async def create_grid(
+    project_id: str,
+    unit_id: str,
+    grid_create: GridCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new grid instance on a unit."""
+    # Verify unit exists
+    result = await db.execute(
+        select(StrategizerUnit)
+        .options(selectinload(StrategizerUnit.grids))
+        .where(
+            StrategizerUnit.id == unit_id,
+            StrategizerUnit.project_id == project_id
+        )
+    )
+    unit = result.scalar_one_or_none()
+
+    if not unit:
+        raise HTTPException(status_code=404, detail="Unit not found")
+
+    # Validate grid type
+    grid_def = get_grid_definition(grid_create.grid_type)
+    if not grid_def:
+        raise HTTPException(status_code=400, detail=f"Unknown grid type: {grid_create.grid_type}")
+
+    # Check if grid already exists on this unit
+    existing = [g for g in unit.grids if g.grid_type == grid_create.grid_type]
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Grid {grid_create.grid_type} already exists on this unit")
+
+    # Determine tier from definition
+    tier_value = grid_def.get("tier", "flexible")
+    grid_tier = GridTier.REQUIRED if tier_value == "required" else GridTier.FLEXIBLE
+
+    # Initialize empty slots
+    initial_slots = {
+        slot["name"]: {"content": "", "confidence": 0.0, "evidence_notes": None}
+        for slot in grid_def["slots"]
+    }
+
+    # Create grid instance
+    grid_instance = StrategizerGridInstance(
+        unit_id=unit_id,
+        grid_type=grid_create.grid_type,
+        tier=grid_tier,
+        slots=initial_slots
+    )
+    db.add(grid_instance)
+
+    # Auto-fill with LLM if requested
+    if grid_create.auto_fill:
+        try:
+            # Get project context
+            proj_result = await db.execute(
+                select(StrategizerProject)
+                .options(selectinload(StrategizerProject.domain))
+                .where(StrategizerProject.id == project_id)
+            )
+            project = proj_result.scalar_one_or_none()
+
+            llm = StrategizerLLM()
+            fill_result = await llm.auto_fill_grid(
+                domain_context={
+                    "name": project.domain.name if project.domain else "Unknown",
+                    "core_question": project.domain.core_question if project.domain else None
+                },
+                unit={
+                    "unit_type": unit.unit_type.value,
+                    "display_type": unit.display_type,
+                    "name": unit.name,
+                    "definition": unit.definition,
+                    "content": unit.content
+                },
+                grid_definition={
+                    "grid_type": grid_create.grid_type,
+                    **grid_def
+                }
+            )
+            if "slots" in fill_result:
+                grid_instance.slots = fill_result["slots"]
+        except (ValueError, Exception) as e:
+            # LLM not available or error - leave slots empty
+            pass
+
+    await db.commit()
+    await db.refresh(grid_instance)
+
+    # Convert slots to SlotContent objects
+    slots_response = {
+        name: SlotContent(
+            content=data.get("content", ""),
+            confidence=data.get("confidence", 0.0),
+            evidence_notes=data.get("evidence_notes")
+        )
+        for name, data in (grid_instance.slots or {}).items()
+    }
+
+    return GridResponse(
+        id=grid_instance.id,
+        unit_id=grid_instance.unit_id,
+        grid_type=grid_instance.grid_type,
+        tier=grid_instance.tier,
+        slots=slots_response,
+        created_at=grid_instance.created_at,
+        updated_at=grid_instance.updated_at
+    )
+
+
+@router.get("/projects/{project_id}/units/{unit_id}/grids", response_model=List[GridResponse])
+async def list_unit_grids(
+    project_id: str,
+    unit_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """List all grids on a unit."""
+    result = await db.execute(
+        select(StrategizerGridInstance)
+        .where(StrategizerGridInstance.unit_id == unit_id)
+        .order_by(StrategizerGridInstance.created_at)
+    )
+    grids = result.scalars().all()
+
+    return [
+        GridResponse(
+            id=grid.id,
+            unit_id=grid.unit_id,
+            grid_type=grid.grid_type,
+            tier=grid.tier,
+            slots={
+                name: SlotContent(
+                    content=data.get("content", ""),
+                    confidence=data.get("confidence", 0.0),
+                    evidence_notes=data.get("evidence_notes")
+                )
+                for name, data in (grid.slots or {}).items()
+            },
+            created_at=grid.created_at,
+            updated_at=grid.updated_at
+        )
+        for grid in grids
+    ]
+
+
+@router.get("/projects/{project_id}/units/{unit_id}/grids/{grid_id}", response_model=GridResponse)
+async def get_grid(
+    project_id: str,
+    unit_id: str,
+    grid_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a specific grid instance."""
+    result = await db.execute(
+        select(StrategizerGridInstance)
+        .where(
+            StrategizerGridInstance.id == grid_id,
+            StrategizerGridInstance.unit_id == unit_id
+        )
+    )
+    grid = result.scalar_one_or_none()
+
+    if not grid:
+        raise HTTPException(status_code=404, detail="Grid not found")
+
+    return GridResponse(
+        id=grid.id,
+        unit_id=grid.unit_id,
+        grid_type=grid.grid_type,
+        tier=grid.tier,
+        slots={
+            name: SlotContent(
+                content=data.get("content", ""),
+                confidence=data.get("confidence", 0.0),
+                evidence_notes=data.get("evidence_notes")
+            )
+            for name, data in (grid.slots or {}).items()
+        },
+        created_at=grid.created_at,
+        updated_at=grid.updated_at
+    )
+
+
+@router.put("/projects/{project_id}/units/{unit_id}/grids/{grid_id}/slots/{slot_name}")
+async def update_grid_slot(
+    project_id: str,
+    unit_id: str,
+    grid_id: str,
+    slot_name: str,
+    update: GridSlotUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a single slot in a grid."""
+    result = await db.execute(
+        select(StrategizerGridInstance)
+        .where(
+            StrategizerGridInstance.id == grid_id,
+            StrategizerGridInstance.unit_id == unit_id
+        )
+    )
+    grid = result.scalar_one_or_none()
+
+    if not grid:
+        raise HTTPException(status_code=404, detail="Grid not found")
+
+    # Validate slot exists in grid definition
+    grid_def = get_grid_definition(grid.grid_type)
+    valid_slots = [s["name"] for s in grid_def["slots"]] if grid_def else []
+    if slot_name not in valid_slots:
+        raise HTTPException(status_code=400, detail=f"Invalid slot name: {slot_name}")
+
+    # Update the slot - make a copy to ensure SQLAlchemy detects the change
+    slots = dict(grid.slots or {})
+    slots[slot_name] = {
+        "content": update.content,
+        "confidence": update.confidence if update.confidence is not None else 0.0,
+        "evidence_notes": update.evidence_notes
+    }
+    grid.slots = slots
+    grid.updated_at = datetime.utcnow()
+    flag_modified(grid, "slots")
+
+    await db.commit()
+
+    return {"message": f"Slot '{slot_name}' updated successfully"}
+
+
+@router.delete("/projects/{project_id}/units/{unit_id}/grids/{grid_id}")
+async def delete_grid(
+    project_id: str,
+    unit_id: str,
+    grid_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a grid from a unit."""
+    result = await db.execute(
+        select(StrategizerGridInstance)
+        .where(
+            StrategizerGridInstance.id == grid_id,
+            StrategizerGridInstance.unit_id == unit_id
+        )
+    )
+    grid = result.scalar_one_or_none()
+
+    if not grid:
+        raise HTTPException(status_code=404, detail="Grid not found")
+
+    await db.delete(grid)
+    await db.commit()
+
+    return {"message": "Grid deleted successfully"}
+
+
+@router.post("/projects/{project_id}/units/{unit_id}/grids/auto-apply", response_model=GridAutoApplyResponse)
+async def auto_apply_grids(
+    project_id: str,
+    unit_id: str,
+    request: GridAutoApplyRequest = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Auto-apply appropriate grids to a unit using LLM."""
+    # Get unit with existing grids
+    result = await db.execute(
+        select(StrategizerUnit)
+        .options(selectinload(StrategizerUnit.grids))
+        .where(
+            StrategizerUnit.id == unit_id,
+            StrategizerUnit.project_id == project_id
+        )
+    )
+    unit = result.scalar_one_or_none()
+
+    if not unit:
+        raise HTTPException(status_code=404, detail="Unit not found")
+
+    # Get applicable grids
+    applicable = get_applicable_grids(unit.unit_type.value)
+    existing_types = {g.grid_type for g in unit.grids}
+
+    grids_applied = []
+    grids_skipped = []
+
+    include_flexible = request.include_flexible if request else True
+    auto_fill = request.auto_fill if request else True
+
+    # Apply required grids
+    for grid_info in applicable["required"]:
+        grid_type = grid_info["grid_type"]
+        if grid_type in existing_types:
+            grids_skipped.append({"grid_type": grid_type, "reason": "Already exists"})
+            continue
+
+        # Create the grid
+        grid_create = GridCreate(grid_type=grid_type, auto_fill=auto_fill)
+        grid_response = await create_grid(project_id, unit_id, grid_create, db)
+        grids_applied.append(grid_response)
+
+    # Apply flexible grids if requested
+    if include_flexible:
+        for grid_info in applicable["flexible"]:
+            grid_type = grid_info["grid_type"]
+            if grid_type in existing_types:
+                grids_skipped.append({"grid_type": grid_type, "reason": "Already exists"})
+                continue
+
+            grid_create = GridCreate(grid_type=grid_type, auto_fill=auto_fill)
+            grid_response = await create_grid(project_id, unit_id, grid_create, db)
+            grids_applied.append(grid_response)
+
+    return GridAutoApplyResponse(
+        grids_applied=grids_applied,
+        grids_skipped=grids_skipped,
+        message=f"Applied {len(grids_applied)} grids, skipped {len(grids_skipped)}"
+    )
+
+
+@router.post("/projects/{project_id}/grids/detect-friction", response_model=FrictionDetectionResponse)
+async def detect_grid_friction(
+    project_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Detect friction (contradictions, gaps) across all grids in a project."""
+    # Get all units with grids
+    result = await db.execute(
+        select(StrategizerUnit)
+        .options(selectinload(StrategizerUnit.grids))
+        .where(StrategizerUnit.project_id == project_id)
+    )
+    units = result.scalars().all()
+
+    if not units:
+        return FrictionDetectionResponse(
+            friction_events=[],
+            overall_coherence=1.0,
+            summary="No units found in project"
+        )
+
+    # Collect all grids
+    all_grids_data = []
+    for unit in units:
+        for grid in unit.grids:
+            all_grids_data.append({
+                "unit_name": unit.name,
+                "unit_type": unit.unit_type.value,
+                "grid_type": grid.grid_type,
+                "slots": grid.slots
+            })
+
+    if not all_grids_data:
+        return FrictionDetectionResponse(
+            friction_events=[],
+            overall_coherence=1.0,
+            summary="No grids found on units"
+        )
+
+    # Try LLM friction detection
+    try:
+        # Get project context
+        proj_result = await db.execute(
+            select(StrategizerProject)
+            .options(selectinload(StrategizerProject.domain))
+            .where(StrategizerProject.id == project_id)
+        )
+        project = proj_result.scalar_one_or_none()
+
+        llm = StrategizerLLM()
+        friction_result = await llm.detect_grid_friction(
+            grids=all_grids_data,
+            domain_context={
+                "name": project.domain.name if project.domain else "Unknown",
+                "core_question": project.domain.core_question if project.domain else None
+            }
+        )
+
+        return FrictionDetectionResponse(
+            friction_events=[
+                FrictionEvent(
+                    type=e.get("type", "unknown"),
+                    description=e.get("description", ""),
+                    slots_involved=e.get("slots_involved", []),
+                    severity=e.get("severity", "low"),
+                    suggested_resolution=e.get("suggested_resolution", "")
+                )
+                for e in friction_result.get("friction_events", [])
+            ],
+            overall_coherence=friction_result.get("overall_coherence", 0.5),
+            summary=friction_result.get("summary", "Analysis completed")
+        )
+
+    except (ValueError, Exception):
+        # LLM not available - return basic analysis
+        return FrictionDetectionResponse(
+            friction_events=[],
+            overall_coherence=0.5,
+            summary="[LLM not configured] Basic analysis: Found {} grids across {} units".format(
+                len(all_grids_data), len(units)
+            )
+        )
 
 
 # =============================================================================

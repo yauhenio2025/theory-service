@@ -292,5 +292,95 @@ class SuggestionResponse(BaseModel):
     priority_actions: List[SuggestedAction] = []
 
 
+# =============================================================================
+# GRID SCHEMAS
+# =============================================================================
+
+class SlotDefinition(BaseModel):
+    """A slot definition within a grid."""
+    name: str
+    description: str
+
+
+class GridDefinitionResponse(BaseModel):
+    """A grid type definition."""
+    grid_type: str
+    name: str
+    description: str
+    slots: List[SlotDefinition]
+    tier: str  # "required" or "flexible"
+    applicable_to: List[str]
+
+
+class ApplicableGridsResponse(BaseModel):
+    """Grids applicable to a unit type."""
+    unit_type: str
+    required: List[GridDefinitionResponse]
+    flexible: List[GridDefinitionResponse]
+
+
+class SlotContent(BaseModel):
+    """Content for a single slot."""
+    content: str
+    confidence: float = 0.0
+    evidence_notes: Optional[str] = None
+
+
+class GridCreate(BaseModel):
+    """Create a new grid instance on a unit."""
+    grid_type: str = Field(..., description="Grid type (e.g., LOGICAL, ACTOR, TEMPORAL)")
+    auto_fill: bool = Field(False, description="Use LLM to auto-fill slots")
+
+
+class GridSlotUpdate(BaseModel):
+    """Update a single slot in a grid."""
+    content: str
+    confidence: Optional[float] = None
+    evidence_notes: Optional[str] = None
+
+
+class GridResponse(BaseModel):
+    """Grid instance response."""
+    id: str
+    unit_id: str
+    grid_type: str
+    tier: GridTier
+    slots: Dict[str, SlotContent] = {}
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class GridAutoApplyRequest(BaseModel):
+    """Request to auto-apply grids to a unit."""
+    include_flexible: bool = Field(True, description="Include flexible tier grids")
+    auto_fill: bool = Field(True, description="Auto-fill slots with LLM")
+
+
+class GridAutoApplyResponse(BaseModel):
+    """Response from auto-applying grids."""
+    grids_applied: List[GridResponse]
+    grids_skipped: List[Dict[str, str]]  # {"grid_type": "...", "reason": "..."}
+    message: str
+
+
+class FrictionEvent(BaseModel):
+    """A friction event detected across grids."""
+    type: str  # contradiction, gap, uncaptured, tension
+    description: str
+    slots_involved: List[str]
+    severity: str  # low, medium, high
+    suggested_resolution: str
+
+
+class FrictionDetectionResponse(BaseModel):
+    """Response from friction detection."""
+    friction_events: List[FrictionEvent]
+    overall_coherence: float
+    summary: str
+
+
 # Update forward references
 ProjectResponse.model_rebuild()

@@ -1,7 +1,7 @@
 """
 Strategizer LLM Service
 
-Claude API integration for domain bootstrapping and Q&A dialogue.
+Claude API integration for domain bootstrapping, Q&A dialogue, and grid operations.
 Uses the LLM-First Philosophy: Python gathers → LLM judges → Python executes.
 """
 
@@ -10,6 +10,13 @@ import json
 from typing import Dict, Any, List, Optional
 
 from anthropic import Anthropic
+
+from ..prompts.grid_prompts import (
+    GRID_FILL_PROMPT,
+    GRID_FRICTION_PROMPT,
+    GRID_COMPATIBILITY_PROMPT,
+    GRID_AUTO_APPLY_PROMPT,
+)
 
 
 # Claude configuration
@@ -122,6 +129,237 @@ class StrategizerLLM:
 
         response_text = response.content[0].text
         return self._parse_suggestion_response(response_text)
+
+    # =========================================================================
+    # GRID OPERATIONS
+    # =========================================================================
+
+    async def auto_fill_grid(
+        self,
+        domain_context: Dict[str, Any],
+        unit: Dict[str, Any],
+        grid_definition: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Auto-fill grid slots based on unit content.
+
+        Args:
+            domain_context: Domain info (name, core_question)
+            unit: Unit data (type, name, definition, content)
+            grid_definition: Grid definition (type, description, slots)
+
+        Returns:
+            Dict with slots filled: {"slots": {"slot_name": {"content": "...", "confidence": 0.85}}}
+        """
+        # Format slots list
+        slots_list = ", ".join([
+            f"{s['name']} ({s['description']})"
+            for s in grid_definition.get("slots", [])
+        ])
+
+        prompt = GRID_FILL_PROMPT.format(
+            domain_name=domain_context.get("name", "Unknown"),
+            core_question=domain_context.get("core_question", "Unknown"),
+            unit_type=unit.get("unit_type", "concept"),
+            display_type=unit.get("display_type", unit.get("unit_type", "concept")),
+            unit_name=unit.get("name", "Unnamed"),
+            unit_definition=unit.get("definition", "No definition"),
+            unit_content=json.dumps(unit.get("content", {}), indent=2),
+            grid_type=grid_definition.get("grid_type", "UNKNOWN"),
+            grid_description=grid_definition.get("description", ""),
+            slots_list=slots_list
+        )
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=4096,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        response_text = response.content[0].text
+        return self._parse_json_response(response_text, {"slots": {}})
+
+    async def detect_grid_friction(
+        self,
+        domain_context: Dict[str, Any],
+        grids: List[Dict[str, Any]],
+        unit: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Detect friction (contradictions, gaps, tensions) across grids.
+
+        Args:
+            domain_context: Domain info
+            grids: List of grid instances with their slot content
+            unit: Optional unit data (if analyzing a single unit)
+
+        Returns:
+            Dict with friction events and coherence assessment
+        """
+        # Format grids as JSON for prompt
+        grids_json = json.dumps(grids, indent=2)
+
+        # For project-level analysis, summarize units from grids
+        if unit:
+            unit_name = unit.get("name", "Unnamed")
+            unit_type = unit.get("unit_type", "concept")
+        else:
+            # Extract unique units from grids data
+            unique_units = set()
+            for g in grids:
+                unique_units.add(f"{g.get('unit_name', 'Unknown')} ({g.get('unit_type', 'unit')})")
+            unit_name = ", ".join(list(unique_units)[:5])
+            if len(unique_units) > 5:
+                unit_name += f" (+{len(unique_units) - 5} more)"
+            unit_type = "multiple units"
+
+        prompt = GRID_FRICTION_PROMPT.format(
+            domain_name=domain_context.get("name", "Unknown"),
+            core_question=domain_context.get("core_question", "Unknown"),
+            unit_name=unit_name,
+            unit_type=unit_type,
+            grids_json=grids_json
+        )
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=4096,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        response_text = response.content[0].text
+        return self._parse_json_response(response_text, {
+            "friction_events": [],
+            "overall_coherence": 0.5,
+            "summary": "Unable to assess coherence"
+        })
+
+    async def assess_grid_compatibility(
+        self,
+        unit: Dict[str, Any],
+        grid_definition: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Assess whether a grid type is compatible with a unit.
+
+        Args:
+            unit: Unit data
+            grid_definition: Grid definition to assess
+
+        Returns:
+            Dict with compatibility score and rationale
+        """
+        slots_list = ", ".join([
+            f"{s['name']} ({s['description']})"
+            for s in grid_definition.get("slots", [])
+        ])
+
+        # Summarize unit content
+        content = unit.get("content", {})
+        content_summary = json.dumps(content, indent=2)[:500]
+
+        prompt = GRID_COMPATIBILITY_PROMPT.format(
+            unit_type=unit.get("unit_type", "concept"),
+            unit_name=unit.get("name", "Unnamed"),
+            unit_definition=unit.get("definition", "No definition"),
+            unit_content_summary=content_summary,
+            grid_type=grid_definition.get("grid_type", "UNKNOWN"),
+            grid_name=grid_definition.get("name", "Unknown Grid"),
+            grid_description=grid_definition.get("description", ""),
+            slots_list=slots_list
+        )
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=2048,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        response_text = response.content[0].text
+        return self._parse_json_response(response_text, {
+            "compatible": True,
+            "compatibility_score": 0.5,
+            "rationale": "Unable to assess",
+            "applicable_slots": [],
+            "inapplicable_slots": []
+        })
+
+    async def select_grids_to_apply(
+        self,
+        domain_context: Dict[str, Any],
+        unit: Dict[str, Any],
+        available_grids: Dict[str, List[Dict[str, Any]]],
+        existing_grids: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Select which grids to apply to a unit.
+
+        Args:
+            domain_context: Domain info with vocabulary
+            unit: Unit data
+            available_grids: {"required": [...], "flexible": [...]}
+            existing_grids: List of grid types already on the unit
+
+        Returns:
+            Dict with grids_to_apply and grids_to_skip
+        """
+        # Format grid lists
+        def format_grids(grids):
+            return ", ".join([
+                f"{g['grid_type']} ({g['description']})"
+                for g in grids
+            ])
+
+        prompt = GRID_AUTO_APPLY_PROMPT.format(
+            domain_name=domain_context.get("name", "Unknown"),
+            vocabulary=json.dumps(domain_context.get("vocabulary", {})),
+            unit_type=unit.get("unit_type", "concept"),
+            unit_name=unit.get("name", "Unnamed"),
+            unit_definition=unit.get("definition", "No definition"),
+            unit_content=json.dumps(unit.get("content", {}), indent=2),
+            tier1_grids=format_grids(available_grids.get("required", [])),
+            tier2_grids=format_grids(available_grids.get("flexible", [])),
+            existing_grids=", ".join(existing_grids) if existing_grids else "(none)"
+        )
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=2048,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        response_text = response.content[0].text
+        return self._parse_json_response(response_text, {
+            "grids_to_apply": [],
+            "grids_to_skip": []
+        })
+
+    def _parse_json_response(
+        self,
+        response_text: str,
+        fallback: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Parse JSON response with fallback."""
+        try:
+            text = response_text.strip()
+            # Remove markdown code blocks if present
+            if text.startswith("```"):
+                lines = text.split("\n")
+                start = 1 if lines[0].startswith("```") else 0
+                end = len(lines) - 1 if lines[-1].strip() == "```" else len(lines)
+                text = "\n".join(lines[start:end])
+
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return fallback
 
     def _build_bootstrap_prompt(self, project_name: str, project_brief: str) -> str:
         """Build the domain bootstrapping prompt."""
