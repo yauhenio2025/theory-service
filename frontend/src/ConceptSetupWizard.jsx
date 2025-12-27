@@ -732,6 +732,18 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
     }
   }, [stage, conceptName, notes, stageData, notesUnderstanding, hypothesisCards, differentiationCards, tensionFeedback, uploadedDocuments, dimensionalExtraction, questions, currentQuestionIndex, interimAnalysis, blindSpotsQueue, curatorAllocation, dynamicSectionQueues])
 
+  // AUTO-RECOVERY: Detect and fix broken STAGE1 state (no questions)
+  // This is a resilience layer that catches the broken state even if other fixes miss it
+  useEffect(() => {
+    if (stage === STAGES.STAGE1 && (!questions || questions.length === 0)) {
+      console.warn('[AUTO-RECOVERY] STAGE1 with no questions detected! Auto-redirecting to INTERIM_ANALYSIS')
+      // Don't go to DOCUMENT_UPLOAD - that will just call proceedWithValidatedCards again
+      // Go directly to INTERIM_ANALYSIS which can handle missing data
+      setProgress({ stage: 5, total: 11, label: 'Recovering session...' })
+      setStage(STAGES.INTERIM_ANALYSIS)
+    }
+  }, [stage, questions])
+
   // Restore from localStorage
   const restoreSession = () => {
     try {
@@ -771,11 +783,12 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
 
     // BUGFIX: Handle invalid stage/questions combinations
     // If stage is STAGE1 but questions array is empty, this is an invalid state
-    // that will cause "No questions loaded" error. Fall back to a safe stage.
+    // that will cause "No questions loaded" error. Fall back to INTERIM_ANALYSIS
+    // (NOT DOCUMENT_UPLOAD - that just calls proceedWithValidatedCards which causes a loop)
     let stageToRestore = parsed.stage
     if (parsed.stage === STAGES.STAGE1 && (!parsed.questions || parsed.questions.length === 0)) {
-      console.warn('[Session Restore] STAGE1 with empty questions detected! Falling back to DOCUMENT_UPLOAD')
-      stageToRestore = STAGES.DOCUMENT_UPLOAD
+      console.warn('[Session Restore] STAGE1 with empty questions detected! Falling back to INTERIM_ANALYSIS')
+      stageToRestore = STAGES.INTERIM_ANALYSIS
     }
 
     setStage(stageToRestore)
@@ -6399,25 +6412,22 @@ export default function ConceptSetupWizard({ sourceId, onComplete, onCancel, add
           )}
 
           {/* No questions fallback - only for STAGE1 since STAGE2/STAGE3 use dynamic sections now */}
+          {/* This should rarely be reached due to AUTO-RECOVERY useEffect, but kept as safety net */}
           {stage === STAGES.STAGE1 && !currentQuestion && (
             <div className="wizard-stage">
-              <div className="wizard-error">
-                {console.error('[RENDER DEBUG] Stage is STAGE1 with no questions! stage=', stage, 'questions=', questions.length, 'currentQuestion=', currentQuestion)}
-                <h3>Session State Issue</h3>
-                <p>Stage 1 has no questions loaded. This usually happens when restoring an old session.</p>
-                <p><small>Debug: Questions: {questions.length}, Index: {currentQuestionIndex}</small></p>
+              <div className="wizard-info">
+                {console.warn('[RENDER FALLBACK] Stage is STAGE1 with no questions - useEffect should auto-recover')}
+                <h3>Recovering Session...</h3>
+                <p>Redirecting to a valid stage. If this message persists, click below:</p>
                 <div className="wizard-actions" style={{marginTop: '1rem'}}>
                   <button
                     className="btn btn-primary"
-                    onClick={() => setStage(STAGES.DOCUMENT_UPLOAD)}
+                    onClick={() => {
+                      setProgress({ stage: 5, total: 11, label: 'Recovering...' })
+                      setStage(STAGES.INTERIM_ANALYSIS)
+                    }}
                   >
-                    Go to Documents Stage
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setStage(STAGES.UNDERSTANDING_VALIDATION)}
-                  >
-                    Go to Understanding Validation
+                    Continue to Analysis
                   </button>
                 </div>
               </div>
