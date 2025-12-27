@@ -1,0 +1,13 @@
+# Disable aggressive caching for JS files during development
+/*.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/assets/*.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# HTML should never be cached
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
