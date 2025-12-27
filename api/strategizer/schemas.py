@@ -382,5 +382,113 @@ class FrictionDetectionResponse(BaseModel):
     summary: str
 
 
+# =============================================================================
+# EVIDENCE SCHEMAS
+# =============================================================================
+
+class EvidenceSourceCreate(BaseModel):
+    """Create an evidence source."""
+    source_type: str = Field(..., description="Type: pdf, url, manual")
+    source_name: str = Field(..., description="Name/citation of the source")
+    source_url: Optional[str] = None
+    source_content: Optional[str] = None  # For manual input
+
+
+class EvidenceSourceResponse(BaseModel):
+    """Evidence source response."""
+    id: str
+    project_id: str
+    source_type: str
+    source_name: str
+    source_url: Optional[str] = None
+    extraction_status: str
+    extraction_error: Optional[str] = None
+    extracted_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EvidenceFragmentResponse(BaseModel):
+    """Evidence fragment response."""
+    id: str
+    source_id: str
+    content: str
+    source_location: Optional[str] = None
+    analysis_status: str
+    relationship_type: Optional[str] = None
+    target_unit_id: Optional[str] = None
+    target_grid_slot: Optional[str] = None
+    confidence: Optional[int] = None
+    is_ambiguous: bool = False
+    why_needs_decision: Optional[str] = None
+    source_name: Optional[str] = None  # Populated from source
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InterpretationResponse(BaseModel):
+    """Evidence interpretation response."""
+    id: str
+    fragment_id: str
+    interpretation_key: Optional[str] = None
+    title: str
+    strategy: Optional[str] = None
+    rationale: Optional[str] = None
+    relationship_type: Optional[str] = None
+    target_unit_id: Optional[str] = None
+    target_grid_slot: Optional[str] = None
+    is_recommended: bool = False
+    commitment_statement: Optional[str] = None
+    foreclosure_statements: Optional[List[str]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PendingDecisionResponse(BaseModel):
+    """A pending decision requiring user input."""
+    fragment: EvidenceFragmentResponse
+    interpretations: List[InterpretationResponse]
+
+
+class DecisionRequest(BaseModel):
+    """Request to resolve a decision."""
+    interpretation_id: Optional[str] = None  # None if rejecting all
+    decision_type: str = Field(..., description="accept_interpretation, reject_all, or manual_override")
+    decision_notes: Optional[str] = None
+
+
+class DecisionResponse(BaseModel):
+    """Decision resolution response."""
+    id: str
+    fragment_id: str
+    decision_type: str
+    decision_notes: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EvidenceProgressResponse(BaseModel):
+    """Evidence processing progress."""
+    sources_count: int
+    fragments_count: int
+    pending_extraction: int
+    pending_analysis: int
+    pending_decisions: int
+    integrated_count: int
+
+
+class ExtractRequest(BaseModel):
+    """Request to trigger extraction."""
+    force: bool = Field(False, description="Re-extract even if already done")
+
+
 # Update forward references
 ProjectResponse.model_rebuild()

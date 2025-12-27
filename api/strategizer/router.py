@@ -1372,3 +1372,11 @@ async def get_suggestions(
         suggestions=suggestions,
         priority_actions=priority_actions
     )
+
+
+# =============================================================================
+# INCLUDE SUB-ROUTERS
+# =============================================================================
+
+from .evidence_router import router as evidence_router
+router.include_router(evidence_router)

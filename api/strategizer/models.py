@@ -67,6 +67,39 @@ class DialogueTurnType(str, PyEnum):
     SUGGESTION = "suggestion"
 
 
+class EvidenceSourceType(str, PyEnum):
+    """Types of evidence sources."""
+    PDF = "pdf"
+    URL = "url"
+    MANUAL = "manual"
+
+
+class ExtractionStatus(str, PyEnum):
+    """Status of evidence extraction from a source."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class AnalysisStatus(str, PyEnum):
+    """Status of fragment analysis."""
+    PENDING = "PENDING"
+    ANALYZED = "ANALYZED"
+    NEEDS_DECISION = "NEEDS_DECISION"
+    INTEGRATED = "INTEGRATED"
+    REJECTED = "REJECTED"
+
+
+class EvidenceRelationship(str, PyEnum):
+    """How evidence relates to a grid slot."""
+    SUPPORTS = "supports"
+    CONTRADICTS = "contradicts"
+    EXTENDS = "extends"
+    QUALIFIES = "qualifies"
+    NEW_INSIGHT = "new_insight"
+
+
 # =============================================================================
 # PROJECTS
 # =============================================================================
@@ -247,4 +280,135 @@ class StrategizerDialogueTurn(Base):
     # Indices
     __table_args__ = (
         Index("idx_strategizer_dialogue_project", "project_id"),
+    )
+
+
+# =============================================================================
+# EVIDENCE
+# =============================================================================
+
+class StrategizerEvidenceSource(Base):
+    """
+    An external source of evidence (PDF, URL, manual input).
+    Evidence is extracted into fragments for analysis.
+    """
+    __tablename__ = "strategizer_evidence_sources"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("strategizer_projects.id", ondelete="CASCADE"), nullable=False)
+
+    source_type = Column(Enum(EvidenceSourceType), nullable=False)
+    source_name = Column(String(500), nullable=False)  # Filename, URL, or title
+    source_url = Column(String(1000))
+    source_content = Column(Text)  # Full text content
+
+    extraction_status = Column(Enum(ExtractionStatus), default=ExtractionStatus.PENDING)
+    extraction_error = Column(Text)
+    extracted_count = Column(Integer, default=0)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    project = relationship("StrategizerProject", backref="evidence_sources")
+    fragments = relationship("StrategizerEvidenceFragment", back_populates="source", cascade="all, delete-orphan")
+
+    # Indices
+    __table_args__ = (
+        Index("idx_strategizer_evidence_source_project", "project_id"),
+    )
+
+
+class StrategizerEvidenceFragment(Base):
+    """
+    An extracted claim/insight from an evidence source.
+    Analyzed for relationship to grid slots.
+    """
+    __tablename__ = "strategizer_evidence_fragments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    source_id = Column(String(36), ForeignKey("strategizer_evidence_sources.id", ondelete="CASCADE"), nullable=False)
+
+    content = Column(Text, nullable=False)  # The extracted claim/insight
+    source_location = Column(String(200))  # Page, paragraph, etc.
+    extraction_metadata = Column(JSON)  # Additional extraction info
+
+    # Analysis results
+    analysis_status = Column(Enum(AnalysisStatus), default=AnalysisStatus.PENDING)
+    relationship_type = Column(Enum(EvidenceRelationship))
+    target_unit_id = Column(String(36), ForeignKey("strategizer_units.id", ondelete="SET NULL"))
+    target_grid_slot = Column(String(100))  # "GRID_TYPE.slot_name" format
+    confidence = Column(Integer)  # 0-100 confidence score
+    is_ambiguous = Column(Boolean, default=False)
+    why_needs_decision = Column(Text)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    source = relationship("StrategizerEvidenceSource", back_populates="fragments")
+    interpretations = relationship("StrategizerEvidenceInterpretation", back_populates="fragment", cascade="all, delete-orphan")
+
+    # Indices
+    __table_args__ = (
+        Index("idx_strategizer_fragment_source", "source_id"),
+        Index("idx_strategizer_fragment_status", "analysis_status"),
+    )
+
+
+class StrategizerEvidenceInterpretation(Base):
+    """
+    A possible interpretation of an ambiguous evidence fragment.
+    When confidence is low, LLM proposes 2-4 interpretations for user choice.
+    """
+    __tablename__ = "strategizer_evidence_interpretations"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    fragment_id = Column(String(36), ForeignKey("strategizer_evidence_fragments.id", ondelete="CASCADE"), nullable=False)
+
+    interpretation_key = Column(String(10))  # 'a', 'b', 'c', 'd'
+    title = Column(String(200), nullable=False)
+    strategy = Column(Text)  # How this interpretation would integrate
+    rationale = Column(Text)  # Why this interpretation makes sense
+
+    # Target slot for this interpretation
+    relationship_type = Column(Enum(EvidenceRelationship))
+    target_unit_id = Column(String(36), ForeignKey("strategizer_units.id", ondelete="SET NULL"))
+    target_grid_slot = Column(String(100))
+    is_recommended = Column(Boolean, default=False)
+
+    # Commitment/foreclosure analysis
+    commitment_statement = Column(Text)  # What you're committing to if chosen
+    foreclosure_statements = Column(JSON)  # What you're giving up if chosen
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    fragment = relationship("StrategizerEvidenceFragment", back_populates="interpretations")
+
+    # Indices
+    __table_args__ = (
+        Index("idx_strategizer_interp_fragment", "fragment_id"),
+    )
+
+
+class StrategizerEvidenceDecision(Base):
+    """
+    A user decision on an ambiguous evidence fragment.
+    Records which interpretation was chosen and why.
+    """
+    __tablename__ = "strategizer_evidence_decisions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    fragment_id = Column(String(36), ForeignKey("strategizer_evidence_fragments.id", ondelete="CASCADE"), nullable=False)
+    interpretation_id = Column(String(36), ForeignKey("strategizer_evidence_interpretations.id", ondelete="SET NULL"))
+
+    decision_type = Column(String(50), nullable=False)  # 'accept_interpretation', 'reject_all', 'manual_override'
+    decision_notes = Column(Text)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Indices
+    __table_args__ = (
+        Index("idx_strategizer_decision_fragment", "fragment_id"),
     )

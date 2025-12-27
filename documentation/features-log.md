@@ -4,6 +4,126 @@ This document tracks major features introduced to the Theory Service application
 
 ---
 
+## 2025-12-27: Strategizer MVP Implementation
+
+**Commit:** `7cf2870`
+**Branch:** `main`
+
+### Description
+Implemented the complete Strategizer MVP - an LLM-powered strategic framework builder. This is the first working implementation of the domain-agnostic strategic thinking system specified in STRATEGIZER-IMPLEMENTATION-SPEC.md.
+
+### What Was Built
+
+**1. Project Management**
+- Full CRUD for strategic projects
+- Project brief storage for LLM analysis
+- Project summary with domain and unit counts
+
+**2. LLM-Powered Domain Bootstrapping**
+The crown jewel feature. Given a project brief, the LLM generates:
+- **Domain name and core question** - Specific to the strategic domain
+- **Success criteria** - What success looks like in quantified terms
+- **Vocabulary mapping** - Domain-specific terms for concepts, tensions, actors
+- **Template base detection** - Which template family (investment, brand, policy, etc.)
+- **5 seed concepts** - Each with name, definition, and rationale
+- **3 seed dialectics** - Core tensions with pole descriptions
+
+Example: A climate tech fund brief produces "Climate Tech Venture Investment" domain with concepts like "Technical Defensibility", "Climate Impact Potential", "Path to Scale Economics", and dialectics like "Climate Impact ↔ Financial Returns".
+
+**3. Unit Management**
+- Create, read, update, delete units
+- Three unit types: Concept, Dialectic, Actor
+- Domain vocabulary applied to display types
+- Version tracking on updates
+
+**4. Seed Content Workflow**
+- LLM-proposed seeds stored as pending
+- Accept/reject workflow for user review
+- Accepted seeds auto-convert to units
+
+**5. Q&A Dialogue**
+- Framework-aware question answering
+- Dialogue history with turn tracking
+- Suggested actions from responses
+- Implications extraction
+
+**6. Smart Suggestions**
+- LLM-powered next step suggestions
+- Basic heuristics fallback when LLM unavailable
+- Focus area filtering
+
+### API Endpoints Created
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/strategizer/health` | GET | Health check |
+| `/api/strategizer/projects` | GET, POST | List/create projects |
+| `/api/strategizer/projects/{id}` | GET, PUT, DELETE | Get/update/delete project |
+| `/api/strategizer/projects/{id}/bootstrap` | POST | Bootstrap domain from brief |
+| `/api/strategizer/projects/{id}/domain` | GET, DELETE | Get/delete domain |
+| `/api/strategizer/projects/{id}/domain/seeds/accept` | POST | Accept/reject seeds |
+| `/api/strategizer/projects/{id}/units` | GET, POST | List/create units |
+| `/api/strategizer/projects/{id}/units/{id}` | GET, PUT, DELETE | Unit CRUD |
+| `/api/strategizer/projects/{id}/ask` | POST | Ask a question |
+| `/api/strategizer/projects/{id}/dialogue` | GET | Get dialogue history |
+| `/api/strategizer/projects/{id}/suggest` | POST | Get suggestions |
+
+### Files Created
+
+```
+api/strategizer/
+├── __init__.py           # Module exports
+├── models.py             # SQLAlchemy models (6 tables)
+├── schemas.py            # Pydantic schemas (~30 models)
+├── router.py             # FastAPI endpoints (~900 lines)
+└── services/
+    ├── __init__.py
+    └── llm.py            # Claude API integration (~350 lines)
+```
+
+### Database Schema
+
+6 new tables added:
+- `strategizer_projects` - Projects with briefs
+- `strategizer_domains` - Bootstrapped domain structures
+- `strategizer_seed_content` - Proposed seeds pending acceptance
+- `strategizer_units` - Concepts, dialectics, actors
+- `strategizer_grid_instances` - Analytical grids (prepared for Phase 2)
+- `strategizer_dialogue_turns` - Q&A conversation history
+
+### Key Design Decisions
+
+1. **LLM-First Architecture** - Python gathers → LLM judges → Python executes
+2. **Graceful Degradation** - Works with basic heuristics when API key missing
+3. **Domain Vocabulary** - Universal types (concept, dialectic, actor) mapped to domain terms
+4. **Seed Workflow** - User reviews LLM proposals before committing to framework
+5. **PostgreSQL Integration** - Uses existing theory-service database infrastructure
+
+### Technical Implementation
+
+- **Claude Sonnet 4.5** for all LLM operations
+- **Async SQLAlchemy** with PostgreSQL
+- **Pydantic** for request/response validation
+- **FastAPI** async endpoints
+- Integrated with existing theory-service app
+
+### Principles Embodied
+
+- `prn_llm_first_judgment` - LLM makes nuanced judgments, Python executes
+- `prn_domain_agnostic_bootstrapping` - Any domain from any brief
+- `prn_vocabulary_adaptation` - Universal types adapt to domain vocabulary
+- `prn_seed_content_validation` - User reviews before framework commits
+- `prn_graceful_degradation` - Works without LLM, just with less intelligence
+
+### What's Next (Phase 2)
+
+- Multi-Grid analytical layer
+- Seed content from external literature
+- Interlocutor modeling
+- Web UI for framework building
+
+---
+
 ## 2025-12-27: Domain-Agnostic System (Domain Bootstrapping & Evolution)
 
 **Branch:** `main`
@@ -92,6 +212,109 @@ class DomainBootstrapper:
 - **Minimal Viable Start** — Begin with just enough to start, evolve as understanding grows
 - **Template Inheritance** — Clone from proven domains, modify as needed
 - **Living Domain Structure** — Domains evolve with project understanding
+
+---
+
+## 2025-12-27: Strategizer Phase 2 - Evidence Integration (Step 2)
+
+**Branch:** `main`
+
+### Description
+Implemented complete evidence integration pipeline for Strategizer. Evidence sources (PDFs, URLs, manual text) can be uploaded, fragments extracted via LLM, analyzed against units with confidence-based routing, and integrated through a decision workflow.
+
+### Evidence Workflow
+
+1. **Source Upload**: Add evidence sources with type (pdf, url, manual)
+2. **Fragment Extraction**: LLM extracts strategic insights as fragments
+3. **Fragment Analysis**: Each fragment analyzed against target unit with confidence score
+4. **Confidence Routing**:
+   - 0.85+ → Auto-integrate
+   - 0.60-0.84 → Needs user confirmation
+   - <0.60 → Generate interpretation options
+5. **Decision Resolution**: User accepts/rejects pending decisions
+6. **Progress Tracking**: Real-time counts for sources, fragments, pending decisions
+
+### API Endpoints Created
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/projects/{id}/evidence/sources` | POST | Add evidence source |
+| `/projects/{id}/evidence/sources` | GET | List sources |
+| `/projects/{id}/evidence/sources/{id}` | DELETE | Delete source |
+| `/projects/{id}/evidence/sources/{id}/extract` | POST | Trigger LLM extraction |
+| `/projects/{id}/evidence/fragments` | GET | List fragments with filters |
+| `/projects/{id}/evidence/fragments/{id}/analyze` | POST | Analyze fragment against unit |
+| `/projects/{id}/evidence/decisions/pending` | GET | Get next pending decision |
+| `/projects/{id}/evidence/decisions/{id}/resolve` | POST | Resolve with interpretation |
+| `/projects/{id}/evidence/progress` | GET | Processing statistics |
+
+### Files Created
+
+```
+api/strategizer/
+├── evidence_router.py              # Evidence API endpoints (~800 lines)
+├── prompts/
+│   ├── __init__.py                 # Updated exports
+│   └── evidence_prompts.py         # LLM prompts for evidence processing
+└── services/
+    └── evidence_llm.py             # Evidence LLM service functions
+```
+
+### Database Models Added
+
+- `StrategizerEvidenceSource` - External evidence sources
+- `StrategizerEvidenceFragment` - Extracted claims from sources
+- `StrategizerEvidenceInterpretation` - Interpretation options for ambiguous fragments
+- `StrategizerEvidenceDecision` - User decisions on fragments
+
+### Key Design Decisions
+
+1. **Confidence-Based Routing** - High confidence auto-integrates, medium needs confirmation, low generates options
+2. **LLM-First Analysis** - Python gathers data, LLM makes relationship judgments
+3. **Reusable Prompts** - Extracted prompt templates for extraction, analysis, interpretation
+4. **PostgreSQL Enum Updates** - Added uppercase enum values for SQLAlchemy compatibility
+
+### Principles Embodied
+
+- `prn_confidence_based_routing` - Auto-apply vs pending decisions based on confidence
+- `prn_llm_first_judgment` - LLM makes nuanced judgments about evidence relationships
+- `prn_evidence_driven_concept_refinement` - Concepts/units evolve through evidence encounters
+
+---
+
+## 2025-12-27: Strategizer Phase 2 - Grid Endpoints (Step 1)
+
+**Branch:** `main`
+**Commit:** `5b3b678`
+
+### Description
+Wired up the orphaned grid model from Phase 1 with full CRUD endpoints. Grids are analytical lenses that can be applied to units with slots to fill.
+
+### API Endpoints Created
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/projects/{id}/units/{unit_id}/grids` | POST | Create grid on unit |
+| `/projects/{id}/units/{unit_id}/grids` | GET | List grids on unit |
+| `/projects/{id}/units/{unit_id}/grids/{grid_id}` | GET | Get specific grid |
+| `/projects/{id}/units/{unit_id}/grids/{grid_id}` | PUT | Update grid |
+| `/projects/{id}/units/{unit_id}/grids/{grid_id}` | DELETE | Delete grid |
+| `/projects/{id}/units/{unit_id}/grids/{grid_id}/slots/{slot}` | PUT | Update specific slot |
+
+### Files Modified
+
+- `api/strategizer/router.py` - Added grid CRUD endpoints
+- `api/strategizer/schemas.py` - Added grid Pydantic schemas
+
+### Schemas Added
+
+- `GridSlotContent` - Content for individual grid slots
+- `GridInstanceCreate` - Create grid request
+- `GridInstanceUpdate` - Update grid request
+- `GridSlotUpdate` - Update slot request
+- `GridInstanceResponse` - Grid response model
+
+---
 
 ---
 
