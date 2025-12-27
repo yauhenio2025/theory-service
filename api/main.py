@@ -9,8 +9,10 @@ from datetime import datetime
 from typing import List, Optional
 from contextlib import asynccontextmanager
 
+from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, text
 from sqlalchemy.orm import selectinload
@@ -89,6 +91,11 @@ app.include_router(concept_analysis_router)
 app.include_router(concept_evidence_router)
 # Include strategizer router
 app.include_router(strategizer_router)
+
+# Mount static files for strategizer UI
+STATIC_DIR = Path(__file__).parent / "strategizer" / "static"
+if STATIC_DIR.exists():
+    app.mount("/api/strategizer/static", StaticFiles(directory=str(STATIC_DIR)), name="strategizer-static")
 
 
 # =============================================================================

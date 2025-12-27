@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} - Strategizer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/">Projects</a></li>
+            <li class="breadcrumb-item active">{{ project.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Left Sidebar: Units by Type -->
+        <div class="col-md-3 sidebar">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="bi bi-diagram-3"></i> Units</h5>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newUnitModal">
+                    <i class="bi bi-plus"></i>
+                </button>
+            </div>
+
+            {% if project.domain %}
+            <!-- Concepts -->
+            <div class="mb-4">
+                <h6 class="text-primary">
+                    <i class="bi bi-lightbulb"></i>
+                    {{ project.domain.vocabulary.concept if project.domain.vocabulary else 'Concepts' }}
+                    <span class="badge bg-primary rounded-pill">{{ units_by_type.concept|length }}</span>
+                </h6>
+                {% for unit in units_by_type.concept %}
+                <div class="unit-card card mb-2 concept" onclick="window.location='/api/strategizer/ui/projects/{{ project.id }}/units/{{ unit.id }}'">
+                    <div class="card-body py-2 px-3">
+                        <strong>{{ unit.name }}</strong>
+                        <p class="small text-muted mb-0">{{ unit.definition }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not units_by_type.concept %}
+                <p class="text-muted small">No concepts yet</p>
+                {% endif %}
+            </div>
+
+            <!-- Dialectics -->
+            <div class="mb-4">
+                <h6 class="text-purple">
+                    <i class="bi bi-arrows-expand"></i>
+                    {{ project.domain.vocabulary.dialectic if project.domain.vocabulary else 'Tensions' }}
+                    <span class="badge badge-dialectic rounded-pill">{{ units_by_type.dialectic|length }}</span>
+                </h6>
+                {% for unit in units_by_type.dialectic %}
+                <div class="unit-card card mb-2 dialectic" onclick="window.location='/api/strategizer/ui/projects/{{ project.id }}/units/{{ unit.id }}'">
+                    <div class="card-body py-2 px-3">
+                        <strong>{{ unit.name }}</strong>
+                        <p class="small text-muted mb-0">{{ unit.definition }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not units_by_type.dialectic %}
+                <p class="text-muted small">No tensions yet</p>
+                {% endif %}
+            </div>
+
+            <!-- Actors -->
+            <div class="mb-4">
+                <h6 class="text-teal">
+                    <i class="bi bi-people"></i>
+                    {{ project.domain.vocabulary.actor if project.domain.vocabulary else 'Actors' }}
+                    <span class="badge badge-actor rounded-pill">{{ units_by_type.actor|length }}</span>
+                </h6>
+                {% for unit in units_by_type.actor %}
+                <div class="unit-card card mb-2 actor" onclick="window.location='/api/strategizer/ui/projects/{{ project.id }}/units/{{ unit.id }}'">
+                    <div class="card-body py-2 px-3">
+                        <strong>{{ unit.name }}</strong>
+                        <p class="small text-muted mb-0">{{ unit.definition }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not units_by_type.actor %}
+                <p class="text-muted small">No actors yet</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                No domain bootstrapped yet.
+                <button class="btn btn-sm btn-warning mt-2" onclick="bootstrapDomain()">
+                    Bootstrap Domain
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Main Content: Project Overview -->
+        <div class="col-md-6 main-content">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ project.name }}</h4>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProjectModal">
+                                <i class="bi bi-pencil"></i> Edit Project
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteProject()">
+                                <i class="bi bi-trash"></i> Delete Project
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if project.domain %}
+                    <div class="mb-3">
+                        <h6><i class="bi bi-target"></i> Core Question</h6>
+                        <p class="fst-italic">{{ project.domain.core_question }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <h6><i class="bi bi-file-text"></i> Brief</h6>
+                        <p>{{ project.brief }}</p>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="row text-center mt-4">
+                        <div class="col-4 progress-stat">
+                            <div class="stat-value">{{ units_by_type.concept|length + units_by_type.dialectic|length + units_by_type.actor|length }}</div>
+                            <div class="stat-label">Total Units</div>
+                        </div>
+                        <div class="col-4 progress-stat">
+                            <div class="stat-value">{{ source_count }}</div>
+                            <div class="stat-label">Evidence Sources</div>
+                        </div>
+                        <div class="col-4 progress-stat">
+                            <div class="stat-value {% if pending_decisions > 0 %}text-warning{% endif %}">{{ pending_decisions }}</div>
+                            <div class="stat-label">Pending Decisions</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/api/strategizer/ui/projects/{{ project.id }}/evidence" class="btn btn-outline-primary">
+                            <i class="bi bi-file-earmark-plus"></i> Add Evidence
+                        </a>
+                        {% if pending_decisions > 0 %}
+                        <a href="/api/strategizer/ui/projects/{{ project.id }}/decisions" class="btn btn-warning">
+                            <i class="bi bi-question-circle"></i> Resolve {{ pending_decisions }} Pending Decision{{ 's' if pending_decisions > 1 else '' }}
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#newUnitModal">
+                            <i class="bi bi-plus-lg"></i> Add Unit Manually
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar: Evidence & Decisions -->
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between">
+                    <span><i class="bi bi-journal-text"></i> Evidence</span>
+                    <a href="/api/strategizer/ui/projects/{{ project.id }}/evidence" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">{{ source_count }} source{{ 's' if source_count != 1 else '' }} uploaded</p>
+                    <a href="/api/strategizer/ui/projects/{{ project.id }}/evidence" class="btn btn-sm btn-primary w-100">
+                        <i class="bi bi-upload"></i> Upload Sources
+                    </a>
+                </div>
+            </div>
+
+            {% if pending_decisions > 0 %}
+            <div class="card decision-card">
+                <div class="card-header">
+                    <i class="bi bi-exclamation-triangle"></i> Decisions Needed
+                </div>
+                <div class="card-body">
+                    <p>{{ pending_decisions }} evidence fragment{{ 's' if pending_decisions > 1 else '' }} need{{ '' if pending_decisions > 1 else 's' }} your input.</p>
+                    <a href="/api/strategizer/ui/projects/{{ project.id }}/decisions" class="btn btn-warning w-100">
+                        <i class="bi bi-check2-circle"></i> Review Now
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- New Unit Modal -->
+<div class="modal fade" id="newUnitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="newUnitForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Unit Type</label>
+                        <select class="form-select" id="unitType" required>
+                            <option value="concept">{{ project.domain.vocabulary.concept if project.domain and project.domain.vocabulary else 'Concept' }}</option>
+                            <option value="dialectic">{{ project.domain.vocabulary.dialectic if project.domain and project.domain.vocabulary else 'Dialectic' }}</option>
+                            <option value="actor">{{ project.domain.vocabulary.actor if project.domain and project.domain.vocabulary else 'Actor' }}</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="unitName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="unitName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="unitDefinition" class="form-label">Definition</label>
+                        <textarea class="form-control" id="unitDefinition" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Unit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Project Modal -->
+<div class="modal fade" id="editProjectModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editProjectForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editProjectName" class="form-label">Project Name</label>
+                        <input type="text" class="form-control" id="editProjectName" value="{{ project.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editProjectBrief" class="form-label">Project Brief</label>
+                        <textarea class="form-control" id="editProjectBrief" rows="6" required>{{ project.brief }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const projectId = '{{ project.id }}';
+
+async function bootstrapDomain() {
+    try {
+        await API.bootstrap(projectId, {});
+        Toast.success('Domain bootstrapped!');
+        location.reload();
+    } catch (error) {
+        Toast.error('Failed to bootstrap: ' + error.message);
+    }
+}
+
+async function deleteProject() {
+    showConfirmModal(
+        'Delete Project',
+        'Are you sure you want to delete this project? This action cannot be undone.',
+        async () => {
+            try {
+                await API.deleteProject(projectId);
+                Toast.success('Project deleted');
+                window.location = '/api/strategizer/ui/';
+            } catch (error) {
+                Toast.error('Failed to delete: ' + error.message);
+            }
+        }
+    );
+}
+
+function initPage() {
+    // New Unit Form
+    document.getElementById('newUnitForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            unit_type: document.getElementById('unitType').value,
+            name: document.getElementById('unitName').value,
+            definition: document.getElementById('unitDefinition').value
+        };
+
+        try {
+            const unit = await API.createUnit(projectId, data);
+            Toast.success('Unit created!');
+            bootstrap.Modal.getInstance(document.getElementById('newUnitModal')).hide();
+            window.location = `/api/strategizer/ui/projects/${projectId}/units/${unit.id}`;
+        } catch (error) {
+            Toast.error('Failed to create unit: ' + error.message);
+        }
+    });
+
+    // Edit Project Form
+    document.getElementById('editProjectForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('editProjectName').value,
+            brief: document.getElementById('editProjectBrief').value
+        };
+
+        try {
+            await API.updateProject(projectId, data);
+            Toast.success('Project updated!');
+            location.reload();
+        } catch (error) {
+            Toast.error('Failed to update: ' + error.message);
+        }
+    });
+}
+</script>
+{% endblock %}

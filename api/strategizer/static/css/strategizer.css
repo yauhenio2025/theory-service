@@ -1,0 +1,272 @@
+/* Strategizer Custom Styles */
+
+/* Theme Variables */
+:root {
+    --st-primary: #0d6efd;
+    --st-secondary: #6c757d;
+    --st-success: #198754;
+    --st-warning: #ffc107;
+    --st-danger: #dc3545;
+    --st-info: #0dcaf0;
+}
+
+/* Dark theme overrides */
+[data-bs-theme="dark"] {
+    --st-card-bg: #212529;
+    --st-border-color: #495057;
+}
+
+/* Layout */
+.sidebar {
+    min-height: calc(100vh - 150px);
+    border-right: 1px solid var(--bs-border-color);
+}
+
+.main-content {
+    min-height: calc(100vh - 150px);
+}
+
+/* Project Cards */
+.project-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Unit Cards */
+.unit-card {
+    border-left: 4px solid var(--st-primary);
+    transition: all 0.2s;
+}
+
+.unit-card.concept {
+    border-left-color: #0d6efd;
+}
+
+.unit-card.dialectic {
+    border-left-color: #6f42c1;
+}
+
+.unit-card.actor {
+    border-left-color: #20c997;
+}
+
+.unit-card:hover {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.unit-card.selected {
+    background-color: var(--bs-primary-bg-subtle);
+    border-left-width: 6px;
+}
+
+/* Grid Accordion */
+.grid-accordion .accordion-button {
+    padding: 0.75rem 1rem;
+}
+
+.grid-accordion .accordion-button:not(.collapsed) {
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+.grid-slot {
+    padding: 0.5rem;
+    border: 1px dashed var(--bs-border-color);
+    border-radius: 0.25rem;
+    min-height: 60px;
+    transition: all 0.2s;
+}
+
+.grid-slot:hover {
+    border-color: var(--st-primary);
+    background-color: var(--bs-tertiary-bg);
+}
+
+.grid-slot.filled {
+    border-style: solid;
+    background-color: var(--bs-success-bg-subtle);
+}
+
+.grid-slot.empty {
+    opacity: 0.7;
+}
+
+/* Evidence Cards */
+.evidence-source {
+    border-left: 3px solid var(--st-info);
+}
+
+.evidence-fragment {
+    border-left: 2px solid var(--st-secondary);
+    padding-left: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.evidence-fragment.pending {
+    border-left-color: var(--st-warning);
+}
+
+.evidence-fragment.integrated {
+    border-left-color: var(--st-success);
+}
+
+.evidence-fragment.needs-decision {
+    border-left-color: var(--st-danger);
+}
+
+/* Decision Cards */
+.decision-card {
+    border: 2px solid var(--st-warning);
+    background-color: var(--bs-warning-bg-subtle);
+}
+
+.interpretation-option {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.interpretation-option:hover {
+    border-color: var(--st-primary);
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+.interpretation-option.selected {
+    border-color: var(--st-primary);
+    border-width: 2px;
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+/* Progress Indicators */
+.progress-stat {
+    text-align: center;
+    padding: 1rem;
+}
+
+.progress-stat .stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--st-primary);
+}
+
+.progress-stat .stat-label {
+    font-size: 0.875rem;
+    color: var(--bs-secondary);
+}
+
+/* Badges */
+.badge-concept {
+    background-color: #0d6efd;
+}
+
+.badge-dialectic {
+    background-color: #6f42c1;
+}
+
+.badge-actor {
+    background-color: #20c997;
+}
+
+.badge-pending {
+    background-color: var(--st-warning);
+    color: #000;
+}
+
+.badge-integrated {
+    background-color: var(--st-success);
+}
+
+.badge-needs-decision {
+    background-color: var(--st-danger);
+}
+
+/* Confidence Indicators */
+.confidence-high {
+    color: var(--st-success);
+}
+
+.confidence-medium {
+    color: var(--st-warning);
+}
+
+.confidence-low {
+    color: var(--st-danger);
+}
+
+/* Loading States */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+[data-bs-theme="dark"] .loading-overlay {
+    background: rgba(0,0,0,0.8);
+}
+
+/* Auto-save Indicator */
+.autosave-indicator {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    background: var(--st-success);
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.autosave-indicator.saving {
+    background: var(--st-warning);
+    color: #000;
+    opacity: 1;
+}
+
+.autosave-indicator.saved {
+    background: var(--st-success);
+    opacity: 1;
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 1050;
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--bs-secondary);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--bs-border-color);
+        min-height: auto;
+    }
+}

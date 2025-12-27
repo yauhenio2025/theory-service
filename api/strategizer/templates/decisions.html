@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Decisions - {{ project.name }} - Strategizer{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/">Projects</a></li>
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/projects/{{ project.id }}">{{ project.name }}</a></li>
+            <li class="breadcrumb-item active">Pending Decisions</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="bi bi-question-circle"></i> Pending Decisions</h4>
+        <span class="badge bg-warning text-dark fs-6">{{ pending_count }} remaining</span>
+    </div>
+
+    {% if decisions %}
+    {% for decision in decisions %}
+    <div class="card decision-card mb-4" id="decision-{{ decision.fragment_id }}">
+        <div class="card-header">
+            <i class="bi bi-puzzle"></i> Evidence Fragment
+        </div>
+        <div class="card-body">
+            <!-- Fragment Content -->
+            <blockquote class="blockquote mb-4">
+                <p class="mb-0">{{ decision.content }}</p>
+            </blockquote>
+
+            <!-- Why Decision Needed -->
+            {% if decision.why_needs_decision %}
+            <div class="alert alert-info mb-4">
+                <i class="bi bi-info-circle"></i> <strong>Why this needs your input:</strong>
+                <p class="mb-0 mt-1">{{ decision.why_needs_decision }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Interpretation Options -->
+            <h6 class="mb-3">Choose an interpretation:</h6>
+            <div class="row g-3 mb-4">
+                {% for interp in decision.interpretations %}
+                <div class="col-md-6">
+                    <div class="interpretation-option {% if interp.is_recommended %}border-primary{% endif %}"
+                         data-interpretation-id="{{ interp.id }}"
+                         data-fragment-id="{{ decision.fragment_id }}"
+                         onclick="selectInterpretation(this)">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0">
+                                <span class="badge bg-secondary me-1">{{ interp.interpretation_key|upper }}</span>
+                                {{ interp.title }}
+                            </h6>
+                            {% if interp.is_recommended %}
+                            <span class="badge bg-success">Recommended</span>
+                            {% endif %}
+                        </div>
+                        <p class="small mb-2">{{ interp.strategy }}</p>
+
+                        {% if interp.target_grid_slot %}
+                        <div class="small text-muted mb-2">
+                            <i class="bi bi-grid-3x3"></i> Target: {{ interp.target_grid_slot }}
+                        </div>
+                        {% endif %}
+
+                        {% if interp.commitment_statement %}
+                        <div class="small text-success mb-1">
+                            <i class="bi bi-check-circle"></i> {{ interp.commitment_statement }}
+                        </div>
+                        {% endif %}
+
+                        {% if interp.foreclosure_statements %}
+                        <div class="small text-danger">
+                            {% for foreclosure in interp.foreclosure_statements %}
+                            <div><i class="bi bi-x-circle"></i> {{ foreclosure }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-between align-items-center">
+                <button class="btn btn-outline-danger" onclick="rejectFragment('{{ decision.fragment_id }}')">
+                    <i class="bi bi-x-lg"></i> Reject Fragment
+                </button>
+                <div>
+                    <button class="btn btn-secondary me-2" onclick="skipDecision('{{ decision.fragment_id }}')">
+                        Skip for now
+                    </button>
+                    <button class="btn btn-primary resolve-btn" disabled
+                            data-fragment-id="{{ decision.fragment_id }}">
+                        <i class="bi bi-check-lg"></i> Confirm Selection
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-check-circle"></i>
+        <h4>All caught up!</h4>
+        <p>No pending decisions at this time.</p>
+        <a href="/api/strategizer/ui/projects/{{ project.id }}" class="btn btn-primary">
+            Back to Project
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const projectId = '{{ project.id }}';
+let selectedInterpretations = {};
+
+function selectInterpretation(element) {
+    const fragmentId = element.dataset.fragmentId;
+    const interpretationId = element.dataset.interpretationId;
+
+    // Clear previous selection in this decision
+    document.querySelectorAll(`[data-fragment-id="${fragmentId}"]`).forEach(el => {
+        el.classList.remove('selected');
+    });
+
+    // Select this one
+    element.classList.add('selected');
+    selectedInterpretations[fragmentId] = interpretationId;
+
+    // Enable resolve button
+    document.querySelector(`.resolve-btn[data-fragment-id="${fragmentId}"]`).disabled = false;
+}
+
+async function resolveDecision(fragmentId, decision, interpretationId = null) {
+    try {
+        await API.resolveDecision(projectId, fragmentId, {
+            decision: decision,
+            interpretation_id: interpretationId
+        });
+        Toast.success('Decision resolved!');
+
+        // Remove the card with animation
+        const card = document.getElementById(`decision-${fragmentId}`);
+        card.style.transition = 'opacity 0.3s';
+        card.style.opacity = '0';
+        setTimeout(() => {
+            card.remove();
+            // Check if any left
+            if (!document.querySelectorAll('.decision-card').length) {
+                location.reload();
+            }
+        }, 300);
+    } catch (error) {
+        Toast.error('Failed to resolve: ' + error.message);
+    }
+}
+
+async function rejectFragment(fragmentId) {
+    showConfirmModal(
+        'Reject Fragment',
+        'Are you sure you want to reject this evidence fragment? It will not be integrated into your framework.',
+        () => resolveDecision(fragmentId, 'reject')
+    );
+}
+
+function skipDecision(fragmentId) {
+    // Just scroll to next
+    const card = document.getElementById(`decision-${fragmentId}`);
+    const next = card.nextElementSibling;
+    if (next && next.classList.contains('decision-card')) {
+        next.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        Toast.info('No more decisions after this one');
+    }
+}
+
+function initPage() {
+    // Set up resolve buttons
+    document.querySelectorAll('.resolve-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const fragmentId = btn.dataset.fragmentId;
+            const interpretationId = selectedInterpretations[fragmentId];
+            if (interpretationId) {
+                resolveDecision(fragmentId, 'accept', interpretationId);
+            }
+        });
+    });
+}
+</script>
+{% endblock %}

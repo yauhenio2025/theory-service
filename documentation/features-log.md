@@ -215,6 +215,62 @@ class DomainBootstrapper:
 
 ---
 
+## 2025-12-27: Strategizer Phase 2 - Web UI & Integration (Steps 3-4)
+
+**Branch:** `main`
+
+### Description
+Built complete web UI for Strategizer using FastAPI + Jinja2 + Bootstrap 5 and implemented evidence-to-grid integration logic.
+
+### Web UI Pages
+
+| Page | Route | Function |
+|------|-------|----------|
+| Projects | `/ui/` | Project list with create modal |
+| Project Detail | `/ui/projects/{id}` | 3-column workspace (units, overview, evidence) |
+| Unit Detail | `/ui/projects/{id}/units/{id}` | Unit editing with grid accordion |
+| Evidence | `/ui/projects/{id}/evidence` | Evidence sources and fragments |
+| Decisions | `/ui/projects/{id}/decisions` | Pending decisions with interpretations |
+
+### Files Created
+
+```
+api/strategizer/
+├── ui_router.py              # FastAPI routes for HTML pages
+├── templates/
+│   ├── base.html             # Navigation, theme toggle, toast system
+│   ├── projects.html         # Project list with create modal
+│   ├── project_detail.html   # Main 3-column workspace
+│   ├── unit_detail.html      # Unit editing with grids
+│   ├── evidence.html         # Evidence source management
+│   └── decisions.html        # Pending decision resolution
+└── static/
+    ├── css/strategizer.css   # Custom styles (confidence colors, status badges)
+    └── js/strategizer.js     # API client, theme toggle, auto-save, toasts
+```
+
+### Evidence-to-Grid Integration
+
+Implemented `_apply_evidence_to_grid()` helper that:
+1. Parses grid_slot format (e.g., "LOGICAL.evidence")
+2. Gets or creates grid instance for target unit
+3. Appends evidence content to slot with fragment ID reference
+4. Handles existing content by appending with separator
+
+### JavaScript Features
+
+- **API Client**: Centralized API helper with error handling
+- **Theme Toggle**: Dark/light mode with localStorage persistence
+- **Toast System**: Success/error/info notifications
+- **Auto-Save**: Debounced saves for unit content (1000ms)
+
+### Principles Embodied
+
+- `prn_attention_scarcity_economics` - UI surfaces only friction requiring decisions
+- `prn_friction_gated_user_engagement_pattern` - Background processing, user engaged at friction points
+
+---
+
 ## 2025-12-27: Strategizer Phase 2 - Evidence Integration (Step 2)
 
 **Branch:** `main`

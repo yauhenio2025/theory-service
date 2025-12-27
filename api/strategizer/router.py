@@ -1380,3 +1380,6 @@ async def get_suggestions(
 
 from .evidence_router import router as evidence_router
 router.include_router(evidence_router)
+
+from .ui_router import router as ui_router
+router.include_router(ui_router)

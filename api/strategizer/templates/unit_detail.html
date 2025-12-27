@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}{{ unit.name }} - Strategizer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/">Projects</a></li>
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/projects/{{ project.id }}">{{ project.name }}</a></li>
+            <li class="breadcrumb-item active">{{ unit.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Unit Details -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="badge badge-{{ unit.unit_type }}">{{ unit.display_type }}</span>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="autoApplyGrids()">
+                                <i class="bi bi-magic"></i> Auto-Apply Grids
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteUnit()">
+                                <i class="bi bi-trash"></i> Delete Unit
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h4 id="unitName" contenteditable="true" class="editable-field">{{ unit.name }}</h4>
+                    <p id="unitDefinition" contenteditable="true" class="editable-field text-muted">{{ unit.definition }}</p>
+                    <small class="text-muted">Status: <span class="badge bg-secondary">{{ unit.status }}</span></small>
+                </div>
+            </div>
+
+            <!-- Available Grids to Add -->
+            {% if available_grids %}
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-plus-circle"></i> Add Grid
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for grid in available_grids %}
+                    <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="addGrid('{{ grid.grid_type }}', event)">
+                        <div>
+                            <strong>{{ grid.name }}</strong>
+                            <br><small class="text-muted">{{ grid.description[:60] }}...</small>
+                        </div>
+                        <span class="badge {% if grid.tier == 'required' %}bg-primary{% else %}bg-secondary{% endif %}">
+                            {{ grid.tier }}
+                        </span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Grids -->
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="bi bi-grid-3x3"></i> Analysis Grids</h5>
+                <span class="text-muted">{{ grids|length }} grid{{ 's' if grids|length != 1 else '' }}</span>
+            </div>
+
+            {% if grids %}
+            <div class="accordion grid-accordion" id="gridsAccordion">
+                {% for grid in grids %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#grid-{{ grid.id }}">
+                            <span class="badge {% if grid.tier == 'required' %}bg-primary{% else %}bg-secondary{% endif %} me-2">
+                                {{ grid.tier }}
+                            </span>
+                            {{ grid.name }}
+                            <span class="ms-2 text-muted small">
+                                ({{ grid.slots|selectattr('content')|list|length }}/{{ grid.slots|length }} filled)
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="grid-{{ grid.id }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                         data-bs-parent="#gridsAccordion">
+                        <div class="accordion-body">
+                            <p class="text-muted small mb-3">{{ grid.description }}</p>
+
+                            <div class="row g-3">
+                                {% for slot in grid.slots %}
+                                <div class="col-md-6">
+                                    <div class="grid-slot {% if slot.content %}filled{% else %}empty{% endif %}"
+                                         data-grid-id="{{ grid.id }}" data-slot-name="{{ slot.name }}">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <strong>{{ slot.name }}</strong>
+                                            {% if slot.confidence > 0 %}
+                                            <span class="badge {{ 'confidence-high' if slot.confidence >= 0.85 else ('confidence-medium' if slot.confidence >= 0.6 else 'confidence-low') }}">
+                                                {{ (slot.confidence * 100)|int }}%
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                        <small class="text-muted d-block mb-2">{{ slot.description }}</small>
+                                        <textarea class="form-control form-control-sm slot-content"
+                                                  placeholder="Enter content..."
+                                                  rows="2">{{ slot.content }}</textarea>
+                                        {% if slot.evidence_notes %}
+                                        <small class="text-info d-block mt-1">
+                                            <i class="bi bi-info-circle"></i> {{ slot.evidence_notes }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="mt-3 text-end">
+                                <button class="btn btn-sm btn-danger" onclick="deleteGrid('{{ grid.id }}')">
+                                    <i class="bi bi-trash"></i> Remove Grid
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-grid"></i>
+                <h5>No grids yet</h5>
+                <p>Add grids from the sidebar or use Auto-Apply to add relevant grids automatically.</p>
+                <button class="btn btn-primary" onclick="autoApplyGrids()">
+                    <i class="bi bi-magic"></i> Auto-Apply Grids
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const projectId = '{{ project.id }}';
+const unitId = '{{ unit.id }}';
+
+async function addGrid(gridType, event) {
+    event.preventDefault();
+    try {
+        await API.createGrid(projectId, unitId, { grid_type: gridType, auto_fill: true });
+        Toast.success('Grid added!');
+        location.reload();
+    } catch (error) {
+        Toast.error('Failed to add grid: ' + error.message);
+    }
+}
+
+async function deleteGrid(gridId) {
+    showConfirmModal(
+        'Remove Grid',
+        'Are you sure you want to remove this grid? All slot content will be lost.',
+        async () => {
+            try {
+                await API.request('DELETE', `/projects/${projectId}/units/${unitId}/grids/${gridId}`);
+                Toast.success('Grid removed');
+                location.reload();
+            } catch (error) {
+                Toast.error('Failed to remove grid: ' + error.message);
+            }
+        }
+    );
+}
+
+async function autoApplyGrids() {
+    try {
+        const result = await API.request('POST', `/projects/${projectId}/units/${unitId}/grids/auto-apply`, {
+            include_flexible: true,
+            auto_fill: true
+        });
+        Toast.success(result.message);
+        location.reload();
+    } catch (error) {
+        Toast.error('Failed to auto-apply grids: ' + error.message);
+    }
+}
+
+async function deleteUnit() {
+    showConfirmModal(
+        'Delete Unit',
+        'Are you sure you want to delete this unit? All grids and data will be lost.',
+        async () => {
+            try {
+                await API.deleteUnit(projectId, unitId);
+                Toast.success('Unit deleted');
+                window.location = `/api/strategizer/ui/projects/${projectId}`;
+            } catch (error) {
+                Toast.error('Failed to delete: ' + error.message);
+            }
+        }
+    );
+}
+
+async function saveSlot(gridId, slotName, content) {
+    await API.updateSlot(projectId, unitId, gridId, slotName, { content });
+}
+
+async function saveUnit() {
+    const name = document.getElementById('unitName').textContent.trim();
+    const definition = document.getElementById('unitDefinition').textContent.trim();
+    await API.updateUnit(projectId, unitId, { name, definition });
+}
+
+function initPage() {
+    // Auto-save slot content
+    document.querySelectorAll('.slot-content').forEach(textarea => {
+        textarea.addEventListener('input', () => {
+            const slot = textarea.closest('.grid-slot');
+            const gridId = slot.dataset.gridId;
+            const slotName = slot.dataset.slotName;
+            AutoSave.schedule(() => saveSlot(gridId, slotName, textarea.value));
+        });
+    });
+
+    // Auto-save unit name/definition
+    ['unitName', 'unitDefinition'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => {
+            AutoSave.schedule(saveUnit);
+        });
+    });
+}
+</script>
+{% endblock %}

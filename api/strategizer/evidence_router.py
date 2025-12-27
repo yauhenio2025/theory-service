@@ -640,6 +640,72 @@ async def get_pending_decision(
     )
 
 
+# =============================================================================
+# GRID INTEGRATION HELPERS
+# =============================================================================
+
+async def _apply_evidence_to_grid(
+    db: AsyncSession,
+    unit_id: str,
+    grid_slot: str,
+    evidence_content: str,
+    fragment_id: str
+) -> bool:
+    """
+    Apply evidence content to a grid slot.
+
+    grid_slot format: "GRID_TYPE.slot_name" (e.g., "LOGICAL.evidence")
+
+    Returns True if successfully applied.
+    """
+    # Parse grid_slot
+    if "." in grid_slot:
+        grid_type, slot_name = grid_slot.split(".", 1)
+    else:
+        # If no grid type specified, try to find an existing grid with this slot
+        grid_type = None
+        slot_name = grid_slot
+
+    # Get the unit's grid instance
+    query = select(StrategizerGridInstance).where(
+        StrategizerGridInstance.unit_id == unit_id
+    )
+    if grid_type:
+        query = query.where(StrategizerGridInstance.grid_type == grid_type)
+
+    result = await db.execute(query)
+    grid_instance = result.scalar_one_or_none()
+
+    if not grid_instance:
+        # Create new grid instance if it doesn't exist
+        if not grid_type:
+            grid_type = "LOGICAL"  # Default to LOGICAL grid
+
+        grid_instance = StrategizerGridInstance(
+            unit_id=unit_id,
+            grid_type=grid_type,
+            slots={
+                slot_name: evidence_content
+            }
+        )
+        db.add(grid_instance)
+    else:
+        # Update existing grid's slot
+        slots = grid_instance.slots or {}
+        existing_content = slots.get(slot_name, "")
+
+        # Append new evidence, keeping existing content
+        if existing_content:
+            # Add separator for multiple evidence pieces
+            slots[slot_name] = f"{existing_content}\n\n[Evidence #{fragment_id[:8]}]:\n{evidence_content}"
+        else:
+            slots[slot_name] = evidence_content
+
+        grid_instance.slots = slots
+
+    return True
+
+
 @router.post("/decisions/{fragment_id}/resolve", response_model=DecisionResponse)
 async def resolve_decision(
     project_id: str,
@@ -681,8 +747,15 @@ async def resolve_decision(
         interpretation = interp_result.scalar_one_or_none()
 
         if interpretation:
-            # TODO: Apply interpretation to grid slot
-            # For now, just mark as integrated
+            # Apply evidence to the target grid slot
+            if interpretation.target_unit_id and interpretation.target_grid_slot:
+                await _apply_evidence_to_grid(
+                    db=db,
+                    unit_id=interpretation.target_unit_id,
+                    grid_slot=interpretation.target_grid_slot,
+                    evidence_content=fragment.content,
+                    fragment_id=fragment_id
+                )
             fragment.analysis_status = AnalysisStatus.INTEGRATED
             fragment.target_grid_slot = interpretation.target_grid_slot
         else:
