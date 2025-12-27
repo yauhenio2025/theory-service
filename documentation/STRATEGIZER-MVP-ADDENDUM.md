@@ -18,7 +18,7 @@ The system should feel like a thinking partner, not a form to fill out.
 
 ## 2. Reference Implementation: Essay Flow Evidence Stage
 
-The essay-flow app at `/home/evgeny/projects/asc/` demonstrates how evidence integration should work. Key patterns to adopt:
+The essay-flow app at `/home/evgeny/projects/asc/` demonstrates how evidence integration UX should work. Adopt the UX patterns below (NOT the tech stack — essay-flow uses Flask, but we use FastAPI):
 
 ### Evidence Upload Flow
 - **Add Source / Batch Add Sources** — Upload PDFs (academic articles, news, reports)
@@ -300,13 +300,15 @@ POST   /api/projects/<id>/suggest # Get suggestions for next steps
 
 ---
 
-## 9. Technical Stack (Suggested)
+## 9. Technical Stack (Required)
 
-- **Backend:** Flask (consistent with essay-flow)
-- **Database:** SQLite (simple, file-based)
-- **LLM:** Claude API (Anthropic SDK)
+- **Backend:** FastAPI (async, modern Python)
+- **Database:** SQLite (simple, file-based) or PostgreSQL
+- **LLM:** Claude API (Anthropic SDK with async support)
 - **PDF Processing:** PyPDF2 or pdfplumber for text extraction
 - **Frontend:** Vanilla JS + HTML templates (or lightweight framework)
+
+**Note:** Flask is NOT allowed. Use FastAPI for all backend work.
 
 ---
 
