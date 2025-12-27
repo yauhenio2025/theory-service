@@ -51,9 +51,13 @@ async def get_db():
 
 async def init_db():
     """Initialize database tables."""
+    # Import strategizer models here to avoid circular import
+    from .strategizer.models import Base as StrategizerBase
+
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(ConceptAnalysisBase.metadata.create_all)
+        await conn.run_sync(StrategizerBase.metadata.create_all)
 
 
 async def close_db():

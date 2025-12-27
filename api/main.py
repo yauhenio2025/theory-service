@@ -51,6 +51,8 @@ from .concept_relationships import router as relationships_router
 from .concept_analysis_router import router as concept_analysis_router
 # Import concept evidence router (evidence integration)
 from .concept_evidence_router import router as concept_evidence_router
+# Import strategizer router
+from .strategizer import router as strategizer_router
 
 
 @asynccontextmanager
@@ -85,6 +87,8 @@ app.include_router(relationships_router)
 app.include_router(concept_analysis_router)
 # Include concept evidence router (evidence integration for 8D analysis)
 app.include_router(concept_evidence_router)
+# Include strategizer router
+app.include_router(strategizer_router)
 
 
 # =============================================================================
