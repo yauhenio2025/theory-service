@@ -630,12 +630,180 @@ class PredicamentResolveResponse(BaseModel):
     message: str = "Predicament resolved and transformed into dialectic"
 
 
+class MatrixRefinement(BaseModel):
+    """Refinement instructions for regenerating a matrix."""
+    row_refinement: Optional[str] = Field(
+        None,
+        description="Row axis refinement: more_granular, broader, axis_actors, axis_assumptions, etc."
+    )
+    row_custom: Optional[str] = Field(
+        None,
+        description="Custom description for rows when row_refinement is 'add_row' or 'custom_row'"
+    )
+    col_refinement: Optional[str] = Field(
+        None,
+        description="Column axis refinement: more_granular, broader, axis_capabilities, axis_poles, etc."
+    )
+    col_custom: Optional[str] = Field(
+        None,
+        description="Custom description for columns when col_refinement is 'add_col' or 'custom_col'"
+    )
+    custom_instruction: Optional[str] = Field(
+        None,
+        description="Free-form instruction to guide LLM analysis"
+    )
+
+
 class GenerateGridRequest(BaseModel):
     """Request to generate an analytical grid for a predicament."""
     grid_type: Optional[str] = Field(
         None,
         description="Optional: Force a specific grid type"
     )
+    # Refinement options
+    row_refinement: Optional[str] = Field(None, description="Row axis refinement")
+    row_custom: Optional[str] = Field(None, description="Custom row description")
+    col_refinement: Optional[str] = Field(None, description="Column axis refinement")
+    col_custom: Optional[str] = Field(None, description="Custom column description")
+    custom_instruction: Optional[str] = Field(None, description="Custom LLM instruction")
+
+
+# =============================================================================
+# CELL ACTION SCHEMAS
+# =============================================================================
+
+class CellActionType(str, Enum):
+    """Available cell action types."""
+    # Single cell actions
+    WHAT_WOULD_IT_TAKE = "what_would_it_take"
+    DEEP_ANALYSIS = "deep_analysis"
+    GENERATE_ARGUMENTS = "generate_arguments"
+    SCENARIO_EXPLORATION = "scenario_exploration"
+    SURFACE_ASSUMPTIONS = "surface_assumptions"
+    # Multi-cell actions
+    FIND_CONNECTIONS = "find_connections"
+    COALITION_DESIGN = "coalition_design"
+    PRIORITIZE = "prioritize"
+    SYNTHESIZE_CONCEPT = "synthesize_concept"
+    DRAFT_CONTENT = "draft_content"
+
+
+class CellInfo(BaseModel):
+    """Information about a selected cell."""
+    row_id: str = Field(..., description="Row identifier")
+    col_id: str = Field(..., description="Column identifier")
+    row_label: str = Field(..., description="Human-readable row label")
+    col_label: str = Field(..., description="Human-readable column label")
+    rating: str = Field(..., description="Cell rating: strong, moderate, weak, empty")
+    content: Optional[str] = Field(None, description="Cell content/analysis")
+
+
+class CellActionRequest(BaseModel):
+    """Request to execute an action on selected cells."""
+    action_type: CellActionType = Field(..., description="The action to execute")
+    cells: List[CellInfo] = Field(..., min_length=1, description="Selected cells")
+    custom_context: Optional[str] = Field(None, description="Additional context from user")
+
+
+class CellActionResponse(BaseModel):
+    """Response from executing a cell action."""
+    action_type: str
+    cells_analyzed: int
+    result: Dict[str, Any] = Field(..., description="Structured result based on action type")
+    thinking_summary: Optional[str] = Field(None, description="Summary of LLM thinking process")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# =============================================================================
+# DYNAMIC CELL ACTIONS - Context-specific action generation
+# =============================================================================
+
+class GeneratedAction(BaseModel):
+    """A dynamically generated action for selected cells."""
+    id: str = Field(..., description="Unique action identifier")
+    label: str = Field(..., description="Short action name (3-5 words)")
+    description: str = Field(..., description="What this action produces and why it's valuable")
+    icon: str = Field(default="lightbulb", description="Bootstrap icon name")
+    output_type: str = Field(default="analysis", description="Type of output: analysis, recommendations, comparison, etc.")
+
+
+class GenerateCellActionsRequest(BaseModel):
+    """Request to generate context-specific actions for selected cells."""
+    cells: List[CellInfo] = Field(..., min_length=1, description="Selected cells to analyze")
+
+
+class GenerateCellActionsResponse(BaseModel):
+    """Response with generated actions for selected cells."""
+    actions: List[GeneratedAction] = Field(default_factory=list)
+    cells_count: int = Field(..., description="Number of cells analyzed")
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ExecuteDynamicActionRequest(BaseModel):
+    """Request to execute a dynamically generated action."""
+    cells: List[CellInfo] = Field(..., min_length=1, description="Selected cells")
+    action: GeneratedAction = Field(..., description="The action to execute")
+
+
+class ExecuteDynamicActionResponse(BaseModel):
+    """Response from executing a dynamic action."""
+    action_executed: GeneratedAction
+    cells_analyzed: int
+    result: Dict[str, Any] = Field(..., description="Structured analysis result")
+    thinking_summary: Optional[str] = Field(None, description="Summary of LLM thinking")
+    executed_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# =============================================================================
+# PREDICAMENT NOTES - Saved insights from cell actions
+# =============================================================================
+
+class PredicamentNote(BaseModel):
+    """A note saved from a cell action result."""
+    id: str = Field(..., description="Unique note identifier")
+    title: str = Field(..., description="Note title (from action label)")
+    content: Dict[str, Any] = Field(..., description="The result content from the action")
+    action: GeneratedAction = Field(..., description="The action that produced this note")
+    cells: List[CellInfo] = Field(..., description="The cells that were analyzed")
+    thinking_summary: Optional[str] = Field(None, description="LLM thinking summary")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SaveNoteRequest(BaseModel):
+    """Request to save a cell action result as a note."""
+    title: str = Field(..., description="Note title")
+    content: Dict[str, Any] = Field(..., description="The result content")
+    action: GeneratedAction = Field(..., description="The action that produced this")
+    cells: List[CellInfo] = Field(..., description="The cells analyzed")
+    thinking_summary: Optional[str] = Field(None, description="LLM thinking summary")
+
+
+class SaveNoteResponse(BaseModel):
+    """Response from saving a note."""
+    note: PredicamentNote
+    message: str = "Note saved successfully"
+
+
+class NotesList(BaseModel):
+    """List of notes for a predicament."""
+    notes: List[PredicamentNote] = []
+    count: int = 0
+
+
+class SpawnDialecticFromNoteRequest(BaseModel):
+    """Request to spawn a dialectic from a saved note."""
+    # note_id is a path parameter, not in body
+    dialectic_name: str = Field(..., description="Name for the new dialectic")
+    definition: Optional[str] = Field(None, description="Optional definition override")
+    pole_a: Optional[str] = Field(None, description="Thesis/Pole A")
+    pole_b: Optional[str] = Field(None, description="Antithesis/Pole B")
+
+
+class SpawnDialecticFromNoteResponse(BaseModel):
+    """Response from spawning a dialectic."""
+    dialectic: UnitResponse
+    note_id: str
+    message: str = "Dialectic created from note"
 
 
 # Update forward references

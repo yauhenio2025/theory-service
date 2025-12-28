@@ -479,6 +479,10 @@ class StrategizerPredicament(Base):
     resolution_notes = Column(Text)  # How it was resolved / why deferred
     resulting_dialectic_id = Column(String(36), ForeignKey("strategizer_units.id", ondelete="SET NULL"))
 
+    # Notes: insights saved from cell actions
+    # Format: [{"id": "uuid", "title": "...", "content": {...}, "action": {...}, "cells": [...], "created_at": "..."}]
+    notes = Column(JSON, default=list)
+
     # Timestamps
     detected_at = Column(DateTime, default=datetime.utcnow)
     resolved_at = Column(DateTime)

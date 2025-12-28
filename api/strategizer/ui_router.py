@@ -556,6 +556,7 @@ async def predicament_detail_page(
 
     # Get generated grid if exists
     grid_data = None
+    matrix_data = None
     if predicament.generated_grid_id:
         grid_result = await db.execute(
             select(StrategizerGridInstance)
@@ -566,26 +567,54 @@ async def predicament_detail_page(
             from .grids import get_grid_definition
             grid_def = get_grid_definition(grid.grid_type)
 
+            stored_data = grid.slots or {}
+            grid_metadata = stored_data.get("_metadata", {})
+
+            # Check if this is a matrix-based grid
+            if "_matrix" in stored_data:
+                matrix = stored_data.get("_matrix", {})
+                matrix_data = {
+                    "row_header": matrix.get("row_header", "Entity"),
+                    "column_header": matrix.get("column_header", "Dimension"),
+                    "rows": matrix.get("rows", []),
+                    "columns": matrix.get("columns", []),
+                    "cells": matrix.get("cells", []),
+                    "overall_row": grid_metadata.get("overall_row", {}),
+                    "key_patterns": grid_metadata.get("key_patterns", []),
+                    "resolution_implications": grid_metadata.get("resolution_implications", "")
+                }
+
+            # Also build legacy slots data for backwards compatibility
             slots_data = []
             if grid_def:
                 for slot_def in grid_def["slots"]:
                     slot_name = slot_def["name"]
-                    slot_content = (grid.slots or {}).get(slot_name, {})
+                    slot_content = stored_data.get(slot_name, {})
                     slots_data.append({
                         "name": slot_name,
                         "description": slot_def.get("description", ""),
                         "content": slot_content.get("content", ""),
                         "confidence": slot_content.get("confidence", 0)
                     })
+            else:
+                for slot_name, slot_content in stored_data.items():
+                    if slot_name.startswith("_"):
+                        continue  # Skip metadata keys
+                    if isinstance(slot_content, dict) and "content" in slot_content:
+                        slots_data.append({
+                            "name": slot_name,
+                            "description": slot_content.get("description", ""),
+                            "content": slot_content.get("content", ""),
+                            "confidence": slot_content.get("confidence", 0)
+                        })
 
             grid_data = {
                 "id": str(grid.id),
                 "grid_type": grid.grid_type,
-                "name": grid_def["name"] if grid_def else grid.grid_type,
-                "description": grid_def["description"] if grid_def else "",
+                "name": grid_metadata.get("grid_name") or (grid_def["name"] if grid_def else grid.grid_type),
+                "description": grid_metadata.get("grid_description") or (grid_def["description"] if grid_def else ""),
                 "slots": slots_data,
-                "analysis_sequence": grid_def.get("analysis_sequence") if grid_def else None,
-                "resolution_criteria": grid_def.get("resolution_criteria") if grid_def else None
+                "has_matrix": matrix_data is not None
             }
 
     # Get source units
@@ -651,6 +680,7 @@ async def predicament_detail_page(
             "resolution_notes": predicament.resolution_notes
         },
         "grid": grid_data,
+        "matrix": matrix_data,
         "source_units": source_units,
         "source_evidence": source_evidence,
         "resulting_dialectic": resulting_dialectic,

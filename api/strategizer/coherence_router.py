@@ -438,7 +438,14 @@ async def generate_predicament_grid(
     request: Optional[GenerateGridRequest] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Generate an analytical grid for resolving this predicament."""
+    """Generate an analytical grid for resolving this predicament.
+
+    Optionally accepts refinement parameters to customize the matrix dimensions:
+    - row_refinement: How to adjust rows (more_granular, broader, axis_*, add_row, custom_row)
+    - col_refinement: How to adjust columns (more_granular, broader, axis_*, add_col, custom_col)
+    - row_custom/col_custom: Custom descriptions when using add_row/col or custom_row/col
+    - custom_instruction: Free-form instruction to guide the LLM's analysis
+    """
     # Verify predicament exists
     result = await db.execute(
         select(StrategizerPredicament)
@@ -452,8 +459,22 @@ async def generate_predicament_grid(
     if not predicament:
         raise HTTPException(status_code=404, detail="Predicament not found")
 
+    # Extract refinement options if provided
+    refinement = None
+    if request:
+        refinement = {
+            "row_refinement": request.row_refinement,
+            "row_custom": request.row_custom,
+            "col_refinement": request.col_refinement,
+            "col_custom": request.col_custom,
+            "custom_instruction": request.custom_instruction
+        }
+        # Only pass refinement if at least one option is set
+        if not any(v for v in refinement.values()):
+            refinement = None
+
     monitor = CoherenceMonitor()
-    result = await monitor.generate_predicament_grid(db, predicament_id)
+    result = await monitor.generate_predicament_grid(db, predicament_id, refinement=refinement)
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -478,6 +499,425 @@ async def fill_predicament_grid_slot(
         raise HTTPException(status_code=400, detail=result["error"])
 
     return result
+
+
+# =============================================================================
+# CELL ACTIONS
+# =============================================================================
+
+from .schemas import CellActionRequest, CellActionResponse
+
+@router.post(
+    "/projects/{project_id}/predicaments/{predicament_id}/cell-action",
+    response_model=CellActionResponse
+)
+async def execute_cell_action(
+    project_id: str,
+    predicament_id: str,
+    request: CellActionRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Execute a strategic action on selected matrix cells.
+
+    Available actions:
+    - Single cell: what_would_it_take, deep_analysis, generate_arguments,
+                   scenario_exploration, surface_assumptions
+    - Multi-cell: find_connections, coalition_design, prioritize,
+                  synthesize_concept, draft_content
+    """
+    # Verify predicament exists
+    result = await db.execute(
+        select(StrategizerPredicament)
+        .options(selectinload(StrategizerPredicament.generated_grid))
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    monitor = CoherenceMonitor()
+    action_result = await monitor.execute_cell_action(
+        db=db,
+        predicament=predicament,
+        action_type=request.action_type.value,
+        cells=[c.model_dump() for c in request.cells],
+        custom_context=request.custom_context
+    )
+
+    if "error" in action_result:
+        raise HTTPException(status_code=400, detail=action_result["error"])
+
+    return CellActionResponse(
+        action_type=request.action_type.value,
+        cells_analyzed=len(request.cells),
+        result=action_result.get("result", {}),
+        thinking_summary=action_result.get("thinking_summary")
+    )
+
+
+# =============================================================================
+# DYNAMIC CELL ACTIONS - Context-specific action generation
+# =============================================================================
+
+from .schemas import (
+    GenerateCellActionsRequest,
+    GenerateCellActionsResponse,
+    GeneratedAction,
+    ExecuteDynamicActionRequest,
+    ExecuteDynamicActionResponse
+)
+
+@router.post(
+    "/projects/{project_id}/predicaments/{predicament_id}/generate-actions",
+    response_model=GenerateCellActionsResponse
+)
+async def generate_cell_actions(
+    project_id: str,
+    predicament_id: str,
+    request: GenerateCellActionsRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate context-specific actions for selected matrix cells.
+
+    Instead of generic actions like "Deep Analysis" or "Scenarios",
+    generates actions tailored to:
+    - The specific predicament being analyzed
+    - The selected cell(s) and their position in the matrix
+    - The overall project context
+    - What would actually help resolve the tension
+
+    Returns 3-5 actionable, specific analysis options.
+    """
+    # Verify predicament exists
+    result = await db.execute(
+        select(StrategizerPredicament)
+        .options(selectinload(StrategizerPredicament.generated_grid))
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    monitor = CoherenceMonitor()
+    action_result = await monitor.generate_cell_actions(
+        db=db,
+        predicament=predicament,
+        cells=[c.model_dump() for c in request.cells]
+    )
+
+    if "error" in action_result:
+        raise HTTPException(status_code=400, detail=action_result["error"])
+
+    # Convert to GeneratedAction objects
+    actions = [
+        GeneratedAction(**a) for a in action_result.get("actions", [])
+    ]
+
+    return GenerateCellActionsResponse(
+        actions=actions,
+        cells_count=len(request.cells)
+    )
+
+
+@router.post(
+    "/projects/{project_id}/predicaments/{predicament_id}/execute-action",
+    response_model=ExecuteDynamicActionResponse
+)
+async def execute_dynamic_action(
+    project_id: str,
+    predicament_id: str,
+    request: ExecuteDynamicActionRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Execute a dynamically generated action on selected cells.
+
+    Uses Opus 4.5 with extended thinking to produce deep,
+    context-specific analysis tailored to the action and predicament.
+    """
+    # Verify predicament exists
+    result = await db.execute(
+        select(StrategizerPredicament)
+        .options(selectinload(StrategizerPredicament.generated_grid))
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    monitor = CoherenceMonitor()
+    action_result = await monitor.execute_dynamic_action(
+        db=db,
+        predicament=predicament,
+        cells=[c.model_dump() for c in request.cells],
+        action=request.action.model_dump()
+    )
+
+    if "error" in action_result:
+        raise HTTPException(status_code=400, detail=action_result["error"])
+
+    return ExecuteDynamicActionResponse(
+        action_executed=request.action,
+        cells_analyzed=len(request.cells),
+        result=action_result.get("result", {}),
+        thinking_summary=action_result.get("thinking_summary")
+    )
+
+
+# =============================================================================
+# PREDICAMENT NOTES - Save insights from cell actions
+# =============================================================================
+
+from .schemas import (
+    PredicamentNote,
+    SaveNoteRequest,
+    SaveNoteResponse,
+    NotesList,
+    SpawnDialecticFromNoteRequest,
+    SpawnDialecticFromNoteResponse
+)
+import uuid
+
+
+@router.post(
+    "/projects/{project_id}/predicaments/{predicament_id}/notes",
+    response_model=SaveNoteResponse
+)
+async def save_note(
+    project_id: str,
+    predicament_id: str,
+    request: SaveNoteRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Save a cell action result as a note on the predicament.
+
+    Notes capture valuable insights from matrix analysis that can be:
+    - Referenced later during resolution
+    - Transformed into dialectics
+    - Used as evidence for framework development
+    """
+    # Verify predicament exists
+    result = await db.execute(
+        select(StrategizerPredicament)
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    # Create the note
+    note = PredicamentNote(
+        id=str(uuid.uuid4()),
+        title=request.title,
+        content=request.content,
+        action=request.action,
+        cells=request.cells,
+        thinking_summary=request.thinking_summary
+    )
+
+    # Add to predicament notes (ensure it's a list)
+    notes = predicament.notes or []
+    # Use mode='json' to serialize datetime to ISO format string
+    notes.append(note.model_dump(mode='json'))
+    predicament.notes = notes
+
+    await db.commit()
+
+    return SaveNoteResponse(note=note)
+
+
+@router.get(
+    "/projects/{project_id}/predicaments/{predicament_id}/notes",
+    response_model=NotesList
+)
+async def list_notes(
+    project_id: str,
+    predicament_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all notes saved on a predicament.
+    """
+    result = await db.execute(
+        select(StrategizerPredicament)
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    notes_data = predicament.notes or []
+    notes = [PredicamentNote(**n) for n in notes_data]
+
+    return NotesList(notes=notes, count=len(notes))
+
+
+@router.delete(
+    "/projects/{project_id}/predicaments/{predicament_id}/notes/{note_id}"
+)
+async def delete_note(
+    project_id: str,
+    predicament_id: str,
+    note_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete a note from a predicament.
+    """
+    result = await db.execute(
+        select(StrategizerPredicament)
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    notes = predicament.notes or []
+    original_count = len(notes)
+    notes = [n for n in notes if n.get("id") != note_id]
+
+    if len(notes) == original_count:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    predicament.notes = notes
+    await db.commit()
+
+    return {"message": "Note deleted", "note_id": note_id}
+
+
+@router.post(
+    "/projects/{project_id}/predicaments/{predicament_id}/notes/{note_id}/spawn-dialectic",
+    response_model=SpawnDialecticFromNoteResponse
+)
+async def spawn_dialectic_from_note(
+    project_id: str,
+    predicament_id: str,
+    note_id: str,
+    request: SpawnDialecticFromNoteRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Transform a saved note into a new dialectic unit.
+
+    The note's insights become the foundation for a new dialectic that
+    captures the tension discovered during analysis.
+    """
+    from .models import StrategizerUnit, UnitType, UnitTier, UnitStatus
+
+    # Verify predicament and find note
+    result = await db.execute(
+        select(StrategizerPredicament)
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    notes = predicament.notes or []
+    note_data = next((n for n in notes if n.get("id") == note_id), None)
+
+    if not note_data:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    note = PredicamentNote(**note_data)
+
+    # Build definition from note content
+    definition = request.definition
+    if not definition:
+        # Try to extract from note content
+        content = note.content
+        if isinstance(content, dict):
+            definition = (
+                content.get("summary") or
+                content.get("overview") or
+                content.get("key_insight") or
+                content.get("main_finding") or
+                f"Dialectic spawned from analysis: {note.title}"
+            )
+        else:
+            definition = f"Dialectic spawned from analysis: {note.title}"
+
+    # Create the dialectic unit
+    dialectic = StrategizerUnit(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        unit_type=UnitType.DIALECTIC,
+        display_type="Dialectic",
+        tier=UnitTier.EMERGENT,
+        name=request.dialectic_name,
+        definition=definition,
+        content={
+            "thesis": request.pole_a or predicament.pole_a or "Pole A",
+            "antithesis": request.pole_b or predicament.pole_b or "Pole B",
+            "synthesis": None,  # To be filled in
+            "spawned_from_note": note_id,
+            "spawned_from_predicament": predicament_id,
+            "source_analysis": {
+                "action": note.action.model_dump() if hasattr(note.action, 'model_dump') else note.action,
+                "cells": [c.model_dump() if hasattr(c, 'model_dump') else c for c in note.cells],
+                "thinking_summary": note.thinking_summary
+            }
+        },
+        status=UnitStatus.DRAFT
+    )
+
+    db.add(dialectic)
+    await db.commit()
+    await db.refresh(dialectic)
+
+    # Build response
+    from .schemas import UnitResponse
+    dialectic_response = UnitResponse(
+        id=dialectic.id,
+        project_id=dialectic.project_id,
+        unit_type=dialectic.unit_type.value,
+        display_type=dialectic.display_type,
+        tier=dialectic.tier.value,
+        name=dialectic.name,
+        definition=dialectic.definition,
+        content=dialectic.content,
+        status=dialectic.status.value,
+        version=dialectic.version,
+        created_at=dialectic.created_at,
+        updated_at=dialectic.updated_at
+    )
+
+    return SpawnDialecticFromNoteResponse(
+        dialectic=dialectic_response,
+        note_id=note_id,
+        message=f"Dialectic '{request.dialectic_name}' created from note"
+    )
 
 
 # =============================================================================

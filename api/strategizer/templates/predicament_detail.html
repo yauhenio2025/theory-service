@@ -75,24 +75,244 @@
                 </div>
             </div>
 
-            <!-- Analytical Grid -->
+            <!-- Analytical Matrix -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-grid-3x3"></i> Analytical Grid</h5>
-                    {% if not grid %}
-                    <button class="btn btn-primary btn-sm" onclick="generateGrid()">
-                        <i class="bi bi-plus-lg"></i> Generate Grid
-                    </button>
-                    {% else %}
-                    <button class="btn btn-outline-secondary btn-sm" onclick="regenerateGrid()">
-                        <i class="bi bi-arrow-clockwise"></i> Regenerate
-                    </button>
-                    {% endif %}
+                    <h5 class="mb-0"><i class="bi bi-grid-3x3"></i> Analytical Matrix</h5>
+                    <div>
+                        {% if not grid and not matrix %}
+                        <button class="btn btn-primary btn-sm" onclick="generateGrid()">
+                            <i class="bi bi-plus-lg"></i> Generate Matrix
+                        </button>
+                        {% else %}
+                        <button class="btn btn-outline-secondary btn-sm" onclick="regenerateGrid()">
+                            <i class="bi bi-arrow-clockwise"></i> Regenerate
+                        </button>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body">
-                    {% if grid %}
-                    <p class="text-muted mb-4">{{ grid.description }}</p>
+                    {% if matrix %}
+                    <!-- Matrix Visualization -->
+                    <p class="text-muted mb-3">{{ grid.description if grid else '' }}</p>
 
+                    <!-- Legend & Selection Controls -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="matrix-legend">
+                            <span class="legend-item"><span class="matrix-dot strong"></span> Strong</span>
+                            <span class="legend-item"><span class="matrix-dot moderate"></span> Moderate</span>
+                            <span class="legend-item"><span class="matrix-dot weak"></span> Weak</span>
+                            <span class="legend-item"><span class="matrix-dot empty"></span> Empty/Blocked</span>
+                        </div>
+                        <div class="cell-selection-controls">
+                            <small class="text-muted me-2">
+                                <i class="bi bi-info-circle"></i> Click cells to select, Ctrl+click for multi-select
+                            </small>
+                            <button class="btn btn-outline-secondary btn-sm d-none" id="clearSelectionBtn" onclick="clearCellSelection()">
+                                <i class="bi bi-x-circle"></i> Clear (<span id="selectionCount">0</span>)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Matrix Table -->
+                    <div class="table-responsive">
+                        <table class="analysis-matrix">
+                            <thead>
+                                <tr>
+                                    <th class="matrix-corner">{{ matrix.row_header }} / {{ matrix.column_header }}</th>
+                                    {% for col in matrix.columns %}
+                                    <th class="matrix-col-header" title="{{ col.description }}">{{ col.label }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in matrix.rows %}
+                                <tr>
+                                    <td class="matrix-row-header" title="{{ row.description }}">{{ row.label }}</td>
+                                    {% for col in matrix.columns %}
+                                    {% set cell = namespace(found=none) %}
+                                    {% for c in matrix.cells %}
+                                        {% if c.row_id == row.id and c.col_id == col.id %}
+                                            {% set cell.found = c %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <td class="matrix-cell selectable-cell"
+                                        data-row="{{ row.id }}"
+                                        data-col="{{ col.id }}"
+                                        data-row-label="{{ row.label }}"
+                                        data-col-label="{{ col.label }}"
+                                        data-rating="{{ cell.found.rating if cell.found else 'empty' }}"
+                                        data-content="{{ cell.found.content if cell.found else '' }}"
+                                        onclick="handleCellClick(event, '{{ row.id }}', '{{ col.id }}')"
+                                        title="{{ cell.found.content if cell.found else 'No data' }}">
+                                        <span class="matrix-dot {{ cell.found.rating if cell.found else 'empty' }}"></span>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                                <!-- Overall row -->
+                                {% if matrix.overall_row %}
+                                <tr class="matrix-overall-row">
+                                    <td class="matrix-row-header"><strong>{{ matrix.overall_row.label or 'OVERALL' }}</strong></td>
+                                    {% for col in matrix.columns %}
+                                    <td class="matrix-cell matrix-overall-cell">
+                                        <span class="matrix-dot aggregate"></span>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Matrix Refinement Controls -->
+                    <div class="matrix-refinement mt-3">
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#refinementControls">
+                            <i class="bi bi-sliders"></i> Refine Matrix Dimensions
+                        </button>
+
+                        <div class="collapse mt-3" id="refinementControls">
+                            <div class="card card-body bg-light">
+                                <p class="text-muted small mb-3">Push the LLM to restructure how it analyzes this predicament. Choose presets or provide custom instructions.</p>
+
+                                <div class="row">
+                                    <!-- Row Refinement -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold"><i class="bi bi-list"></i> Rows ({{ matrix.row_header }})</label>
+                                        <select class="form-select form-select-sm mb-2" id="rowRefinement">
+                                            <option value="">Keep current rows</option>
+                                            <optgroup label="Granularity">
+                                                <option value="more_granular">More granular (split into sub-categories)</option>
+                                                <option value="broader">Broader categories (aggregate)</option>
+                                            </optgroup>
+                                            <optgroup label="Different Axis">
+                                                <option value="axis_actors">Actors/Stakeholders</option>
+                                                <option value="axis_assumptions">Key Assumptions</option>
+                                                <option value="axis_evidence">Evidence Types</option>
+                                                <option value="axis_temporal">Temporal Phases</option>
+                                                <option value="axis_mechanisms">Causal Mechanisms</option>
+                                                <option value="axis_scenarios">Scenarios/Futures</option>
+                                            </optgroup>
+                                            <optgroup label="Special">
+                                                <option value="add_row">Add specific row...</option>
+                                                <option value="custom_row">Custom row structure...</option>
+                                            </optgroup>
+                                        </select>
+                                        <input type="text" class="form-control form-control-sm d-none" id="rowCustomInput"
+                                               placeholder="Describe the rows you want...">
+                                    </div>
+
+                                    <!-- Column Refinement -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold"><i class="bi bi-layout-three-columns"></i> Columns ({{ matrix.column_header }})</label>
+                                        <select class="form-select form-select-sm mb-2" id="colRefinement">
+                                            <option value="">Keep current columns</option>
+                                            <optgroup label="Granularity">
+                                                <option value="more_granular">More granular (split into sub-dimensions)</option>
+                                                <option value="broader">Broader categories (aggregate)</option>
+                                            </optgroup>
+                                            <optgroup label="Different Axis">
+                                                <option value="axis_capabilities">Capability Dimensions</option>
+                                                <option value="axis_poles">Pole A vs Pole B Support</option>
+                                                <option value="axis_impact">Impact Areas</option>
+                                                <option value="axis_feasibility">Feasibility Factors</option>
+                                                <option value="axis_resources">Resource Types</option>
+                                                <option value="axis_leverage">Leverage Points</option>
+                                            </optgroup>
+                                            <optgroup label="Special">
+                                                <option value="add_col">Add specific column...</option>
+                                                <option value="custom_col">Custom column structure...</option>
+                                            </optgroup>
+                                        </select>
+                                        <input type="text" class="form-control form-control-sm d-none" id="colCustomInput"
+                                               placeholder="Describe the columns you want...">
+                                    </div>
+                                </div>
+
+                                <!-- Custom Instruction -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold"><i class="bi bi-chat-left-text"></i> Custom Instruction (Optional)</label>
+                                    <textarea class="form-control form-control-sm" id="refinementInstruction" rows="2"
+                                              placeholder="e.g., 'Focus on power asymmetries', 'Add a row for regulatory bodies', 'Analyze through lens of technological determinism'..."></textarea>
+                                    <small class="text-muted">Guide the LLM's analysis with specific framing or focus areas.</small>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-primary btn-sm" onclick="regenerateWithRefinement()">
+                                        <i class="bi bi-arrow-clockwise"></i> Regenerate with Refinements
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="resetRefinement()">
+                                        <i class="bi bi-x-circle"></i> Reset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cell Action Panel (appears when cells selected) -->
+                    <div class="cell-action-panel d-none" id="cellActionPanel">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+                                <span><i class="bi bi-cursor-fill"></i> <span id="actionPanelTitle">1 cell selected</span></span>
+                                <button class="btn btn-sm btn-outline-light" onclick="clearCellSelection()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <div class="card-body py-2">
+                                <!-- Dynamic Actions Loading -->
+                                <div id="dynamicActionsLoading" class="text-center py-2">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                    <small class="text-muted ms-2">Generating context-specific actions...</small>
+                                </div>
+
+                                <!-- Dynamic Actions Container -->
+                                <div id="dynamicActionsContainer" class="d-none">
+                                    <small class="text-muted d-block mb-2" id="dynamicActionsLabel">Suggested actions for this intersection:</small>
+                                    <div class="d-flex flex-wrap gap-1" id="dynamicActionButtons">
+                                        <!-- Buttons generated dynamically -->
+                                    </div>
+                                </div>
+
+                                <!-- Dynamic Actions Error -->
+                                <div id="dynamicActionsError" class="d-none">
+                                    <div class="alert alert-warning py-2 mb-0">
+                                        <small><i class="bi bi-exclamation-triangle"></i> <span id="dynamicActionsErrorText"></span></small>
+                                        <button class="btn btn-link btn-sm p-0 ms-2" onclick="retryGenerateActions()">Retry</button>
+                                    </div>
+                                </div>
+
+                                <!-- Selection Summary -->
+                                <div id="selectionSummary" class="mt-2 small text-muted border-top pt-2 d-none">
+                                    <strong>Selected:</strong> <span id="selectedCellsList"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Key Patterns -->
+                    {% if matrix.key_patterns %}
+                    <div class="alert alert-info mt-4">
+                        <h6><i class="bi bi-lightbulb"></i> Key Patterns Revealed</h6>
+                        <ul class="mb-0">
+                            {% for pattern in matrix.key_patterns %}
+                            <li>{{ pattern }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Resolution Implications -->
+                    {% if matrix.resolution_implications %}
+                    <div class="alert alert-success mt-3">
+                        <h6><i class="bi bi-signpost-split"></i> Resolution Implications</h6>
+                        <p class="mb-0">{{ matrix.resolution_implications }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% elif grid and grid.slots %}
+                    <!-- Fallback to legacy slot display -->
+                    <p class="text-muted mb-4">{{ grid.description }}</p>
                     <div class="row">
                         {% for slot in grid.slots %}
                         <div class="col-md-6 mb-3">
@@ -101,47 +321,45 @@
                                     <strong>{{ slot.name }}</strong>
                                     {% if slot.content %}
                                     <span class="badge bg-success">Filled</span>
-                                    {% else %}
-                                    <button class="btn btn-sm btn-outline-primary" onclick="fillSlot('{{ slot.name }}')">
-                                        <i class="bi bi-magic"></i> Auto-fill
-                                    </button>
                                     {% endif %}
                                 </div>
                                 <small class="text-muted d-block mb-2">{{ slot.description }}</small>
                                 {% if slot.content %}
                                 <div class="slot-content">{{ slot.content }}</div>
-                                {% if slot.confidence %}
-                                <div class="mt-2">
-                                    <small class="{% if slot.confidence >= 0.7 %}confidence-high{% elif slot.confidence >= 0.4 %}confidence-medium{% else %}confidence-low{% endif %}">
-                                        <i class="bi bi-bullseye"></i> Confidence: {{ (slot.confidence * 100)|int }}%
-                                    </small>
-                                </div>
-                                {% endif %}
                                 {% endif %}
                             </div>
                         </div>
                         {% endfor %}
                     </div>
 
-                    {% if grid.analysis_sequence %}
-                    <div class="alert alert-info mt-3">
-                        <i class="bi bi-info-circle"></i> <strong>Analysis Sequence:</strong> {{ grid.analysis_sequence }}
-                    </div>
-                    {% endif %}
-
-                    {% if grid.resolution_criteria %}
-                    <div class="alert alert-success mt-3">
-                        <i class="bi bi-check-circle"></i> <strong>Resolution Criteria:</strong> {{ grid.resolution_criteria }}
-                    </div>
-                    {% endif %}
-
                     {% else %}
                     <div class="predicament-grid text-center py-5">
                         <i class="bi bi-grid-3x3 display-4 text-muted"></i>
-                        <p class="text-muted mt-3">No analytical grid generated yet.</p>
-                        <p class="small text-muted">Generate a grid to systematically work through this predicament.</p>
+                        <p class="text-muted mt-3">No analytical matrix generated yet.</p>
+                        <p class="small text-muted">Generate a matrix to schematically analyze this predicament.</p>
                     </div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- Cell Detail Modal -->
+            <div class="modal fade" id="cellDetailModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="cellDetailTitle">Cell Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="cellDetailContent">
+                                <p><strong>Rating:</strong> <span id="cellRating"></span></p>
+                                <p><strong>Analysis:</strong></p>
+                                <p id="cellAnalysis"></p>
+                                <p><strong>Evidence:</strong></p>
+                                <p id="cellEvidence" class="text-muted small"></p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -207,6 +425,26 @@
                     {% else %}
                     <p class="text-muted">No source evidence linked.</p>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- Saved Notes -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-sticky"></i> Saved Notes</h5>
+                    <span class="badge bg-secondary" id="notesCount">0</span>
+                </div>
+                <div class="card-body" id="notesContainer">
+                    <div id="notesLoading" class="text-center py-2">
+                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                        <small class="text-muted ms-1">Loading notes...</small>
+                    </div>
+                    <div id="notesList" class="d-none">
+                        <!-- Notes will be rendered here -->
+                    </div>
+                    <div id="notesEmpty" class="d-none text-muted">
+                        <small>No notes saved yet. Save insights from cell actions to build your analysis.</small>
+                    </div>
                 </div>
             </div>
 
@@ -293,12 +531,1366 @@
         </div>
     </div>
 </div>
+
+<!-- Cell Action Result Modal -->
+<div class="modal fade" id="cellActionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cellActionModalTitle">
+                    <i class="bi bi-lightning"></i> Action Result
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="cellActionModalBody">
+                <!-- Loading State -->
+                <div id="cellActionLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="text-muted">Analyzing with extended thinking...</p>
+                    <small class="text-muted">This may take a moment for deep analysis</small>
+                </div>
+
+                <!-- Result Content -->
+                <div id="cellActionResult" class="d-none">
+                    <!-- Will be populated dynamically based on action type -->
+                </div>
+            </div>
+            <div class="modal-footer" id="cellActionFooter">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary d-none" id="saveAsNoteBtn" onclick="saveActionAsNote()">
+                    <i class="bi bi-journal-plus"></i> Save as Note
+                </button>
+                <button type="button" class="btn btn-success d-none" id="createUnitBtn" onclick="createUnitFromAction()">
+                    <i class="bi bi-plus-circle"></i> Create Unit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cell Action Processing Modal -->
+<div class="modal fade" id="cellActionProcessingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <p class="mb-0" id="cellActionProcessingText">Processing action...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Spawn Dialectic from Note Modal -->
+<div class="modal fade" id="spawnDialecticModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-diagram-3"></i> Spawn Dialectic from Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="spawnDialecticForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> <span id="spawnFromNoteTitle"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="spawnDialecticName" class="form-label">Dialectic Name</label>
+                        <input type="text" class="form-control" id="spawnDialecticName" required
+                               placeholder="e.g., Technical Capability ↔ Regulatory Authority">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="spawnDefinition" class="form-label">Definition (Optional)</label>
+                        <textarea class="form-control" id="spawnDefinition" rows="2"
+                                  placeholder="Leave empty to auto-extract from note content"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="spawnPoleA" class="form-label">Pole A (Thesis)</label>
+                            <input type="text" class="form-control" id="spawnPoleA"
+                                   placeholder="First pole of tension">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="spawnPoleB" class="form-label">Pole B (Antithesis)</label>
+                            <input type="text" class="form-control" id="spawnPoleB"
+                                   placeholder="Second pole of tension">
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="spawnFromNoteId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-diagram-3"></i> Create Dialectic
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Note Detail Modal -->
+<div class="modal fade" id="noteDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="noteDetailTitle">Note Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="noteDetailBody">
+                <!-- Will be populated dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" id="noteDeleteBtn">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="noteSpawnBtn">
+                    <i class="bi bi-diagram-3"></i> Spawn Dialectic
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 const projectId = '{{ project.id }}';
 const predicamentId = '{{ predicament.id }}';
+
+// Matrix cell data for detail view
+const matrixCells = {{ matrix.cells | tojson | safe if matrix and matrix.cells else '[]' }};
+const matrixRows = {{ matrix.rows | tojson | safe if matrix and matrix.rows else '[]' }};
+const matrixCols = {{ matrix.columns | tojson | safe if matrix and matrix.columns else '[]' }};
+
+// ========== Cell Selection State ==========
+const selectedCells = new Map(); // key: "rowId:colId", value: {rowId, colId, rowLabel, colLabel, rating, content}
+let lastActionResult = null; // Store last action result for saving
+let generatedActions = []; // Current set of generated actions
+let actionGenerationAbortController = null; // For cancelling pending requests
+
+function handleCellClick(event, rowId, colId) {
+    const cell = event.currentTarget;
+    const isMultiSelect = event.ctrlKey || event.metaKey || event.shiftKey;
+
+    if (isMultiSelect) {
+        // Toggle selection
+        toggleCellSelection(cell, rowId, colId);
+    } else {
+        // Single click behavior: if already selected, show detail; otherwise select
+        const key = `${rowId}:${colId}`;
+        if (selectedCells.has(key) && selectedCells.size === 1) {
+            // Already selected alone - show detail modal
+            showCellDetail(rowId, colId);
+        } else {
+            // Clear all and select this one
+            clearCellSelection();
+            toggleCellSelection(cell, rowId, colId);
+        }
+    }
+}
+
+function toggleCellSelection(cellElement, rowId, colId) {
+    const key = `${rowId}:${colId}`;
+
+    if (selectedCells.has(key)) {
+        // Deselect
+        selectedCells.delete(key);
+        cellElement.classList.remove('selected');
+    } else {
+        // Select
+        const cellData = {
+            rowId: rowId,
+            colId: colId,
+            rowLabel: cellElement.dataset.rowLabel || rowId,
+            colLabel: cellElement.dataset.colLabel || colId,
+            rating: cellElement.dataset.rating || 'empty',
+            content: cellElement.dataset.content || ''
+        };
+        selectedCells.set(key, cellData);
+        cellElement.classList.add('selected');
+    }
+
+    updateSelectionUI();
+}
+
+function clearCellSelection() {
+    selectedCells.clear();
+    document.querySelectorAll('.matrix-cell.selected').forEach(cell => {
+        cell.classList.remove('selected');
+    });
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    const count = selectedCells.size;
+    const clearBtn = document.getElementById('clearSelectionBtn');
+    const countSpan = document.getElementById('selectionCount');
+    const actionPanel = document.getElementById('cellActionPanel');
+    const selectionSummary = document.getElementById('selectionSummary');
+    const selectedCellsList = document.getElementById('selectedCellsList');
+    const actionPanelTitle = document.getElementById('actionPanelTitle');
+    const dynamicActionsLabel = document.getElementById('dynamicActionsLabel');
+
+    if (count === 0) {
+        clearBtn.classList.add('d-none');
+        actionPanel.classList.add('d-none');
+        // Cancel any pending action generation
+        if (actionGenerationAbortController) {
+            actionGenerationAbortController.abort();
+            actionGenerationAbortController = null;
+        }
+        return;
+    }
+
+    // Show clear button and action panel
+    clearBtn.classList.remove('d-none');
+    countSpan.textContent = count;
+    actionPanel.classList.remove('d-none');
+
+    // Update title and label
+    actionPanelTitle.textContent = count === 1 ? '1 cell selected' : `${count} cells selected`;
+    dynamicActionsLabel.textContent = count === 1
+        ? 'Suggested actions for this intersection:'
+        : `Suggested actions for ${count} intersections:`;
+
+    // Show selection summary for multi-cell
+    if (count > 1) {
+        selectionSummary.classList.remove('d-none');
+        const labels = Array.from(selectedCells.values())
+            .map(c => `${c.rowLabel} × ${c.colLabel}`)
+            .join(', ');
+        selectedCellsList.textContent = labels;
+    } else {
+        selectionSummary.classList.add('d-none');
+    }
+
+    // Generate dynamic actions
+    generateDynamicActions();
+}
+
+// ========== Dynamic Action Generation ==========
+
+async function generateDynamicActions() {
+    const loadingEl = document.getElementById('dynamicActionsLoading');
+    const containerEl = document.getElementById('dynamicActionsContainer');
+    const errorEl = document.getElementById('dynamicActionsError');
+    const buttonsEl = document.getElementById('dynamicActionButtons');
+
+    // Show loading, hide others
+    loadingEl.classList.remove('d-none');
+    containerEl.classList.add('d-none');
+    errorEl.classList.add('d-none');
+
+    // Cancel any pending request
+    if (actionGenerationAbortController) {
+        actionGenerationAbortController.abort();
+    }
+    actionGenerationAbortController = new AbortController();
+
+    // Build cells array for API
+    const cells = Array.from(selectedCells.values()).map(c => ({
+        row_id: c.rowId,
+        col_id: c.colId,
+        row_label: c.rowLabel,
+        col_label: c.colLabel,
+        rating: c.rating,
+        content: c.content
+    }));
+
+    try {
+        const result = await API.generateCellActions(projectId, predicamentId, cells);
+        generatedActions = result.actions || [];
+
+        // Render the action buttons
+        renderDynamicActions(generatedActions);
+
+        // Show container, hide loading
+        loadingEl.classList.add('d-none');
+        containerEl.classList.remove('d-none');
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return; // Request was cancelled, ignore
+        }
+        console.error('Failed to generate actions:', error);
+
+        // Show error
+        loadingEl.classList.add('d-none');
+        errorEl.classList.remove('d-none');
+        document.getElementById('dynamicActionsErrorText').textContent =
+            'Failed to generate actions: ' + (error.message || 'Unknown error');
+    }
+}
+
+function renderDynamicActions(actions) {
+    const buttonsEl = document.getElementById('dynamicActionButtons');
+    buttonsEl.innerHTML = '';
+
+    if (!actions || actions.length === 0) {
+        buttonsEl.innerHTML = '<small class="text-muted">No specific actions suggested for this intersection.</small>';
+        return;
+    }
+
+    // Icon mapping for common output types
+    const iconMap = {
+        'lightbulb': 'bi-lightbulb',
+        'analysis': 'bi-search',
+        'scenarios': 'bi-signpost-split',
+        'arguments': 'bi-chat-quote',
+        'assumptions': 'bi-eye',
+        'connections': 'bi-diagram-3',
+        'strategy': 'bi-bullseye',
+        'synthesis': 'bi-puzzle',
+        'default': 'bi-lightning'
+    };
+
+    actions.forEach((action, index) => {
+        const icon = iconMap[action.icon] || iconMap[action.output_type] || iconMap['default'];
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline-primary btn-sm';
+        btn.title = action.description;
+        btn.innerHTML = `<i class="bi ${icon}"></i> ${escapeHtml(action.label)}`;
+        btn.onclick = () => executeDynamicActionFromButton(action);
+        buttonsEl.appendChild(btn);
+    });
+}
+
+function retryGenerateActions() {
+    generateDynamicActions();
+}
+
+async function executeDynamicActionFromButton(action) {
+    if (selectedCells.size === 0) {
+        Toast.warning('Please select at least one cell');
+        return;
+    }
+
+    // Build cells array for API
+    const cells = Array.from(selectedCells.values()).map(c => ({
+        row_id: c.rowId,
+        col_id: c.colId,
+        row_label: c.rowLabel,
+        col_label: c.colLabel,
+        rating: c.rating,
+        content: c.content
+    }));
+
+    // Show processing modal
+    const processingModal = new bootstrap.Modal(document.getElementById('cellActionProcessingModal'));
+    document.getElementById('cellActionProcessingText').textContent = `Executing: ${action.label}...`;
+    processingModal.show();
+
+    try {
+        const result = await API.executeDynamicAction(projectId, predicamentId, cells, action);
+        processingModal.hide();
+        lastActionResult = result;
+        lastDynamicAction = action; // Save for note creation
+        showDynamicActionResult(action, result);
+    } catch (error) {
+        processingModal.hide();
+        Toast.error('Action failed: ' + error.message);
+    }
+}
+
+function showDynamicActionResult(action, result) {
+    const modal = new bootstrap.Modal(document.getElementById('cellActionModal'));
+    const titleEl = document.getElementById('cellActionModalTitle');
+    const loadingEl = document.getElementById('cellActionLoading');
+    const resultEl = document.getElementById('cellActionResult');
+    const saveBtn = document.getElementById('saveAsNoteBtn');
+    const createUnitBtn = document.getElementById('createUnitBtn');
+
+    // Set title based on action
+    const iconMap = {
+        'lightbulb': 'bi-lightbulb',
+        'analysis': 'bi-search',
+        'scenarios': 'bi-signpost-split',
+        'arguments': 'bi-chat-quote',
+        'assumptions': 'bi-eye',
+        'connections': 'bi-diagram-3',
+        'strategy': 'bi-bullseye',
+        'synthesis': 'bi-puzzle',
+        'default': 'bi-lightning'
+    };
+    const icon = iconMap[action.icon] || iconMap[action.output_type] || iconMap['default'];
+    titleEl.innerHTML = `<i class="bi ${icon}"></i> ${escapeHtml(action.label)}`;
+
+    // Hide loading, show result
+    loadingEl.classList.add('d-none');
+    resultEl.classList.remove('d-none');
+
+    // Render dynamic result
+    resultEl.innerHTML = renderDynamicResult(action, result);
+
+    // Show action buttons
+    saveBtn.classList.remove('d-none');
+    createUnitBtn.classList.add('d-none'); // Only show for concept synthesis
+
+    modal.show();
+}
+
+function renderDynamicResult(action, result) {
+    if (!result || !result.result) {
+        return '<div class="alert alert-warning">No result available</div>';
+    }
+
+    const data = result.result;
+    let html = '';
+
+    // Handle different result structures based on output_type
+    if (data.raw_response) {
+        // Fallback: render raw response in a readable format
+        html = `<div class="card"><div class="card-body">
+            <div class="dynamic-content">${escapeHtml(data.raw_response).replace(/\n/g, '<br>')}</div>
+        </div></div>`;
+    } else if (typeof data === 'string') {
+        html = `<div class="card"><div class="card-body">
+            <div class="dynamic-content">${escapeHtml(data).replace(/\n/g, '<br>')}</div>
+        </div></div>`;
+    } else {
+        // Try to intelligently render structured data
+        html = renderStructuredResult(data);
+    }
+
+    // Add thinking summary if available
+    if (result.thinking_summary) {
+        html += `
+            <div class="mt-4 border-top pt-3">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#thinkingSummary">
+                    <i class="bi bi-brain"></i> Show Thinking Process
+                </button>
+                <div class="collapse mt-2" id="thinkingSummary">
+                    <div class="card card-body bg-light small">
+                        <p class="text-muted mb-0">${escapeHtml(result.thinking_summary)}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+function renderStructuredResult(data) {
+    let html = '';
+
+    // Try to detect common patterns in the result structure
+    if (data.summary || data.overview) {
+        html += `<div class="alert alert-info">${escapeHtml(data.summary || data.overview)}</div>`;
+    }
+
+    if (data.main_finding || data.key_insight || data.conclusion) {
+        const finding = data.main_finding || data.key_insight || data.conclusion;
+        html += `<div class="mb-3">
+            <h6><i class="bi bi-lightbulb"></i> Key Insight</h6>
+            <p>${escapeHtml(finding)}</p>
+        </div>`;
+    }
+
+    // Handle arrays of items
+    const listKeys = ['items', 'points', 'findings', 'conditions', 'factors', 'elements', 'steps', 'recommendations'];
+    for (const key of listKeys) {
+        if (data[key] && Array.isArray(data[key]) && data[key].length > 0) {
+            html += `<h6 class="text-capitalize">${key}:</h6><ul class="list-group mb-3">`;
+            data[key].forEach(item => {
+                if (typeof item === 'string') {
+                    html += `<li class="list-group-item">${escapeHtml(item)}</li>`;
+                } else if (item.name || item.title) {
+                    html += `<li class="list-group-item">
+                        <strong>${escapeHtml(item.name || item.title)}</strong>
+                        ${item.description ? `<br><small class="text-muted">${escapeHtml(item.description)}</small>` : ''}
+                    </li>`;
+                } else {
+                    html += `<li class="list-group-item"><pre class="mb-0 small">${escapeHtml(JSON.stringify(item, null, 2))}</pre></li>`;
+                }
+            });
+            html += '</ul>';
+        }
+    }
+
+    // Handle nested objects for scenarios/options
+    const scenarioKeys = ['scenarios', 'options', 'pathways', 'alternatives'];
+    for (const key of scenarioKeys) {
+        if (data[key] && Array.isArray(data[key]) && data[key].length > 0) {
+            html += `<h6 class="text-capitalize">${key}:</h6><div class="row">`;
+            data[key].forEach(item => {
+                html += `<div class="col-md-6 mb-2">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">${escapeHtml(item.name || item.title || 'Option')}</h6>
+                            <p class="card-text small">${escapeHtml(item.description || item.content || '')}</p>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+        }
+    }
+
+    // If we haven't rendered anything, show formatted JSON
+    if (!html) {
+        html = `<pre class="bg-light p-3 rounded small">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+    }
+
+    // Add strategic implications if present
+    if (data.implications || data.strategic_implications) {
+        html += `<div class="alert alert-success mt-3">
+            <strong>Implications:</strong><br>
+            ${escapeHtml(data.implications || data.strategic_implications)}
+        </div>`;
+    }
+
+    return html;
+}
+
+// ========== Legacy Cell Action (keeping for backwards compatibility) ==========
+
+async function executeCellAction(actionType) {
+    if (selectedCells.size === 0) {
+        Toast.warning('Please select at least one cell');
+        return;
+    }
+
+    // Build cells array for API
+    const cells = Array.from(selectedCells.values()).map(c => ({
+        row_id: c.rowId,
+        col_id: c.colId,
+        row_label: c.rowLabel,
+        col_label: c.colLabel,
+        rating: c.rating,
+        content: c.content
+    }));
+
+    // Show processing modal
+    const processingModal = new bootstrap.Modal(document.getElementById('cellActionProcessingModal'));
+    const actionLabels = {
+        'what_would_it_take': 'Exploring possibilities...',
+        'deep_analysis': 'Performing deep analysis...',
+        'generate_arguments': 'Generating arguments...',
+        'scenario_exploration': 'Exploring scenarios...',
+        'surface_assumptions': 'Surfacing assumptions...',
+        'find_connections': 'Finding connections...',
+        'coalition_design': 'Designing coalitions...',
+        'prioritize': 'Prioritizing cells...',
+        'synthesize_concept': 'Synthesizing concept...',
+        'draft_content': 'Drafting content...'
+    };
+    document.getElementById('cellActionProcessingText').textContent = actionLabels[actionType] || 'Processing...';
+    processingModal.show();
+
+    try {
+        const result = await API.executeCellAction(projectId, predicamentId, {
+            action_type: actionType,
+            cells: cells
+        });
+
+        processingModal.hide();
+        lastActionResult = result;
+        showActionResult(actionType, result);
+    } catch (error) {
+        processingModal.hide();
+        Toast.error('Action failed: ' + error.message);
+    }
+}
+
+function showActionResult(actionType, result) {
+    const modal = new bootstrap.Modal(document.getElementById('cellActionModal'));
+    const titleEl = document.getElementById('cellActionModalTitle');
+    const loadingEl = document.getElementById('cellActionLoading');
+    const resultEl = document.getElementById('cellActionResult');
+    const saveBtn = document.getElementById('saveAsNoteBtn');
+    const createUnitBtn = document.getElementById('createUnitBtn');
+
+    // Set title based on action type
+    const actionTitles = {
+        'what_would_it_take': '<i class="bi bi-lightbulb"></i> What Would It Take?',
+        'deep_analysis': '<i class="bi bi-search"></i> Deep Analysis',
+        'generate_arguments': '<i class="bi bi-chat-quote"></i> Generated Arguments',
+        'scenario_exploration': '<i class="bi bi-signpost-split"></i> Scenario Exploration',
+        'surface_assumptions': '<i class="bi bi-eye"></i> Hidden Assumptions',
+        'find_connections': '<i class="bi bi-diagram-3"></i> Discovered Connections',
+        'coalition_design': '<i class="bi bi-people"></i> Coalition Design',
+        'prioritize': '<i class="bi bi-list-ol"></i> Priority Analysis',
+        'synthesize_concept': '<i class="bi bi-puzzle"></i> Synthesized Concept',
+        'draft_content': '<i class="bi bi-pencil-square"></i> Draft Content'
+    };
+    titleEl.innerHTML = actionTitles[actionType] || 'Action Result';
+
+    // Hide loading, show result
+    loadingEl.classList.add('d-none');
+    resultEl.classList.remove('d-none');
+
+    // Render result based on action type
+    resultEl.innerHTML = renderActionResult(actionType, result);
+
+    // Show action buttons based on result type
+    saveBtn.classList.remove('d-none');
+    if (actionType === 'synthesize_concept') {
+        createUnitBtn.classList.remove('d-none');
+    } else {
+        createUnitBtn.classList.add('d-none');
+    }
+
+    modal.show();
+}
+
+function renderActionResult(actionType, result) {
+    if (!result || !result.result) {
+        return '<div class="alert alert-warning">No result available</div>';
+    }
+
+    const data = result.result;
+    let html = '';
+
+    switch (actionType) {
+        case 'what_would_it_take':
+            html = renderWhatWouldItTake(data);
+            break;
+        case 'deep_analysis':
+            html = renderDeepAnalysis(data);
+            break;
+        case 'generate_arguments':
+            html = renderArguments(data);
+            break;
+        case 'scenario_exploration':
+            html = renderScenarios(data);
+            break;
+        case 'surface_assumptions':
+            html = renderAssumptions(data);
+            break;
+        case 'find_connections':
+            html = renderConnections(data);
+            break;
+        case 'coalition_design':
+            html = renderCoalition(data);
+            break;
+        case 'prioritize':
+            html = renderPriorities(data);
+            break;
+        case 'synthesize_concept':
+            html = renderSynthesizedConcept(data);
+            break;
+        case 'draft_content':
+            html = renderDraftContent(data);
+            break;
+        default:
+            html = `<pre class="bg-light p-3 rounded">${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    // Add thinking summary if available
+    if (result.thinking_summary) {
+        html += `
+            <div class="mt-4 border-top pt-3">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#thinkingSummary">
+                    <i class="bi bi-brain"></i> Show Thinking Process
+                </button>
+                <div class="collapse mt-2" id="thinkingSummary">
+                    <div class="card card-body bg-light small">
+                        <p class="text-muted mb-0">${escapeHtml(result.thinking_summary)}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+// ========== Result Renderers ==========
+
+function renderWhatWouldItTake(data) {
+    let html = `<h6 class="text-primary mb-3">${escapeHtml(data.cell_context || '')}</h6>`;
+
+    if (data.conditions && data.conditions.length > 0) {
+        html += '<h6>Necessary Conditions:</h6><ul class="list-group mb-3">';
+        data.conditions.forEach(c => {
+            html += `<li class="list-group-item">
+                <strong>${escapeHtml(c.condition)}</strong>
+                <span class="badge bg-secondary float-end">${escapeHtml(c.difficulty || '')}</span>
+                <p class="mb-0 small text-muted">${escapeHtml(c.mechanism || '')}</p>
+            </li>`;
+        });
+        html += '</ul>';
+    }
+
+    if (data.pathways && data.pathways.length > 0) {
+        html += '<h6>Potential Pathways:</h6><div class="row">';
+        data.pathways.forEach(p => {
+            html += `<div class="col-md-6 mb-2">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">${escapeHtml(p.name)}</h6>
+                        <p class="card-text small">${escapeHtml(p.description)}</p>
+                        <small class="text-muted">Likelihood: ${escapeHtml(p.likelihood || 'Unknown')}</small>
+                    </div>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    if (data.strategic_implications) {
+        html += `<div class="alert alert-info mt-3"><strong>Strategic Implications:</strong><br>${escapeHtml(data.strategic_implications)}</div>`;
+    }
+
+    return html;
+}
+
+function renderDeepAnalysis(data) {
+    let html = '';
+
+    if (data.current_state) {
+        html += `<div class="mb-3">
+            <h6><i class="bi bi-geo-alt"></i> Current State</h6>
+            <p>${escapeHtml(data.current_state)}</p>
+        </div>`;
+    }
+
+    if (data.dynamics && data.dynamics.length > 0) {
+        html += '<h6><i class="bi bi-arrows-move"></i> Key Dynamics</h6><ul>';
+        data.dynamics.forEach(d => {
+            html += `<li><strong>${escapeHtml(d.factor)}</strong>: ${escapeHtml(d.influence)}</li>`;
+        });
+        html += '</ul>';
+    }
+
+    if (data.tensions && data.tensions.length > 0) {
+        html += '<h6><i class="bi bi-lightning"></i> Tensions</h6><ul>';
+        data.tensions.forEach(t => {
+            html += `<li>${escapeHtml(t)}</li>`;
+        });
+        html += '</ul>';
+    }
+
+    if (data.leverage_points) {
+        html += `<div class="alert alert-success"><strong>Leverage Points:</strong><br>${escapeHtml(data.leverage_points)}</div>`;
+    }
+
+    return html;
+}
+
+function renderArguments(data) {
+    let html = '';
+
+    if (data.arguments && data.arguments.length > 0) {
+        html += '<div class="accordion" id="argumentsAccordion">';
+        data.arguments.forEach((arg, i) => {
+            html += `
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button ${i > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#arg${i}">
+                            <span class="badge bg-${arg.strength === 'strong' ? 'success' : arg.strength === 'moderate' ? 'warning' : 'secondary'} me-2">${escapeHtml(arg.strength || '')}</span>
+                            ${escapeHtml(arg.claim)}
+                        </button>
+                    </h2>
+                    <div id="arg${i}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}" data-bs-parent="#argumentsAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Reasoning:</strong> ${escapeHtml(arg.reasoning || '')}</p>
+                            <p><strong>Evidence needed:</strong> ${escapeHtml(arg.evidence_needed || '')}</p>
+                            ${arg.counter_arguments ? `<p class="text-muted"><strong>Counter-arguments:</strong> ${escapeHtml(arg.counter_arguments)}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+    }
+
+    return html || '<p class="text-muted">No arguments generated</p>';
+}
+
+function renderScenarios(data) {
+    let html = '';
+
+    if (data.scenarios && data.scenarios.length > 0) {
+        html += '<div class="row">';
+        data.scenarios.forEach(s => {
+            const colorClass = s.valence === 'positive' ? 'success' : s.valence === 'negative' ? 'danger' : 'secondary';
+            html += `
+                <div class="col-md-6 mb-3">
+                    <div class="card border-${colorClass}">
+                        <div class="card-header bg-${colorClass} text-white">
+                            ${escapeHtml(s.name)}
+                            <span class="badge bg-light text-dark float-end">${escapeHtml(s.probability || '')}</span>
+                        </div>
+                        <div class="card-body">
+                            <p>${escapeHtml(s.description)}</p>
+                            <small class="text-muted"><strong>Trigger:</strong> ${escapeHtml(s.trigger || '')}</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+    }
+
+    if (data.wild_card) {
+        html += `<div class="alert alert-warning mt-3"><strong>🃏 Wild Card:</strong> ${escapeHtml(data.wild_card)}</div>`;
+    }
+
+    return html || '<p class="text-muted">No scenarios generated</p>';
+}
+
+function renderAssumptions(data) {
+    let html = '';
+
+    if (data.assumptions && data.assumptions.length > 0) {
+        html += '<div class="list-group mb-3">';
+        data.assumptions.forEach(a => {
+            const riskClass = a.risk_level === 'high' ? 'danger' : a.risk_level === 'medium' ? 'warning' : 'info';
+            html += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="mb-1">${escapeHtml(a.assumption)}</h6>
+                        <span class="badge bg-${riskClass}">${escapeHtml(a.risk_level || '')} risk</span>
+                    </div>
+                    <p class="mb-1 small">${escapeHtml(a.why_hidden || '')}</p>
+                    <small class="text-muted">Test: ${escapeHtml(a.test || '')}</small>
+                </div>
+            `;
+        });
+        html += '</div>';
+    }
+
+    if (data.most_dangerous) {
+        html += `<div class="alert alert-danger"><strong>⚠️ Most Dangerous Assumption:</strong><br>${escapeHtml(data.most_dangerous)}</div>`;
+    }
+
+    return html || '<p class="text-muted">No assumptions surfaced</p>';
+}
+
+function renderConnections(data) {
+    let html = '';
+
+    if (data.connections && data.connections.length > 0) {
+        html += '<div class="mb-3">';
+        data.connections.forEach(c => {
+            html += `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-primary">${escapeHtml(c.from_cell)}</span>
+                            <span class="mx-2">→</span>
+                            <span class="badge bg-primary">${escapeHtml(c.to_cell)}</span>
+                            <span class="badge bg-secondary ms-auto">${escapeHtml(c.strength || '')}</span>
+                        </div>
+                        <p class="mb-1">${escapeHtml(c.relationship)}</p>
+                        <small class="text-muted">${escapeHtml(c.mechanism || '')}</small>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+    }
+
+    if (data.synthesis) {
+        html += `<div class="alert alert-info"><strong>Synthesis:</strong><br>${escapeHtml(data.synthesis)}</div>`;
+    }
+
+    return html || '<p class="text-muted">No connections found</p>';
+}
+
+function renderCoalition(data) {
+    let html = '';
+
+    if (data.coalition) {
+        html += `
+            <h5 class="text-primary">${escapeHtml(data.coalition.name)}</h5>
+            <p>${escapeHtml(data.coalition.rationale)}</p>
+        `;
+
+        if (data.coalition.members && data.coalition.members.length > 0) {
+            html += '<h6>Members:</h6><div class="row">';
+            data.coalition.members.forEach(m => {
+                html += `
+                    <div class="col-md-4 mb-2">
+                        <div class="card">
+                            <div class="card-body">
+                                <strong>${escapeHtml(m.cell)}</strong>
+                                <br><small class="text-muted">Role: ${escapeHtml(m.role)}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        if (data.coalition.strategy) {
+            html += `<h6 class="mt-3">Strategy:</h6><p>${escapeHtml(data.coalition.strategy)}</p>`;
+        }
+    }
+
+    if (data.risks && data.risks.length > 0) {
+        html += '<h6 class="mt-3">Risks:</h6><ul class="text-danger">';
+        data.risks.forEach(r => {
+            html += `<li>${escapeHtml(r)}</li>`;
+        });
+        html += '</ul>';
+    }
+
+    return html || '<p class="text-muted">No coalition design generated</p>';
+}
+
+function renderPriorities(data) {
+    let html = '';
+
+    if (data.priorities && data.priorities.length > 0) {
+        html += '<ol class="list-group list-group-numbered">';
+        data.priorities.forEach((p, i) => {
+            const urgencyClass = p.urgency === 'high' ? 'danger' : p.urgency === 'medium' ? 'warning' : 'success';
+            html += `
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                    <div class="ms-2 me-auto">
+                        <div class="fw-bold">${escapeHtml(p.cell)}</div>
+                        ${escapeHtml(p.rationale)}
+                    </div>
+                    <span class="badge bg-${urgencyClass} rounded-pill">${escapeHtml(p.urgency || '')}</span>
+                </li>
+            `;
+        });
+        html += '</ol>';
+    }
+
+    if (data.sequencing) {
+        html += `<div class="alert alert-info mt-3"><strong>Recommended Sequencing:</strong><br>${escapeHtml(data.sequencing)}</div>`;
+    }
+
+    return html || '<p class="text-muted">No priorities generated</p>';
+}
+
+function renderSynthesizedConcept(data) {
+    let html = '';
+
+    if (data.concept) {
+        html += `
+            <div class="card border-success mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">${escapeHtml(data.concept.name)}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">${escapeHtml(data.concept.definition)}</p>
+                    <hr>
+                    <h6>Source Cells:</h6>
+                    <p class="text-muted small">${escapeHtml(data.concept.sources || '')}</p>
+                    <h6>Key Insight:</h6>
+                    <p>${escapeHtml(data.concept.key_insight || '')}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    if (data.applications && data.applications.length > 0) {
+        html += '<h6>Applications:</h6><ul>';
+        data.applications.forEach(a => {
+            html += `<li>${escapeHtml(a)}</li>`;
+        });
+        html += '</ul>';
+    }
+
+    return html || '<p class="text-muted">No concept synthesized</p>';
+}
+
+function renderDraftContent(data) {
+    let html = '';
+
+    if (data.content) {
+        html += `
+            <div class="mb-3">
+                <h5>${escapeHtml(data.content.title || 'Draft')}</h5>
+                <span class="badge bg-secondary">${escapeHtml(data.content.type || '')}</span>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="draft-content">${escapeHtml(data.content.body).replace(/\n/g, '<br>')}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    if (data.key_points && data.key_points.length > 0) {
+        html += '<h6>Key Points:</h6><ul>';
+        data.key_points.forEach(p => {
+            html += `<li>${escapeHtml(p)}</li>`;
+        });
+        html += '</ul>';
+    }
+
+    return html || '<p class="text-muted">No content drafted</p>';
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+// ========== Notes Management ==========
+
+let savedNotes = []; // Cache of saved notes
+let currentNoteForDetail = null; // Currently viewed note
+let lastDynamicAction = null; // Last executed dynamic action
+
+async function loadNotes() {
+    const loadingEl = document.getElementById('notesLoading');
+    const listEl = document.getElementById('notesList');
+    const emptyEl = document.getElementById('notesEmpty');
+    const countEl = document.getElementById('notesCount');
+
+    loadingEl.classList.remove('d-none');
+    listEl.classList.add('d-none');
+    emptyEl.classList.add('d-none');
+
+    try {
+        const result = await API.listNotes(projectId, predicamentId);
+        savedNotes = result.notes || [];
+        countEl.textContent = savedNotes.length;
+
+        loadingEl.classList.add('d-none');
+
+        if (savedNotes.length === 0) {
+            emptyEl.classList.remove('d-none');
+        } else {
+            listEl.classList.remove('d-none');
+            renderNotes();
+        }
+    } catch (error) {
+        console.error('Failed to load notes:', error);
+        loadingEl.classList.add('d-none');
+        emptyEl.classList.remove('d-none');
+        emptyEl.innerHTML = '<small class="text-danger">Failed to load notes</small>';
+    }
+}
+
+function renderNotes() {
+    const listEl = document.getElementById('notesList');
+    listEl.innerHTML = '';
+
+    savedNotes.forEach(note => {
+        const noteEl = document.createElement('div');
+        noteEl.className = 'saved-note mb-2 p-2 border rounded cursor-pointer';
+        noteEl.style.cursor = 'pointer';
+        noteEl.onclick = () => showNoteDetail(note.id);
+
+        const created = new Date(note.created_at).toLocaleDateString();
+        const cellCount = note.cells ? note.cells.length : 0;
+
+        noteEl.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong class="d-block small">${escapeHtml(note.title)}</strong>
+                    <small class="text-muted">${cellCount} cell${cellCount !== 1 ? 's' : ''} • ${created}</small>
+                </div>
+                <button class="btn btn-sm btn-link text-primary p-0" onclick="event.stopPropagation(); openSpawnDialecticModal('${note.id}')" title="Spawn Dialectic">
+                    <i class="bi bi-diagram-3"></i>
+                </button>
+            </div>
+        `;
+
+        listEl.appendChild(noteEl);
+    });
+}
+
+async function saveActionAsNote() {
+    if (!lastActionResult) {
+        Toast.warning('No result to save');
+        return;
+    }
+
+    // Get the cells and action from the last action
+    const cells = Array.from(selectedCells.values()).map(c => ({
+        row_id: c.rowId,
+        col_id: c.colId,
+        row_label: c.rowLabel,
+        col_label: c.colLabel,
+        rating: c.rating,
+        content: c.content
+    }));
+
+    // Get the action that was executed
+    const action = lastDynamicAction || {
+        id: 'legacy',
+        label: document.getElementById('cellActionModalTitle')?.textContent?.trim() || 'Analysis',
+        description: 'Action result',
+        icon: 'lightbulb',
+        output_type: 'analysis'
+    };
+
+    const noteData = {
+        title: action.label,
+        content: lastActionResult.result || lastActionResult,
+        action: action,
+        cells: cells,
+        thinking_summary: lastActionResult.thinking_summary
+    };
+
+    try {
+        const result = await API.saveNote(projectId, predicamentId, noteData);
+        Toast.success('Note saved successfully');
+
+        // Close the action modal
+        const actionModal = bootstrap.Modal.getInstance(document.getElementById('cellActionModal'));
+        if (actionModal) actionModal.hide();
+
+        // Reload notes
+        loadNotes();
+    } catch (error) {
+        Toast.error('Failed to save note: ' + error.message);
+    }
+}
+
+function showNoteDetail(noteId) {
+    const note = savedNotes.find(n => n.id === noteId);
+    if (!note) {
+        Toast.error('Note not found');
+        return;
+    }
+
+    currentNoteForDetail = note;
+
+    // Populate modal
+    document.getElementById('noteDetailTitle').textContent = note.title;
+
+    const bodyEl = document.getElementById('noteDetailBody');
+    let html = '';
+
+    // Note metadata
+    const created = new Date(note.created_at).toLocaleString();
+    const cellLabels = (note.cells || []).map(c => `${c.row_label} × ${c.col_label}`).join(', ');
+
+    html += `
+        <div class="mb-3">
+            <small class="text-muted">Created: ${created}</small>
+            <br><small class="text-muted">Cells: ${cellLabels || 'N/A'}</small>
+        </div>
+    `;
+
+    // Render the note content (reuse the dynamic result renderer)
+    if (note.content) {
+        html += renderStructuredResult(note.content);
+    }
+
+    // Show thinking summary
+    if (note.thinking_summary) {
+        html += `
+            <div class="mt-3 border-top pt-3">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#noteThinking">
+                    <i class="bi bi-brain"></i> Show Thinking Process
+                </button>
+                <div class="collapse mt-2" id="noteThinking">
+                    <div class="card card-body bg-light small">
+                        <p class="text-muted mb-0">${escapeHtml(note.thinking_summary)}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    bodyEl.innerHTML = html;
+
+    // Set up delete button
+    document.getElementById('noteDeleteBtn').onclick = () => deleteNote(noteId);
+
+    // Set up spawn button
+    document.getElementById('noteSpawnBtn').onclick = () => {
+        const detailModal = bootstrap.Modal.getInstance(document.getElementById('noteDetailModal'));
+        if (detailModal) detailModal.hide();
+        openSpawnDialecticModal(noteId);
+    };
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('noteDetailModal'));
+    modal.show();
+}
+
+async function deleteNote(noteId) {
+    if (!confirm('Are you sure you want to delete this note?')) return;
+
+    try {
+        await API.deleteNote(projectId, predicamentId, noteId);
+        Toast.success('Note deleted');
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('noteDetailModal'));
+        if (modal) modal.hide();
+
+        // Reload notes
+        loadNotes();
+    } catch (error) {
+        Toast.error('Failed to delete note: ' + error.message);
+    }
+}
+
+function openSpawnDialecticModal(noteId) {
+    const note = savedNotes.find(n => n.id === noteId);
+    if (!note) {
+        Toast.error('Note not found');
+        return;
+    }
+
+    // Pre-populate form
+    document.getElementById('spawnFromNoteTitle').textContent = note.title;
+    document.getElementById('spawnFromNoteId').value = noteId;
+    document.getElementById('spawnDialecticName').value = note.title;
+    document.getElementById('spawnDefinition').value = '';
+    document.getElementById('spawnPoleA').value = '{{ predicament.pole_a or "" }}';
+    document.getElementById('spawnPoleB').value = '{{ predicament.pole_b or "" }}';
+
+    const modal = new bootstrap.Modal(document.getElementById('spawnDialecticModal'));
+    modal.show();
+}
+
+// Spawn dialectic form handler
+document.getElementById('spawnDialecticForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const noteId = document.getElementById('spawnFromNoteId').value;
+    const data = {
+        note_id: noteId,
+        dialectic_name: document.getElementById('spawnDialecticName').value,
+        definition: document.getElementById('spawnDefinition').value || null,
+        pole_a: document.getElementById('spawnPoleA').value || null,
+        pole_b: document.getElementById('spawnPoleB').value || null
+    };
+
+    try {
+        const result = await API.spawnDialecticFromNote(projectId, predicamentId, noteId, data);
+        Toast.success(`Dialectic "${data.dialectic_name}" created!`);
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('spawnDialecticModal'));
+        if (modal) modal.hide();
+
+        // Navigate to the new dialectic
+        if (result.dialectic && result.dialectic.id) {
+            window.location.href = `/api/strategizer/ui/projects/${projectId}/units/${result.dialectic.id}`;
+        }
+    } catch (error) {
+        Toast.error('Failed to create dialectic: ' + error.message);
+    }
+});
+
+// Load notes on page load
+document.addEventListener('DOMContentLoaded', loadNotes);
+
+async function createUnitFromAction() {
+    if (!lastActionResult || !lastActionResult.result || !lastActionResult.result.concept) {
+        Toast.warning('No concept to create unit from');
+        return;
+    }
+    // TODO: Implement create unit from concept
+    Toast.info('Create unit coming soon');
+}
+
+function showCellDetail(rowId, colId) {
+    // Find the cell data
+    const cell = matrixCells.find(c => c.row_id === rowId && c.col_id === colId);
+    const row = matrixRows.find(r => r.id === rowId);
+    const col = matrixCols.find(c => c.id === colId);
+
+    if (!cell && !row && !col) {
+        Toast.warning('No data available for this cell');
+        return;
+    }
+
+    // Populate modal
+    const title = `${row ? row.label : rowId} × ${col ? col.label : colId}`;
+    document.getElementById('cellDetailTitle').textContent = title;
+
+    const ratingEl = document.getElementById('cellRating');
+    const rating = cell ? cell.rating : 'empty';
+    const ratingLabels = {
+        'strong': '<span class="badge bg-success">Strong</span>',
+        'moderate': '<span class="badge bg-primary">Moderate</span>',
+        'weak': '<span class="badge bg-warning text-dark">Weak</span>',
+        'empty': '<span class="badge bg-danger">Empty/Blocked</span>'
+    };
+    ratingEl.innerHTML = ratingLabels[rating] || rating;
+
+    document.getElementById('cellAnalysis').textContent = cell ? cell.content : 'No analysis provided';
+    document.getElementById('cellEvidence').textContent = cell && cell.evidence_note ? cell.evidence_note : 'No evidence notes';
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('cellDetailModal'));
+    modal.show();
+}
+
+// ========== Matrix Refinement Functions ==========
+
+// Show/hide custom input fields based on selection
+document.getElementById('rowRefinement')?.addEventListener('change', function() {
+    const customInput = document.getElementById('rowCustomInput');
+    if (this.value === 'add_row' || this.value === 'custom_row') {
+        customInput.classList.remove('d-none');
+        customInput.focus();
+    } else {
+        customInput.classList.add('d-none');
+        customInput.value = '';
+    }
+});
+
+document.getElementById('colRefinement')?.addEventListener('change', function() {
+    const customInput = document.getElementById('colCustomInput');
+    if (this.value === 'add_col' || this.value === 'custom_col') {
+        customInput.classList.remove('d-none');
+        customInput.focus();
+    } else {
+        customInput.classList.add('d-none');
+        customInput.value = '';
+    }
+});
+
+function resetRefinement() {
+    document.getElementById('rowRefinement').value = '';
+    document.getElementById('colRefinement').value = '';
+    document.getElementById('rowCustomInput').value = '';
+    document.getElementById('colCustomInput').value = '';
+    document.getElementById('refinementInstruction').value = '';
+    document.getElementById('rowCustomInput').classList.add('d-none');
+    document.getElementById('colCustomInput').classList.add('d-none');
+}
+
+async function regenerateWithRefinement() {
+    const rowRefinement = document.getElementById('rowRefinement').value;
+    const colRefinement = document.getElementById('colRefinement').value;
+    const rowCustom = document.getElementById('rowCustomInput').value;
+    const colCustom = document.getElementById('colCustomInput').value;
+    const customInstruction = document.getElementById('refinementInstruction').value;
+
+    // Build refinement object
+    const refinement = {
+        row_refinement: rowRefinement || null,
+        row_custom: rowCustom || null,
+        col_refinement: colRefinement || null,
+        col_custom: colCustom || null,
+        custom_instruction: customInstruction || null
+    };
+
+    // Check if any refinement was specified
+    const hasRefinement = Object.values(refinement).some(v => v !== null);
+    if (!hasRefinement) {
+        Toast.warning('Select at least one refinement option or provide custom instruction');
+        return;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('gridModal'));
+    document.querySelector('#gridModal .modal-body p').textContent = 'Regenerating matrix with your refinements...';
+    modal.show();
+
+    try {
+        await API.generatePredicamentGridWithRefinement(projectId, predicamentId, refinement);
+        Toast.success('Matrix regenerated with refinements!');
+        location.reload();
+    } catch (error) {
+        modal.hide();
+        Toast.error('Failed to regenerate matrix: ' + error.message);
+    }
+}
 
 async function generateGrid() {
     const modal = new bootstrap.Modal(document.getElementById('gridModal'));

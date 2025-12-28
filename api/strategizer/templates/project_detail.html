@@ -194,10 +194,13 @@
                     <span class="badge badge-severity-high">{{ coherence_stats.high_count }} High</span>
                     {% endif %}
                     {% endif %}
-                    <div class="mt-3">
-                        <button class="btn btn-sm btn-outline-primary btn-coherence-check w-100" onclick="runQuickScan()">
+                    <div class="mt-3 d-grid gap-2">
+                        <button class="btn btn-sm btn-outline-primary btn-coherence-check" onclick="runQuickScan()">
                             <i class="bi bi-search"></i> Quick Scan
                         </button>
+                        <a href="/api/strategizer/ui/projects/{{ project.id }}/coherence" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-shield-check"></i> View Coherence Monitor
+                        </a>
                     </div>
                 </div>
             </div>

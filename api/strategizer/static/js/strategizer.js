@@ -144,18 +144,32 @@ const API = {
     bootstrap: (projectId, data) => API.request('POST', `/projects/${projectId}/bootstrap`, data),
 
     // Coherence Monitoring
-    quickCoherenceScan: (projectId) => API.request('POST', `/projects/${projectId}/coherence/quick-scan`),
-    deepCoherenceAnalysis: (projectId) => API.request('POST', `/projects/${projectId}/coherence/deep-analysis`),
+    quickCoherenceScan: (projectId) => API.request('POST', `/projects/${projectId}/coherence/quick-scan`, {}),
+    deepCoherenceAnalysis: (projectId, options = {}) => API.request('POST', `/projects/${projectId}/coherence/deep-analysis`, options),
     getCoherenceStats: (projectId) => API.request('GET', `/projects/${projectId}/coherence/stats`),
 
     // Predicaments
     getPredicaments: (projectId) => API.request('GET', `/projects/${projectId}/predicaments`),
     getPredicament: (projectId, predId) => API.request('GET', `/projects/${projectId}/predicaments/${predId}`),
     generatePredicamentGrid: (projectId, predId) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/generate-grid`),
+    generatePredicamentGridWithRefinement: (projectId, predId, refinement) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/generate-grid`, refinement),
     fillPredicamentSlot: (projectId, predId, slotName, data = {}) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/fill-slot/${slotName}`, data),
     resolvePredicament: (projectId, predId, data) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/resolve`, data),
     deferPredicament: (projectId, predId) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/defer`),
-    deletePredicament: (projectId, predId) => API.request('DELETE', `/projects/${projectId}/predicaments/${predId}`)
+    deletePredicament: (projectId, predId) => API.request('DELETE', `/projects/${projectId}/predicaments/${predId}`),
+
+    // Cell Actions (Legacy)
+    executeCellAction: (projectId, predId, data) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/cell-action`, data),
+
+    // Dynamic Cell Actions
+    generateCellActions: (projectId, predId, cells) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/generate-actions`, { cells }),
+    executeDynamicAction: (projectId, predId, cells, action) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/execute-action`, { cells, action }),
+
+    // Predicament Notes
+    saveNote: (projectId, predId, data) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/notes`, data),
+    listNotes: (projectId, predId) => API.request('GET', `/projects/${projectId}/predicaments/${predId}/notes`),
+    deleteNote: (projectId, predId, noteId) => API.request('DELETE', `/projects/${projectId}/predicaments/${predId}/notes/${noteId}`),
+    spawnDialecticFromNote: (projectId, predId, noteId, data) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/notes/${noteId}/spawn-dialectic`, data)
 };
 
 // =============================================================================
