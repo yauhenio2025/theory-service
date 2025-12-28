@@ -141,7 +141,21 @@ const API = {
     resolveDecision: (projectId, fragmentId, data) => API.request('POST', `/projects/${projectId}/evidence/decisions/${fragmentId}/resolve`, data),
 
     // Domain
-    bootstrap: (projectId, data) => API.request('POST', `/projects/${projectId}/bootstrap`, data)
+    bootstrap: (projectId, data) => API.request('POST', `/projects/${projectId}/bootstrap`, data),
+
+    // Coherence Monitoring
+    quickCoherenceScan: (projectId) => API.request('POST', `/projects/${projectId}/coherence/quick-scan`),
+    deepCoherenceAnalysis: (projectId) => API.request('POST', `/projects/${projectId}/coherence/deep-analysis`),
+    getCoherenceStats: (projectId) => API.request('GET', `/projects/${projectId}/coherence/stats`),
+
+    // Predicaments
+    getPredicaments: (projectId) => API.request('GET', `/projects/${projectId}/predicaments`),
+    getPredicament: (projectId, predId) => API.request('GET', `/projects/${projectId}/predicaments/${predId}`),
+    generatePredicamentGrid: (projectId, predId) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/generate-grid`),
+    fillPredicamentSlot: (projectId, predId, slotName, data = {}) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/fill-slot/${slotName}`, data),
+    resolvePredicament: (projectId, predId, data) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/resolve`, data),
+    deferPredicament: (projectId, predId) => API.request('POST', `/projects/${projectId}/predicaments/${predId}/defer`),
+    deletePredicament: (projectId, predId) => API.request('DELETE', `/projects/${projectId}/predicaments/${predId}`)
 };
 
 // =============================================================================

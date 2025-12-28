@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block title %}{{ predicament.title }} - Coherence - Strategizer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/">Projects</a></li>
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/projects/{{ project.id }}">{{ project.name }}</a></li>
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/projects/{{ project.id }}/coherence">Coherence</a></li>
+            <li class="breadcrumb-item active">{{ predicament.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-md-8">
+            <!-- Predicament Header -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge badge-{{ predicament.predicament_type }} me-2">{{ predicament.predicament_type }}</span>
+                        <span class="badge badge-severity-{{ predicament.severity }}">{{ predicament.severity }}</span>
+                        <span class="badge badge-{{ predicament.status }}">{{ predicament.status }}</span>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% if predicament.status != 'resolved' and predicament.status != 'deferred' %}
+                            <li><a class="dropdown-item" href="#" onclick="resolvePredicament()">
+                                <i class="bi bi-check-circle"></i> Resolve to Dialectic
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="deferPredicament()">
+                                <i class="bi bi-clock"></i> Defer
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                            <li><a class="dropdown-item text-danger" href="#" onclick="deletePredicament()">
+                                <i class="bi bi-trash"></i> Delete
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h3>{{ predicament.title }}</h3>
+                    <p class="lead">{{ predicament.description }}</p>
+
+                    {% if predicament.pole_a and predicament.pole_b %}
+                    <div class="pole-display mb-4">
+                        <div class="pole-item pole-a">
+                            <small class="text-muted">Pole A</small>
+                            <div><strong>{{ predicament.pole_a }}</strong></div>
+                        </div>
+                        <div class="pole-separator">↔</div>
+                        <div class="pole-item pole-b">
+                            <small class="text-muted">Pole B</small>
+                            <div><strong>{{ predicament.pole_b }}</strong></div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="row text-muted small">
+                        <div class="col-6">
+                            <i class="bi bi-clock"></i> Detected: {{ predicament.detected_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                        {% if predicament.resolved_at %}
+                        <div class="col-6">
+                            <i class="bi bi-check-circle"></i> Resolved: {{ predicament.resolved_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytical Grid -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-grid-3x3"></i> Analytical Grid</h5>
+                    {% if not grid %}
+                    <button class="btn btn-primary btn-sm" onclick="generateGrid()">
+                        <i class="bi bi-plus-lg"></i> Generate Grid
+                    </button>
+                    {% else %}
+                    <button class="btn btn-outline-secondary btn-sm" onclick="regenerateGrid()">
+                        <i class="bi bi-arrow-clockwise"></i> Regenerate
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if grid %}
+                    <p class="text-muted mb-4">{{ grid.description }}</p>
+
+                    <div class="row">
+                        {% for slot in grid.slots %}
+                        <div class="col-md-6 mb-3">
+                            <div class="grid-slot {% if slot.content %}filled{% else %}empty{% endif %}" id="slot-{{ slot.name }}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <strong>{{ slot.name }}</strong>
+                                    {% if slot.content %}
+                                    <span class="badge bg-success">Filled</span>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-outline-primary" onclick="fillSlot('{{ slot.name }}')">
+                                        <i class="bi bi-magic"></i> Auto-fill
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted d-block mb-2">{{ slot.description }}</small>
+                                {% if slot.content %}
+                                <div class="slot-content">{{ slot.content }}</div>
+                                {% if slot.confidence %}
+                                <div class="mt-2">
+                                    <small class="{% if slot.confidence >= 0.7 %}confidence-high{% elif slot.confidence >= 0.4 %}confidence-medium{% else %}confidence-low{% endif %}">
+                                        <i class="bi bi-bullseye"></i> Confidence: {{ (slot.confidence * 100)|int }}%
+                                    </small>
+                                </div>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if grid.analysis_sequence %}
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle"></i> <strong>Analysis Sequence:</strong> {{ grid.analysis_sequence }}
+                    </div>
+                    {% endif %}
+
+                    {% if grid.resolution_criteria %}
+                    <div class="alert alert-success mt-3">
+                        <i class="bi bi-check-circle"></i> <strong>Resolution Criteria:</strong> {{ grid.resolution_criteria }}
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="predicament-grid text-center py-5">
+                        <i class="bi bi-grid-3x3 display-4 text-muted"></i>
+                        <p class="text-muted mt-3">No analytical grid generated yet.</p>
+                        <p class="small text-muted">Generate a grid to systematically work through this predicament.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Resolution Notes (if resolved) -->
+            {% if predicament.resolution_notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-check-circle"></i> Resolution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="resolution-notes">
+                        {{ predicament.resolution_notes }}
+                    </div>
+                    {% if resulting_dialectic %}
+                    <div class="mt-3">
+                        <a href="/api/strategizer/ui/projects/{{ project.id }}/units/{{ resulting_dialectic.id }}" class="btn btn-outline-success">
+                            <i class="bi bi-arrow-right"></i> View Resulting Dialectic: {{ resulting_dialectic.name }}
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Sidebar: Sources & Actions -->
+        <div class="col-md-4">
+            <!-- Source Units -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Source Units</h5>
+                </div>
+                <div class="card-body">
+                    {% if source_units|length > 0 %}
+                    {% for unit in source_units %}
+                    <div class="unit-card card mb-2 {{ unit.unit_type }}"
+                         onclick="window.location='/api/strategizer/ui/projects/{{ project.id }}/units/{{ unit.id }}'">
+                        <div class="card-body py-2 px-3">
+                            <small class="badge badge-{{ unit.unit_type }}">{{ unit.unit_type }}</small>
+                            <strong class="d-block">{{ unit.name }}</strong>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted">No source units linked.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Source Evidence -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-journal-text"></i> Source Evidence</h5>
+                </div>
+                <div class="card-body">
+                    {% if source_evidence|length > 0 %}
+                    {% for ev in source_evidence %}
+                    <div class="evidence-fragment mb-2">
+                        <small class="text-muted">{{ ev.source_name }}</small>
+                        <p class="mb-0">{{ ev.content[:150] }}{% if ev.content|length > 150 %}...{% endif %}</p>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted">No source evidence linked.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            {% if predicament.status != 'resolved' and predicament.status != 'deferred' %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="resolvePredicament()">
+                            <i class="bi bi-check-circle"></i> Resolve to Dialectic
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="deferPredicament()">
+                            <i class="bi bi-clock"></i> Defer for Later
+                        </button>
+                    </div>
+                    <p class="small text-muted mt-3">
+                        Resolving transforms this predicament into a dialectic unit, preserving the tension as an ongoing dynamic in your framework.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Resolve Modal -->
+<div class="modal fade" id="resolveModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-check-circle"></i> Resolve Predicament</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="resolveForm">
+                <div class="modal-body">
+                    <p class="text-muted">Transform this predicament into a dialectic unit that captures the tension as an ongoing dynamic.</p>
+
+                    <div class="mb-3">
+                        <label for="dialecticName" class="form-label">Dialectic Name</label>
+                        <input type="text" class="form-control" id="dialecticName"
+                               value="{{ predicament.pole_a }} ↔ {{ predicament.pole_b }}" required>
+                        <small class="text-muted">Typically "Pole A ↔ Pole B" format</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="resolutionApproach" class="form-label">Resolution Approach</label>
+                        <textarea class="form-control" id="resolutionApproach" rows="4" required
+                                  placeholder="How did you resolve this tension? What synthesis or navigation strategy emerged?"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="resolutionNotes" class="form-label">Additional Notes (Optional)</label>
+                        <textarea class="form-control" id="resolutionNotes" rows="2"
+                                  placeholder="Any additional context or learnings..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Resolve & Create Dialectic
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Grid Generation Modal -->
+<div class="modal fade" id="gridModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-grid-3x3"></i> Generating Grid</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Creating analytical grid tailored to this predicament...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const projectId = '{{ project.id }}';
+const predicamentId = '{{ predicament.id }}';
+
+async function generateGrid() {
+    const modal = new bootstrap.Modal(document.getElementById('gridModal'));
+    modal.show();
+
+    try {
+        await API.generatePredicamentGrid(projectId, predicamentId);
+        Toast.success('Grid generated!');
+        location.reload();
+    } catch (error) {
+        modal.hide();
+        Toast.error('Failed to generate grid: ' + error.message);
+    }
+}
+
+async function regenerateGrid() {
+    if (!confirm('Regenerate the grid? This will replace existing content.')) return;
+
+    const modal = new bootstrap.Modal(document.getElementById('gridModal'));
+    modal.show();
+
+    try {
+        await API.generatePredicamentGrid(projectId, predicamentId);
+        Toast.success('Grid regenerated!');
+        location.reload();
+    } catch (error) {
+        modal.hide();
+        Toast.error('Failed to regenerate grid: ' + error.message);
+    }
+}
+
+async function fillSlot(slotName) {
+    const slotEl = document.getElementById('slot-' + slotName);
+    slotEl.classList.add('loading');
+
+    try {
+        const result = await API.fillPredicamentSlot(projectId, predicamentId, slotName);
+        Toast.success('Slot filled!');
+        location.reload();
+    } catch (error) {
+        slotEl.classList.remove('loading');
+        Toast.error('Failed to fill slot: ' + error.message);
+    }
+}
+
+function resolvePredicament() {
+    const modal = new bootstrap.Modal(document.getElementById('resolveModal'));
+    modal.show();
+}
+
+document.getElementById('resolveForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        resolution_approach: document.getElementById('resolutionApproach').value,
+        dialectic_name: document.getElementById('dialecticName').value,
+        resolution_notes: document.getElementById('resolutionNotes').value
+    };
+
+    try {
+        const result = await API.resolvePredicament(projectId, predicamentId, data);
+        Toast.success('Predicament resolved! Dialectic created.');
+        window.location = `/api/strategizer/ui/projects/${projectId}/units/${result.resulting_dialectic.id}`;
+    } catch (error) {
+        Toast.error('Failed to resolve: ' + error.message);
+    }
+});
+
+async function deferPredicament() {
+    if (!confirm('Defer this predicament? You can return to it later.')) return;
+
+    try {
+        await API.deferPredicament(projectId, predicamentId);
+        Toast.success('Predicament deferred');
+        window.location = `/api/strategizer/ui/projects/${projectId}/coherence`;
+    } catch (error) {
+        Toast.error('Failed to defer: ' + error.message);
+    }
+}
+
+async function deletePredicament() {
+    if (!confirm('Delete this predicament? This cannot be undone.')) return;
+
+    try {
+        await API.deletePredicament(projectId, predicamentId);
+        Toast.success('Predicament deleted');
+        window.location = `/api/strategizer/ui/projects/${projectId}/coherence`;
+    } catch (error) {
+        Toast.error('Failed to delete: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

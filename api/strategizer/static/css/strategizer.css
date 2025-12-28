@@ -262,11 +262,268 @@
     opacity: 0.5;
 }
 
+/* =====================================================
+   COHERENCE MONITORING & PREDICAMENT STYLES
+   ===================================================== */
+
+/* Coherence Indicator Card */
+.coherence-indicator {
+    border: 2px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    transition: all 0.3s;
+}
+
+.coherence-indicator.coherence-good {
+    border-color: var(--st-success);
+    background-color: var(--bs-success-bg-subtle);
+}
+
+.coherence-indicator.coherence-warning {
+    border-color: var(--st-warning);
+    background-color: var(--bs-warning-bg-subtle);
+}
+
+.coherence-indicator.coherence-critical {
+    border-color: var(--st-danger);
+    background-color: var(--bs-danger-bg-subtle);
+}
+
+.coherence-score {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.coherence-score.score-good {
+    color: var(--st-success);
+}
+
+.coherence-score.score-warning {
+    color: var(--st-warning);
+}
+
+.coherence-score.score-critical {
+    color: var(--st-danger);
+}
+
+/* Predicament Cards */
+.predicament-card {
+    border-left: 4px solid var(--bs-border-color);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.predicament-card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.predicament-card.theoretical {
+    border-left-color: #6f42c1;
+}
+
+.predicament-card.empirical {
+    border-left-color: #fd7e14;
+}
+
+.predicament-card.conceptual {
+    border-left-color: #0d6efd;
+}
+
+.predicament-card.praxis {
+    border-left-color: #20c997;
+}
+
+/* Predicament Severity Badges */
+.badge-severity-low {
+    background-color: #6c757d;
+}
+
+.badge-severity-medium {
+    background-color: var(--st-warning);
+    color: #000;
+}
+
+.badge-severity-high {
+    background-color: var(--st-danger);
+}
+
+.badge-severity-critical {
+    background-color: #7c0a0a;
+    animation: pulse-critical 2s infinite;
+}
+
+@keyframes pulse-critical {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Predicament Type Badges */
+.badge-theoretical {
+    background-color: #6f42c1;
+}
+
+.badge-empirical {
+    background-color: #fd7e14;
+}
+
+.badge-conceptual {
+    background-color: #0d6efd;
+}
+
+.badge-praxis {
+    background-color: #20c997;
+}
+
+/* Predicament Status Badges */
+.badge-detected {
+    background-color: var(--st-info);
+}
+
+.badge-analyzing {
+    background-color: var(--st-warning);
+    color: #000;
+}
+
+.badge-resolved {
+    background-color: var(--st-success);
+}
+
+.badge-deferred {
+    background-color: #6c757d;
+}
+
+/* Predicament Poles Display */
+.pole-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: var(--bs-tertiary-bg);
+    border-radius: 0.5rem;
+}
+
+.pole-item {
+    flex: 1;
+    padding: 0.5rem;
+    text-align: center;
+    border-radius: 0.25rem;
+}
+
+.pole-a {
+    background-color: rgba(111, 66, 193, 0.1);
+    border: 1px solid rgba(111, 66, 193, 0.3);
+}
+
+.pole-b {
+    background-color: rgba(13, 110, 253, 0.1);
+    border: 1px solid rgba(13, 110, 253, 0.3);
+}
+
+.pole-separator {
+    font-size: 1.5rem;
+    color: var(--bs-secondary);
+}
+
+/* Predicament Grid Container */
+.predicament-grid {
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background-color: var(--bs-tertiary-bg);
+}
+
+.predicament-grid.has-content {
+    border-style: solid;
+    border-color: var(--st-primary);
+}
+
+/* Resolution Notes */
+.resolution-notes {
+    background-color: var(--bs-success-bg-subtle);
+    border-left: 4px solid var(--st-success);
+    padding: 1rem;
+    border-radius: 0.25rem;
+}
+
+/* Coherence Check Button States */
+.btn-coherence-check {
+    position: relative;
+}
+
+.btn-coherence-check.checking {
+    pointer-events: none;
+}
+
+.btn-coherence-check.checking::after {
+    content: "";
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 0.5rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Predicament Timeline */
+.predicament-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.predicament-timeline::before {
+    content: "";
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: var(--bs-border-color);
+}
+
+.predicament-timeline-item {
+    position: relative;
+    padding-bottom: 1rem;
+}
+
+.predicament-timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -1.75rem;
+    top: 0.25rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    background-color: var(--bs-secondary);
+    border: 2px solid var(--bs-body-bg);
+}
+
+.predicament-timeline-item.active::before {
+    background-color: var(--st-primary);
+}
+
+.predicament-timeline-item.complete::before {
+    background-color: var(--st-success);
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
     .sidebar {
         border-right: none;
         border-bottom: 1px solid var(--bs-border-color);
         min-height: auto;
+    }
+
+    .pole-display {
+        flex-direction: column;
+    }
+
+    .pole-separator {
+        transform: rotate(90deg);
     }
 }

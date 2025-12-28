@@ -19,7 +19,8 @@ from ..database import get_db
 from .models import (
     StrategizerProject, StrategizerDomain, StrategizerUnit,
     StrategizerGridInstance, StrategizerEvidenceSource,
-    StrategizerEvidenceFragment, AnalysisStatus
+    StrategizerEvidenceFragment, AnalysisStatus,
+    StrategizerPredicament, PredicamentStatus, PredicamentSeverity, PredicamentType
 )
 
 # Set up templates directory
@@ -60,6 +61,40 @@ async def get_project_context(project_id: str, db: AsyncSession):
     pending_decisions = pending_decisions_result.scalar() or 0
 
     return project, pending_decisions
+
+
+async def get_coherence_stats(project_id: str, db: AsyncSession) -> dict:
+    """Get coherence statistics for a project."""
+    # Count active predicaments (not resolved or deferred)
+    active_result = await db.execute(
+        select(func.count(StrategizerPredicament.id))
+        .where(
+            StrategizerPredicament.project_id == project_id,
+            StrategizerPredicament.status.in_([PredicamentStatus.DETECTED, PredicamentStatus.ANALYZING])
+        )
+    )
+    active_predicaments = active_result.scalar() or 0
+
+    # Count by severity (only active)
+    severity_counts = {}
+    for severity in [PredicamentSeverity.CRITICAL, PredicamentSeverity.HIGH, PredicamentSeverity.MEDIUM, PredicamentSeverity.LOW]:
+        count_result = await db.execute(
+            select(func.count(StrategizerPredicament.id))
+            .where(
+                StrategizerPredicament.project_id == project_id,
+                StrategizerPredicament.status.in_([PredicamentStatus.DETECTED, PredicamentStatus.ANALYZING]),
+                StrategizerPredicament.severity == severity
+            )
+        )
+        severity_counts[severity.value] = count_result.scalar() or 0
+
+    return {
+        "active_predicaments": active_predicaments,
+        "critical_count": severity_counts.get("critical", 0),
+        "high_count": severity_counts.get("high", 0),
+        "medium_count": severity_counts.get("medium", 0),
+        "low_count": severity_counts.get("low", 0)
+    }
 
 
 # =============================================================================
@@ -143,6 +178,9 @@ async def project_detail_page(
     )
     source_count = source_count_result.scalar() or 0
 
+    # Get coherence stats
+    coherence_stats = await get_coherence_stats(project_id, db)
+
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "project": {
@@ -158,6 +196,7 @@ async def project_detail_page(
         "units_by_type": units_by_type,
         "source_count": source_count,
         "pending_decisions": pending_decisions,
+        "coherence_stats": coherence_stats,
         "active_page": "project"
     })
 
@@ -397,4 +436,223 @@ async def decisions_page(
         "decisions": decisions_data,
         "pending_count": len(decisions_data),
         "active_page": "decisions"
+    })
+
+
+# =============================================================================
+# COHERENCE MONITORING
+# =============================================================================
+
+@router.get("/ui/projects/{project_id}/coherence", response_class=HTMLResponse)
+async def coherence_page(
+    request: Request,
+    project_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Coherence monitoring page with predicaments list."""
+    project, pending_decisions = await get_project_context(project_id, db)
+
+    # Get active predicaments
+    active_result = await db.execute(
+        select(StrategizerPredicament)
+        .where(
+            StrategizerPredicament.project_id == project_id,
+            StrategizerPredicament.status.in_([PredicamentStatus.DETECTED, PredicamentStatus.ANALYZING])
+        )
+        .order_by(StrategizerPredicament.severity.desc(), StrategizerPredicament.detected_at.desc())
+    )
+    active_predicaments = active_result.scalars().all()
+
+    # Get resolved predicaments
+    resolved_result = await db.execute(
+        select(StrategizerPredicament)
+        .where(
+            StrategizerPredicament.project_id == project_id,
+            StrategizerPredicament.status == PredicamentStatus.RESOLVED
+        )
+        .order_by(StrategizerPredicament.resolved_at.desc())
+        .limit(10)
+    )
+    resolved_predicaments = resolved_result.scalars().all()
+
+    # Build predicaments data
+    predicaments_data = []
+    for pred in active_predicaments:
+        predicaments_data.append({
+            "id": str(pred.id),
+            "title": pred.title,
+            "description": pred.description,
+            "predicament_type": pred.predicament_type.value,
+            "severity": pred.severity.value,
+            "status": pred.status.value,
+            "pole_a": pred.pole_a,
+            "pole_b": pred.pole_b,
+            "detected_at": pred.detected_at,
+            "has_grid": pred.generated_grid_id is not None,
+            "source_unit_count": len(pred.source_unit_ids or [])
+        })
+
+    resolved_data = []
+    for pred in resolved_predicaments:
+        resolved_data.append({
+            "id": str(pred.id),
+            "title": pred.title,
+            "description": pred.description,
+            "predicament_type": pred.predicament_type.value,
+            "resolution_notes": pred.resolution_notes,
+            "resolved_at": pred.resolved_at,
+            "resulting_dialectic_id": str(pred.resulting_dialectic_id) if pred.resulting_dialectic_id else None
+        })
+
+    # Get full stats
+    stats = {
+        "active": len(active_predicaments),
+        "resolved": len(resolved_predicaments),
+        "critical": sum(1 for p in active_predicaments if p.severity == PredicamentSeverity.CRITICAL),
+        "high": sum(1 for p in active_predicaments if p.severity == PredicamentSeverity.HIGH),
+        "medium": sum(1 for p in active_predicaments if p.severity == PredicamentSeverity.MEDIUM),
+        "low": sum(1 for p in active_predicaments if p.severity == PredicamentSeverity.LOW),
+        "theoretical": sum(1 for p in active_predicaments if p.predicament_type == PredicamentType.THEORETICAL),
+        "empirical": sum(1 for p in active_predicaments if p.predicament_type == PredicamentType.EMPIRICAL),
+        "conceptual": sum(1 for p in active_predicaments if p.predicament_type == PredicamentType.CONCEPTUAL),
+        "praxis": sum(1 for p in active_predicaments if p.predicament_type == PredicamentType.PRAXIS),
+    }
+
+    return templates.TemplateResponse("coherence.html", {
+        "request": request,
+        "project": {
+            "id": str(project.id),
+            "name": project.name
+        },
+        "predicaments": predicaments_data,
+        "resolved_predicaments": resolved_data,
+        "stats": stats,
+        "active_page": "coherence"
+    })
+
+
+@router.get("/ui/projects/{project_id}/predicaments/{predicament_id}", response_class=HTMLResponse)
+async def predicament_detail_page(
+    request: Request,
+    project_id: str,
+    predicament_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Predicament detail page with analytical grid."""
+    project, pending_decisions = await get_project_context(project_id, db)
+
+    # Get predicament with grid
+    pred_result = await db.execute(
+        select(StrategizerPredicament)
+        .where(
+            StrategizerPredicament.id == predicament_id,
+            StrategizerPredicament.project_id == project_id
+        )
+    )
+    predicament = pred_result.scalar_one_or_none()
+
+    if not predicament:
+        raise HTTPException(status_code=404, detail="Predicament not found")
+
+    # Get generated grid if exists
+    grid_data = None
+    if predicament.generated_grid_id:
+        grid_result = await db.execute(
+            select(StrategizerGridInstance)
+            .where(StrategizerGridInstance.id == predicament.generated_grid_id)
+        )
+        grid = grid_result.scalar_one_or_none()
+        if grid:
+            from .grids import get_grid_definition
+            grid_def = get_grid_definition(grid.grid_type)
+
+            slots_data = []
+            if grid_def:
+                for slot_def in grid_def["slots"]:
+                    slot_name = slot_def["name"]
+                    slot_content = (grid.slots or {}).get(slot_name, {})
+                    slots_data.append({
+                        "name": slot_name,
+                        "description": slot_def.get("description", ""),
+                        "content": slot_content.get("content", ""),
+                        "confidence": slot_content.get("confidence", 0)
+                    })
+
+            grid_data = {
+                "id": str(grid.id),
+                "grid_type": grid.grid_type,
+                "name": grid_def["name"] if grid_def else grid.grid_type,
+                "description": grid_def["description"] if grid_def else "",
+                "slots": slots_data,
+                "analysis_sequence": grid_def.get("analysis_sequence") if grid_def else None,
+                "resolution_criteria": grid_def.get("resolution_criteria") if grid_def else None
+            }
+
+    # Get source units
+    source_units = []
+    if predicament.source_unit_ids:
+        units_result = await db.execute(
+            select(StrategizerUnit)
+            .where(StrategizerUnit.id.in_(predicament.source_unit_ids))
+        )
+        for unit in units_result.scalars().all():
+            source_units.append({
+                "id": str(unit.id),
+                "name": unit.name,
+                "unit_type": unit.unit_type.value
+            })
+
+    # Get source evidence
+    source_evidence = []
+    if predicament.source_evidence_ids:
+        ev_result = await db.execute(
+            select(StrategizerEvidenceFragment)
+            .options(selectinload(StrategizerEvidenceFragment.source))
+            .where(StrategizerEvidenceFragment.id.in_(predicament.source_evidence_ids))
+        )
+        for ev in ev_result.scalars().all():
+            source_evidence.append({
+                "id": str(ev.id),
+                "content": ev.content,
+                "source_name": ev.source.source_name if ev.source else "Unknown"
+            })
+
+    # Get resulting dialectic if resolved
+    resulting_dialectic = None
+    if predicament.resulting_dialectic_id:
+        dialectic_result = await db.execute(
+            select(StrategizerUnit)
+            .where(StrategizerUnit.id == predicament.resulting_dialectic_id)
+        )
+        dialectic = dialectic_result.scalar_one_or_none()
+        if dialectic:
+            resulting_dialectic = {
+                "id": str(dialectic.id),
+                "name": dialectic.name
+            }
+
+    return templates.TemplateResponse("predicament_detail.html", {
+        "request": request,
+        "project": {
+            "id": str(project.id),
+            "name": project.name
+        },
+        "predicament": {
+            "id": str(predicament.id),
+            "title": predicament.title,
+            "description": predicament.description,
+            "predicament_type": predicament.predicament_type.value,
+            "severity": predicament.severity.value,
+            "status": predicament.status.value,
+            "pole_a": predicament.pole_a,
+            "pole_b": predicament.pole_b,
+            "detected_at": predicament.detected_at,
+            "resolved_at": predicament.resolved_at,
+            "resolution_notes": predicament.resolution_notes
+        },
+        "grid": grid_data,
+        "source_units": source_units,
+        "source_evidence": source_evidence,
+        "resulting_dialectic": resulting_dialectic,
+        "active_page": "coherence"
     })

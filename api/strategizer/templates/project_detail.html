@@ -166,8 +166,43 @@
             </div>
         </div>
 
-        <!-- Right Sidebar: Evidence & Decisions -->
+        <!-- Right Sidebar: Coherence, Evidence & Decisions -->
         <div class="col-md-3">
+            <!-- Coherence Indicator -->
+            <div class="card mb-3 coherence-indicator {% if coherence_stats.active_predicaments == 0 %}coherence-good{% elif coherence_stats.critical_count > 0 %}coherence-critical{% else %}coherence-warning{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-shield-check"></i> Coherence</span>
+                    <a href="/api/strategizer/ui/projects/{{ project.id }}/coherence" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div class="card-body text-center">
+                    {% if coherence_stats.active_predicaments == 0 %}
+                    <div class="coherence-score score-good">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <p class="mb-2">Framework coherent</p>
+                    {% else %}
+                    <div class="coherence-score {% if coherence_stats.critical_count > 0 %}score-critical{% else %}score-warning{% endif %}">
+                        {{ coherence_stats.active_predicaments }}
+                    </div>
+                    <p class="mb-2">Predicament{{ 's' if coherence_stats.active_predicaments != 1 else '' }} detected</p>
+                    {% if coherence_stats.critical_count > 0 %}
+                    <span class="badge badge-severity-critical">{{ coherence_stats.critical_count }} Critical</span>
+                    {% endif %}
+                    {% if coherence_stats.high_count > 0 %}
+                    <span class="badge badge-severity-high">{{ coherence_stats.high_count }} High</span>
+                    {% endif %}
+                    {% endif %}
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-outline-primary btn-coherence-check w-100" onclick="runQuickScan()">
+                            <i class="bi bi-search"></i> Quick Scan
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evidence -->
             <div class="card mb-3">
                 <div class="card-header d-flex justify-content-between">
                     <span><i class="bi bi-journal-text"></i> Evidence</span>
@@ -293,6 +328,26 @@ async function deleteProject() {
             }
         }
     );
+}
+
+async function runQuickScan() {
+    const btn = document.querySelector('.btn-coherence-check');
+    btn.classList.add('checking');
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Scanning...';
+
+    try {
+        const result = await API.quickCoherenceScan(projectId);
+        if (result.total_found > 0) {
+            Toast.warning(`Found ${result.total_found} predicament${result.total_found > 1 ? 's' : ''}`);
+        } else {
+            Toast.success('Framework appears coherent!');
+        }
+        location.reload();
+    } catch (error) {
+        Toast.error('Scan failed: ' + error.message);
+        btn.classList.remove('checking');
+        btn.innerHTML = '<i class="bi bi-search"></i> Quick Scan';
+    }
 }
 
 function initPage() {

@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}Coherence Monitor - {{ project.name }} - Strategizer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/">Projects</a></li>
+            <li class="breadcrumb-item"><a href="/api/strategizer/ui/projects/{{ project.id }}">{{ project.name }}</a></li>
+            <li class="breadcrumb-item active">Coherence</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="bi bi-shield-check"></i> Coherence Monitor</h4>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-coherence-check" onclick="runQuickScan()" id="quickScanBtn">
+                            <i class="bi bi-search"></i> Quick Scan
+                        </button>
+                        <button class="btn btn-primary btn-coherence-check" onclick="runDeepAnalysis()" id="deepAnalysisBtn">
+                            <i class="bi bi-cpu"></i> Deep Analysis
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        The coherence monitor detects tensions, gaps, and inconsistencies in your theoretical framework.
+                        <strong>Quick Scan</strong> uses Sonnet for fast checks, while <strong>Deep Analysis</strong> uses Opus 4.5 with extended thinking for comprehensive analysis.
+                    </p>
+
+                    {% if predicaments|length == 0 %}
+                    <div class="empty-state">
+                        <i class="bi bi-shield-check"></i>
+                        <h5>No Predicaments Detected</h5>
+                        <p>Your framework appears coherent. Run a scan to check for hidden tensions.</p>
+                    </div>
+                    {% else %}
+                    <!-- Predicament List -->
+                    <div class="predicaments-list">
+                        {% for pred in predicaments %}
+                        <div class="card predicament-card {{ pred.predicament_type }} mb-3"
+                             onclick="window.location='/api/strategizer/ui/projects/{{ project.id }}/predicaments/{{ pred.id }}'">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="mb-0">{{ pred.title }}</h5>
+                                    <div>
+                                        <span class="badge badge-{{ pred.predicament_type }}">{{ pred.predicament_type }}</span>
+                                        <span class="badge badge-severity-{{ pred.severity }}">{{ pred.severity }}</span>
+                                        <span class="badge badge-{{ pred.status }}">{{ pred.status }}</span>
+                                    </div>
+                                </div>
+                                <p class="text-muted mb-2">{{ pred.description[:200] }}{% if pred.description|length > 200 %}...{% endif %}</p>
+
+                                {% if pred.pole_a and pred.pole_b %}
+                                <div class="pole-display">
+                                    <div class="pole-item pole-a">
+                                        <small class="text-muted">Pole A</small>
+                                        <div>{{ pred.pole_a }}</div>
+                                    </div>
+                                    <div class="pole-separator">↔</div>
+                                    <div class="pole-item pole-b">
+                                        <small class="text-muted">Pole B</small>
+                                        <div>{{ pred.pole_b }}</div>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> Detected {{ pred.detected_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                    <div>
+                                        {% if pred.has_grid %}
+                                        <span class="badge bg-info"><i class="bi bi-grid-3x3"></i> Has Grid</span>
+                                        {% endif %}
+                                        {% if pred.source_unit_count > 0 %}
+                                        <span class="badge bg-secondary">{{ pred.source_unit_count }} unit{{ 's' if pred.source_unit_count != 1 else '' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Resolved Predicaments Archive -->
+            {% if resolved_predicaments|length > 0 %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-archive"></i> Resolved Predicaments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="resolvedAccordion">
+                        {% for pred in resolved_predicaments %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#resolved{{ loop.index }}">
+                                    <span class="badge badge-{{ pred.predicament_type }} me-2">{{ pred.predicament_type }}</span>
+                                    {{ pred.title }}
+                                    {% if pred.resulting_dialectic_id %}
+                                    <span class="badge bg-success ms-2"><i class="bi bi-arrow-right"></i> Dialectic</span>
+                                    {% endif %}
+                                </button>
+                            </h2>
+                            <div id="resolved{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#resolvedAccordion">
+                                <div class="accordion-body">
+                                    <p>{{ pred.description }}</p>
+                                    {% if pred.resolution_notes %}
+                                    <div class="resolution-notes">
+                                        <strong>Resolution:</strong> {{ pred.resolution_notes }}
+                                    </div>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        Resolved {{ pred.resolved_at.strftime('%Y-%m-%d %H:%M') if pred.resolved_at else 'N/A' }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Sidebar: Stats & Quick Actions -->
+        <div class="col-md-4">
+            <!-- Coherence Stats -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> Coherence Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="stat-value {% if stats.active == 0 %}text-success{% elif stats.critical > 0 %}text-danger{% else %}text-warning{% endif %}">
+                                {{ stats.active }}
+                            </div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="stat-value text-success">{{ stats.resolved }}</div>
+                            <div class="stat-label">Resolved</div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6>By Severity</h6>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if stats.critical > 0 %}
+                        <span class="badge badge-severity-critical">{{ stats.critical }} Critical</span>
+                        {% endif %}
+                        {% if stats.high > 0 %}
+                        <span class="badge badge-severity-high">{{ stats.high }} High</span>
+                        {% endif %}
+                        {% if stats.medium > 0 %}
+                        <span class="badge badge-severity-medium">{{ stats.medium }} Medium</span>
+                        {% endif %}
+                        {% if stats.low > 0 %}
+                        <span class="badge badge-severity-low">{{ stats.low }} Low</span>
+                        {% endif %}
+                        {% if stats.critical == 0 and stats.high == 0 and stats.medium == 0 and stats.low == 0 %}
+                        <span class="text-muted">No active predicaments</span>
+                        {% endif %}
+                    </div>
+
+                    <h6>By Type</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if stats.theoretical > 0 %}
+                        <span class="badge badge-theoretical">{{ stats.theoretical }} Theoretical</span>
+                        {% endif %}
+                        {% if stats.empirical > 0 %}
+                        <span class="badge badge-empirical">{{ stats.empirical }} Empirical</span>
+                        {% endif %}
+                        {% if stats.conceptual > 0 %}
+                        <span class="badge badge-conceptual">{{ stats.conceptual }} Conceptual</span>
+                        {% endif %}
+                        {% if stats.praxis > 0 %}
+                        <span class="badge badge-praxis">{{ stats.praxis }} Praxis</span>
+                        {% endif %}
+                        {% if stats.theoretical == 0 and stats.empirical == 0 and stats.conceptual == 0 and stats.praxis == 0 %}
+                        <span class="text-muted">No active predicaments</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predicament Types Legend -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Predicament Types</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <span class="badge badge-theoretical">Theoretical</span>
+                        <small class="text-muted d-block">Unresolved tensions in assumptions</small>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge badge-empirical">Empirical</span>
+                        <small class="text-muted d-block">Gap between theory and observed reality</small>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge badge-conceptual">Conceptual</span>
+                        <small class="text-muted d-block">Concept doesn't carve reality well</small>
+                    </div>
+                    <div>
+                        <span class="badge badge-praxis">Praxis</span>
+                        <small class="text-muted d-block">Theory can't guide action</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Learning Archive Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Resolution Path</h5>
+                </div>
+                <div class="card-body">
+                    <div class="predicament-timeline">
+                        <div class="predicament-timeline-item complete">
+                            <strong>Detected</strong>
+                            <small class="text-muted d-block">Predicament identified by scan</small>
+                        </div>
+                        <div class="predicament-timeline-item active">
+                            <strong>Analyzing</strong>
+                            <small class="text-muted d-block">Generate grid, fill slots</small>
+                        </div>
+                        <div class="predicament-timeline-item">
+                            <strong>Resolved</strong>
+                            <small class="text-muted d-block">Transform into dialectic</small>
+                        </div>
+                    </div>
+                    <p class="text-muted mt-3 small">
+                        Resolved predicaments become explicit dialectics in your framework, creating a virtuous cycle of learning.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deep Analysis Modal -->
+<div class="modal fade" id="deepAnalysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cpu"></i> Deep Analysis Running</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5>Analyzing Framework with Opus 4.5</h5>
+                <p class="text-muted">Using extended thinking (10K tokens) for comprehensive coherence analysis...</p>
+                <div class="progress mt-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                </div>
+                <p class="small text-muted mt-3">This may take 1-3 minutes depending on framework complexity.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const projectId = '{{ project.id }}';
+
+async function runQuickScan() {
+    const btn = document.getElementById('quickScanBtn');
+    btn.classList.add('checking');
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Scanning...';
+    btn.disabled = true;
+
+    try {
+        const result = await API.quickCoherenceScan(projectId);
+        if (result.new_detected > 0) {
+            Toast.warning(`Found ${result.new_detected} new predicament${result.new_detected > 1 ? 's' : ''}`);
+        } else if (result.total_found > 0) {
+            Toast.info(`${result.total_found} existing predicament${result.total_found > 1 ? 's' : ''}, no new ones found`);
+        } else {
+            Toast.success('Framework appears coherent!');
+        }
+        location.reload();
+    } catch (error) {
+        Toast.error('Scan failed: ' + error.message);
+        btn.classList.remove('checking');
+        btn.innerHTML = '<i class="bi bi-search"></i> Quick Scan';
+        btn.disabled = false;
+    }
+}
+
+async function runDeepAnalysis() {
+    const btn = document.getElementById('deepAnalysisBtn');
+    btn.classList.add('checking');
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
+    btn.disabled = true;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('deepAnalysisModal'));
+    modal.show();
+
+    try {
+        const result = await API.deepCoherenceAnalysis(projectId);
+        modal.hide();
+
+        if (result.new_detected > 0) {
+            Toast.warning(`Deep analysis found ${result.new_detected} new predicament${result.new_detected > 1 ? 's' : ''}`);
+        } else if (result.total_found > 0) {
+            Toast.info(`Confirmed ${result.total_found} existing predicament${result.total_found > 1 ? 's' : ''}`);
+        } else {
+            Toast.success('Deep analysis confirms framework coherence!');
+        }
+
+        if (result.thinking_tokens_used) {
+            console.log(`Deep analysis used ${result.thinking_tokens_used} thinking tokens`);
+        }
+
+        location.reload();
+    } catch (error) {
+        modal.hide();
+        Toast.error('Deep analysis failed: ' + error.message);
+        btn.classList.remove('checking');
+        btn.innerHTML = '<i class="bi bi-cpu"></i> Deep Analysis';
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}
