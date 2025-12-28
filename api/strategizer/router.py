@@ -8,7 +8,7 @@ Includes project management, domain bootstrapping, units, and dialogue.
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -35,6 +35,7 @@ from .schemas import (
     ApplicableGridsResponse, GridDefinitionResponse, SlotDefinition, SlotContent
 )
 from .services.llm import StrategizerLLM
+from .services.coherence_monitor import run_background_coherence_check
 from .grids import get_grid_definition, get_applicable_grids, TIER_1_GRIDS, TIER_2_GRIDS
 
 router = APIRouter(prefix="/api/strategizer", tags=["strategizer"])
@@ -469,6 +470,7 @@ async def accept_reject_seeds(
 async def create_unit(
     project_id: str,
     unit: UnitCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new unit."""
@@ -500,6 +502,13 @@ async def create_unit(
     db.add(db_unit)
     await db.commit()
     await db.refresh(db_unit)
+
+    # Schedule background coherence check
+    background_tasks.add_task(
+        run_background_coherence_check,
+        project_id,
+        f"unit_created:{db_unit.name}"
+    )
 
     return UnitResponse(
         id=db_unit.id,
@@ -593,6 +602,7 @@ async def update_unit(
     project_id: str,
     unit_id: str,
     update: UnitUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """Update a unit."""
@@ -622,6 +632,13 @@ async def update_unit(
 
     await db.commit()
     await db.refresh(unit)
+
+    # Schedule background coherence check
+    background_tasks.add_task(
+        run_background_coherence_check,
+        project_id,
+        f"unit_updated:{unit.name}"
+    )
 
     return UnitResponse(
         id=unit.id,
@@ -917,6 +934,7 @@ async def update_grid_slot(
     grid_id: str,
     slot_name: str,
     update: GridSlotUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """Update a single slot in a grid."""
@@ -950,6 +968,13 @@ async def update_grid_slot(
     flag_modified(grid, "slots")
 
     await db.commit()
+
+    # Schedule background coherence check
+    background_tasks.add_task(
+        run_background_coherence_check,
+        project_id,
+        f"grid_slot_updated:{grid.grid_type}/{slot_name}"
+    )
 
     return {"message": f"Slot '{slot_name}' updated successfully"}
 
@@ -1383,3 +1408,6 @@ router.include_router(evidence_router)
 
 from .ui_router import router as ui_router
 router.include_router(ui_router)
+
+from .coherence_router import router as coherence_router
+router.include_router(coherence_router)

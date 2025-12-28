@@ -412,3 +412,87 @@ class StrategizerEvidenceDecision(Base):
     __table_args__ = (
         Index("idx_strategizer_decision_fragment", "fragment_id"),
     )
+
+
+# =============================================================================
+# PREDICAMENTS (Theoretical Coherence Monitoring)
+# =============================================================================
+
+class PredicamentType(str, PyEnum):
+    """Types of predicaments detected by the coherence monitor."""
+    THEORETICAL = "theoretical"  # Unresolved tensions in assumptions
+    EMPIRICAL = "empirical"      # Gap between theory and observed reality
+    CONCEPTUAL = "conceptual"    # Concept doesn't carve reality well
+    PRAXIS = "praxis"            # Theory can't guide action
+
+
+class PredicamentSeverity(str, PyEnum):
+    """How critical is this predicament to address."""
+    LOW = "low"           # Minor inconsistency, can ignore
+    MEDIUM = "medium"     # Worth addressing when convenient
+    HIGH = "high"         # Should address before finalizing framework
+    CRITICAL = "critical" # Fundamental flaw requiring immediate attention
+
+
+class PredicamentStatus(str, PyEnum):
+    """Lifecycle status of a predicament."""
+    DETECTED = "detected"    # Just found by coherence monitor
+    ANALYZING = "analyzing"  # Has a generated grid, being worked on
+    RESOLVED = "resolved"    # Transformed into a dialectic
+    DEFERRED = "deferred"    # Acknowledged but not resolved now
+
+
+class StrategizerPredicament(Base):
+    """
+    A detected tension, gap, or inconsistency in the theoretical framework.
+
+    Predicaments are detected by the Coherence Monitor and represent:
+    - THEORETICAL: Conflicts between concepts/assumptions
+    - EMPIRICAL: Reality that theory can't explain
+    - CONCEPTUAL: Categories that don't carve reality well
+    - PRAXIS: Theory that can't guide action
+
+    Resolution path: Predicament → Analytical Grid → Analysis → Dialectic → Learning
+    """
+    __tablename__ = "strategizer_predicaments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    project_id = Column(String(36), ForeignKey("strategizer_projects.id", ondelete="CASCADE"), nullable=False)
+
+    # Predicament identity
+    title = Column(String(255), nullable=False)  # e.g., "State vs. Lab Power Tension"
+    description = Column(Text, nullable=False)   # Full description of the predicament
+    predicament_type = Column(Enum(PredicamentType), nullable=False)
+    severity = Column(Enum(PredicamentSeverity), default=PredicamentSeverity.MEDIUM)
+    status = Column(Enum(PredicamentStatus), default=PredicamentStatus.DETECTED)
+
+    # The two poles of tension (for dialectical predicaments)
+    pole_a = Column(Text)  # First side of the tension
+    pole_b = Column(Text)  # Second side of the tension
+
+    # Source tracking: which units/evidence surfaced this predicament
+    source_unit_ids = Column(JSON, default=list)     # List of unit IDs involved
+    source_evidence_ids = Column(JSON, default=list) # List of fragment IDs that revealed this
+
+    # Resolution
+    generated_grid_id = Column(String(36), ForeignKey("strategizer_grid_instances.id", ondelete="SET NULL"))
+    resolution_notes = Column(Text)  # How it was resolved / why deferred
+    resulting_dialectic_id = Column(String(36), ForeignKey("strategizer_units.id", ondelete="SET NULL"))
+
+    # Timestamps
+    detected_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    project = relationship("StrategizerProject", backref="predicaments")
+    generated_grid = relationship("StrategizerGridInstance", foreign_keys=[generated_grid_id])
+    resulting_dialectic = relationship("StrategizerUnit", foreign_keys=[resulting_dialectic_id])
+
+    # Indices
+    __table_args__ = (
+        Index("idx_strategizer_predicament_project", "project_id"),
+        Index("idx_strategizer_predicament_status", "status"),
+        Index("idx_strategizer_predicament_type", "predicament_type"),
+    )

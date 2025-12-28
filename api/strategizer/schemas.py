@@ -490,5 +490,153 @@ class ExtractRequest(BaseModel):
     force: bool = Field(False, description="Re-extract even if already done")
 
 
+# =============================================================================
+# PREDICAMENT SCHEMAS (Coherence Monitoring)
+# =============================================================================
+
+class PredicamentType(str, Enum):
+    """Types of predicaments detected by the coherence monitor."""
+    THEORETICAL = "theoretical"
+    EMPIRICAL = "empirical"
+    CONCEPTUAL = "conceptual"
+    PRAXIS = "praxis"
+
+
+class PredicamentSeverity(str, Enum):
+    """How critical is this predicament."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class PredicamentStatus(str, Enum):
+    """Lifecycle status of a predicament."""
+    DETECTED = "detected"
+    ANALYZING = "analyzing"
+    RESOLVED = "resolved"
+    DEFERRED = "deferred"
+
+
+class PredicamentCreate(BaseModel):
+    """Create a predicament (typically from coherence monitor)."""
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=10)
+    predicament_type: PredicamentType
+    severity: PredicamentSeverity = PredicamentSeverity.MEDIUM
+    pole_a: Optional[str] = None
+    pole_b: Optional[str] = None
+    source_unit_ids: List[str] = []
+    source_evidence_ids: List[str] = []
+
+
+class PredicamentUpdate(BaseModel):
+    """Update a predicament."""
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    severity: Optional[PredicamentSeverity] = None
+    status: Optional[PredicamentStatus] = None
+    pole_a: Optional[str] = None
+    pole_b: Optional[str] = None
+    resolution_notes: Optional[str] = None
+
+
+class PredicamentSummary(BaseModel):
+    """Predicament summary for list view."""
+    id: str
+    title: str
+    predicament_type: PredicamentType
+    severity: PredicamentSeverity
+    status: PredicamentStatus
+    source_unit_count: int = 0
+    has_grid: bool = False
+    detected_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PredicamentResponse(BaseModel):
+    """Full predicament response."""
+    id: str
+    project_id: str
+    title: str
+    description: str
+    predicament_type: PredicamentType
+    severity: PredicamentSeverity
+    status: PredicamentStatus
+    pole_a: Optional[str] = None
+    pole_b: Optional[str] = None
+    source_unit_ids: List[str] = []
+    source_evidence_ids: List[str] = []
+    generated_grid_id: Optional[str] = None
+    resolution_notes: Optional[str] = None
+    resulting_dialectic_id: Optional[str] = None
+    detected_at: datetime
+    resolved_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PredicamentWithContext(BaseModel):
+    """Predicament with related units and evidence."""
+    predicament: PredicamentResponse
+    source_units: List[UnitResponse] = []
+    source_evidence: List[EvidenceFragmentResponse] = []
+    generated_grid: Optional[GridResponse] = None
+
+
+class CoherenceCheckRequest(BaseModel):
+    """Request a coherence check."""
+    deep_analysis: bool = Field(
+        False,
+        description="Use Opus 4.5 with extended thinking for deep analysis"
+    )
+    focus_unit_ids: List[str] = Field(
+        [],
+        description="Optional: Focus on specific units"
+    )
+
+
+class CoherenceCheckResponse(BaseModel):
+    """Response from coherence check."""
+    predicaments_found: List[PredicamentSummary]
+    total_found: int
+    new_detected: int
+    analysis_depth: str  # "quick" or "deep"
+    thinking_tokens_used: Optional[int] = None
+
+
+class PredicamentResolveRequest(BaseModel):
+    """Request to resolve a predicament into a dialectic."""
+    resolution_approach: str = Field(
+        ...,
+        description="How the predicament was resolved"
+    )
+    dialectic_name: str = Field(
+        ...,
+        description="Name for the resulting dialectic"
+    )
+    resolution_notes: Optional[str] = None
+
+
+class PredicamentResolveResponse(BaseModel):
+    """Response from resolving a predicament."""
+    predicament_id: str
+    resulting_dialectic: UnitResponse
+    message: str = "Predicament resolved and transformed into dialectic"
+
+
+class GenerateGridRequest(BaseModel):
+    """Request to generate an analytical grid for a predicament."""
+    grid_type: Optional[str] = Field(
+        None,
+        description="Optional: Force a specific grid type"
+    )
+
+
 # Update forward references
 ProjectResponse.model_rebuild()

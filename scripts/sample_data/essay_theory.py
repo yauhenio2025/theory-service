@@ -6,6 +6,46 @@ to develop an argument about the geopolitical implications of artificial
 intelligence - with real concepts, actors, tensions, and evidence.
 
 This represents actual essay work, not an abstract framework.
+
+==============================================================================
+COHERENCE MONITOR: EXPECTED PREDICAMENTS
+==============================================================================
+This sample data contains intentional tensions that the Coherence Monitor
+should detect. These demonstrate the kinds of predicaments that arise in
+real theoretical work:
+
+1. THEORETICAL TENSION: "Compute Sovereignty" vs "Frontier AI Labs"
+   - "Compute Sovereignty" assumes nation-states are the relevant actors
+   - "Frontier AI Labs" shows that private labs, not states, actually control AI
+   - WHO HAS POWER? The framework pulls in opposite directions on this question
+   - Resolution path: Create a dialectic that resolves the state/private tension
+
+2. CONCEPTUAL GAP: Missing "AI Safety Cooperation" concept
+   - The dialectic "US-China Decoupling vs. Global Commons" discusses cooperation
+   - The "Open Science vs. National Security" dialectic touches on safety sharing
+   - But we have no concept that captures "AI Safety Cooperation" as a phenomenon
+   - This is a HOLE in the theoretical apparatus
+
+3. EMPIRICAL GAP: Evidence contradicts "decoupling" narrative
+   - Our framework predicts increasing US-China tech decoupling
+   - But evidence (see RAND source) shows continued interdependence in some areas
+   - The framework can't fully account for "selective decoupling"
+
+4. PRAXIS GAP: Framework describes but doesn't prescribe
+   - The Middle Power Dilemma describes strategic challenges
+   - But doesn't help a middle power DECIDE what to actually do
+   - Missing: decision-making heuristics, not just analytical categories
+
+5. CROSS-UNIT FRICTION: Talent vs. Compute assumptions
+   - "Talent as Strategic Resource" assumes individuals matter (distributed power)
+   - "Compute Sovereignty" assumes infrastructure matters (concentrated power)
+   - These have opposite implications for AI democratization
+
+The Coherence Monitor should detect these and offer to create:
+- Analytical grids for each predicament
+- Suggestions for resolving through new dialectics
+- Links between the predicaments and source units/evidence
+==============================================================================
 """
 
 from api.strategizer.models import (
@@ -51,29 +91,31 @@ of international cooperation.""",
             "content": {
                 "key_insight": "Control over compute is becoming as strategically important as control over oil was in the 20th century",
                 "indicators": ["Domestic chip fabrication", "Cloud infrastructure ownership", "Energy for data centers", "Talent retention"],
+                "cross_references": ["Frontier AI Labs", "Talent as Strategic Resource"],
+                "internal_tensions": "This concept assumes nation-states are the relevant actors, but see [Frontier AI Labs] which suggests private labs may matter more than state compute capacity.",
             },
             "grids": {
                 "LOGICAL": {
                     "claim": "Compute sovereignty has become a core strategic imperative because AI capability depends on access to computational resources that can be denied through export controls, sanctions, or supply chain disruption.",
                     "grounds": "The US CHIPS Act, EU Chips Act, and China's semiconductor investments represent over $200B in state intervention. The October 2022 US export controls on advanced chips to China demonstrate compute denial as a strategic weapon.",
                     "warrant": "Nations that cannot guarantee access to advanced compute cannot guarantee AI capability, making them strategically dependent on those who can.",
-                    "backing": "Historical precedent: energy dependence shaped 20th-century geopolitics. Compute is the new critical resource for 21st-century power.",
-                    "qualifier": "Cloud computing and distributed training may partially mitigate the need for domestic fabrication, though this introduces different dependencies.",
-                    "rebuttal": "Some argue that compute is a commodity that will eventually be available from multiple sources, but current chokepoints (ASML, TSMC) suggest otherwise.",
+                    "backing": "Historical precedent: energy dependence shaped 20th-century geopolitics. Compute is the new critical resource for 21st-century power. Note: This assumes states remain the central strategic actors—but [Frontier AI Labs] complicates this assumption.",
+                    "qualifier": "Cloud computing and distributed training may partially mitigate the need for domestic fabrication, though this introduces different dependencies. CRITICAL TENSION: Even with state compute capacity, if [Frontier AI Labs] control model architectures and training techniques, compute sovereignty may be necessary but not sufficient.",
+                    "rebuttal": "Some argue that compute is a commodity that will eventually be available from multiple sources, but current chokepoints (ASML, TSMC) suggest otherwise. However, this focus on hardware chokepoints may miss that software and talent chokepoints (see [Talent as Strategic Resource]) could be equally important.",
                 },
                 "ACTOR": {
-                    "protagonist": "Nations seeking strategic autonomy in AI",
-                    "allies": "Domestic chip makers, cloud providers, energy companies",
-                    "antagonists": "Existing compute hegemons who benefit from dependency; market forces favoring concentration",
-                    "affected_parties": "AI researchers dependent on foreign cloud; smaller nations priced out of compute race",
-                    "gatekeepers": "ASML (lithography), TSMC (fabrication), Nvidia (GPUs), hyperscalers (cloud)",
+                    "protagonist": "Nations seeking strategic autonomy in AI—but this framing is contested. See [Frontier AI Labs] for the argument that private labs, not nations, are the true protagonists.",
+                    "allies": "Domestic chip makers, cloud providers, energy companies. Note tension: these are often multinational corporations whose interests may not align with 'national' sovereignty.",
+                    "antagonists": "Existing compute hegemons who benefit from dependency; market forces favoring concentration; potentially [Frontier AI Labs] whose interests transcend national boundaries.",
+                    "affected_parties": "AI researchers dependent on foreign cloud; smaller nations priced out of compute race. Cross-reference: See [The Middle Power Dilemma] for how smaller nations navigate this.",
+                    "gatekeepers": "ASML (lithography), TSMC (fabrication), Nvidia (GPUs), hyperscalers (cloud). KEY OBSERVATION: Most gatekeepers are private companies, not states—tension with state-centric framing of 'sovereignty'.",
                 },
                 "TEMPORAL": {
-                    "origin": "2010s: Rising awareness of strategic tech dependencies",
-                    "evolution": "2020-2022: COVID supply chain shocks; US-China tech decoupling",
-                    "current_state": "2023-2024: Massive state investments in domestic capacity; export control regime tightening",
-                    "trajectory": "2025-2030: Potential bifurcation into US-aligned and China-aligned compute ecosystems",
-                    "key_transitions": "October 2022 US export controls marked the decisive shift from market-led to state-led compute allocation",
+                    "origin": "2010s: Rising awareness of strategic tech dependencies. This predates the [Frontier AI Labs] becoming powerful actors.",
+                    "evolution": "2020-2022: COVID supply chain shocks; US-China tech decoupling. During this period, frontier labs (OpenAI, DeepMind) began consolidating power outside state structures.",
+                    "current_state": "2023-2024: Massive state investments in domestic capacity; export control regime tightening. BUT: Labs are racing ahead of state governance. The state vs. lab power question ([Compute Sovereignty] vs [Frontier AI Labs]) is unresolved.",
+                    "trajectory": "2025-2030: Potential bifurcation into US-aligned and China-aligned compute ecosystems. OPEN QUESTION: Will states or labs shape this bifurcation? See [US-China Decoupling vs. Global Commons] for the state-level analysis, but lab-level analysis is underdeveloped.",
+                    "key_transitions": "October 2022 US export controls marked the decisive shift from market-led to state-led compute allocation. But did this assertion of state power actually constrain labs, or did labs route around it?",
                 },
             },
         },
@@ -120,28 +162,31 @@ of international cooperation.""",
             "content": {
                 "key_insight": "Unlike compute, talent cannot be stockpiled—it must be continuously attracted, developed, and retained",
                 "dynamics": ["Global competition for PhDs", "Brain drain patterns", "Diaspora networks", "Education pipeline"],
+                "cross_references": ["Compute Sovereignty", "Frontier AI Labs", "United States"],
+                "conceptual_tension": "FRICTION: This concept assumes distributed power (individuals matter), while [Compute Sovereignty] assumes concentrated power (infrastructure matters). These have opposite implications for AI democratization. If talent is the bottleneck, then nations/labs that attract talent win—regardless of compute. If compute is the bottleneck, then compute-rich actors can hire talent. Which is it?",
             },
             "grids": {
                 "LOGICAL": {
                     "claim": "Talent concentration in a few locations (primarily US) creates both an advantage for those locations and a vulnerability for nations experiencing brain drain.",
-                    "grounds": "Over 60% of top AI researchers work in the US, many foreign-born. China has invested heavily in talent return programs. Europe struggles with brain drain to US.",
-                    "warrant": "AI breakthroughs require rare combinations of skills; talent cannot be quickly produced through investment alone.",
-                    "backing": "The transformer architecture, diffusion models, and RLHF all emerged from small teams—talent density matters more than talent volume.",
-                    "qualifier": "Remote work and distributed collaboration may partially change these dynamics.",
-                    "rebuttal": "Some argue talent is fungible and will eventually be abundant, but frontier AI research remains extremely concentrated.",
+                    "grounds": "Over 60% of top AI researchers work in the US, many foreign-born. China has invested heavily in talent return programs. Europe struggles with brain drain to US. TENSION: Where does talent GO? To [Frontier AI Labs], not to states. Talent serves lab interests, which may diverge from state interests.",
+                    "warrant": "AI breakthroughs require rare combinations of skills; talent cannot be quickly produced through investment alone. BUT TENSION: [Compute Sovereignty] implies the opposite—that infrastructure, not people, is the binding constraint.",
+                    "backing": "The transformer architecture, diffusion models, and RLHF all emerged from small teams—talent density matters more than talent volume. IMPLICATION: This supports talent > compute, contra [Compute Sovereignty] emphasis.",
+                    "qualifier": "Remote work and distributed collaboration may partially change these dynamics. Also: as models improve, talent may become less critical (AI doing AI research). This could resolve the talent vs. compute tension by making both less binding.",
+                    "rebuttal": "Some argue talent is fungible and will eventually be abundant, but frontier AI research remains extremely concentrated. HOWEVER: if [Compute Sovereignty] is achieved, would talent follow the compute? The relationship between talent and compute is under-theorized.",
+                    "framework_tension": "CROSS-UNIT FRICTION: This concept and [Compute Sovereignty] embody different theories of AI power. Talent-centric: power flows to those who attract researchers. Compute-centric: power flows to those who control infrastructure. Framework needs to resolve or explicitly acknowledge this tension.",
                 },
                 "ACTOR": {
-                    "protagonist": "Elite AI researchers and engineers as scarce strategic resource",
-                    "allies": "Universities, research labs, immigration-friendly policies",
-                    "antagonists": "Visa restrictions, nationalism, compensation gaps",
-                    "affected_parties": "Developing nations losing talent; researchers navigating political pressures",
-                    "gatekeepers": "Top universities (Stanford, MIT, Tsinghua, Cambridge); leading labs (DeepMind, OpenAI, Anthropic)",
+                    "protagonist": "Elite AI researchers and engineers as scarce strategic resource. KEY QUESTION: Are these individuals agents with autonomous choices, or are they resources states and labs compete for? The concept treats them as resources, but they have agency in where they work.",
+                    "allies": "Universities, research labs, immigration-friendly policies. CROSS-REFERENCE: [Frontier AI Labs] are the primary employers—they set the terms of the talent market.",
+                    "antagonists": "Visa restrictions, nationalism, compensation gaps. OBSERVATION: States pursuing [Compute Sovereignty] may inadvertently harm talent attraction through security restrictions.",
+                    "affected_parties": "Developing nations losing talent; researchers navigating political pressures. LINK: See [Algorithmic Colonialism] for the broader pattern of Global North extraction.",
+                    "gatekeepers": "Top universities (Stanford, MIT, Tsinghua, Cambridge); leading labs (DeepMind, OpenAI, Anthropic). NOTE: [Frontier AI Labs] control talent by controlling the most interesting work—a different mechanism than state control of compute.",
                 },
                 "TEMPORAL": {
-                    "origin": "2012: Deep learning breakthrough triggers talent demand spike",
-                    "evolution": "2015-2020: Salary explosion; corporate poaching from academia",
-                    "current_state": "2023-2024: Geopoliticized talent flows; visa restrictions; return programs",
-                    "trajectory": "Competition intensifying but patterns unclear as remote work and new hubs emerge",
+                    "origin": "2012: Deep learning breakthrough triggers talent demand spike. This predates the [Compute Sovereignty] focus, which emerged later.",
+                    "evolution": "2015-2020: Salary explosion; corporate poaching from academia. Talent flowed to [Frontier AI Labs], not to state projects.",
+                    "current_state": "2023-2024: Geopoliticized talent flows; visa restrictions; return programs. States now competing for talent, but labs still set the terms. TENSION: Security restrictions on talent may undermine [Compute Sovereignty] by limiting who can work on state compute.",
+                    "trajectory": "Competition intensifying but patterns unclear as remote work and new hubs emerge. KEY UNCERTAINTY: Will talent follow compute ([Compute Sovereignty] wins) or will compute follow talent (talent wins)? Or will AI make talent less critical?",
                 },
             },
         },
@@ -188,28 +233,32 @@ of international cooperation.""",
             "content": {
                 "key_insight": "Middle powers face a three-way tension: strategic autonomy vs. economic integration vs. values alignment",
                 "examples": ["EU", "UK", "Japan", "India", "Australia", "Canada", "South Korea"],
+                "cross_references": ["Compute Sovereignty", "European Union", "Algorithmic Colonialism"],
+                "praxis_gap": "PREDICAMENT: This concept describes the strategic situation but provides no decision-making heuristics. A middle power using this framework would understand their dilemma but not know WHAT TO DO. We lack: (1) criteria for when to hedge vs. align, (2) indicators that signal 'tipping points', (3) guidance on sequencing strategic moves.",
             },
             "grids": {
                 "LOGICAL": {
                     "claim": "Middle powers cannot achieve full AI autonomy but can pursue 'strategic hedging'—diversifying dependencies and developing niche capabilities to maintain bargaining power.",
-                    "grounds": "EU GDPR and AI Act represent regulatory power without frontier capability. Japan and Korea maintain specialized capabilities (robotics, semiconductors). India leverages talent and market size.",
-                    "warrant": "In a bipolar tech world, middle powers that maintain options have more leverage than those locked into either bloc.",
-                    "backing": "Cold War non-aligned movement showed middle powers can navigate between superpowers, though context differs.",
-                    "qualifier": "The degree of hedging possible depends on specific circumstances—geography, existing dependencies, values commitments.",
-                    "rebuttal": "Some argue middle powers must ultimately choose sides; but the tech ecosystem's interdependence creates space for hedging.",
+                    "grounds": "EU GDPR and AI Act represent regulatory power without frontier capability (see [European Union]). Japan and Korea maintain specialized capabilities (robotics, semiconductors). India leverages talent and market size.",
+                    "warrant": "In a bipolar tech world, middle powers that maintain options have more leverage than those locked into either bloc. This follows from international relations theory on alignment and autonomy trade-offs.",
+                    "backing": "Cold War non-aligned movement showed middle powers can navigate between superpowers, though context differs. BUT: This historical analogy may mislead—tech supply chains create harder dependencies than Cold War did.",
+                    "qualifier": "The degree of hedging possible depends on specific circumstances—geography, existing dependencies, values commitments. PRAXIS PROBLEM: We describe these factors but don't specify how to WEIGH them in actual decisions.",
+                    "rebuttal": "Some argue middle powers must ultimately choose sides; but the tech ecosystem's interdependence creates space for hedging. Counter-counter: that interdependence may be eroding per [US-China Decoupling vs. Global Commons].",
+                    "praxis_gap": "ACTION GUIDANCE MISSING: What should a middle power DO? When should it hedge? When align? What are the warning signs that hedging is no longer tenable? The concept is descriptive, not prescriptive.",
                 },
                 "ACTOR": {
-                    "protagonist": "Middle power governments navigating between blocs",
-                    "allies": "Other middle powers (potential coalitions); domestic tech champions",
-                    "antagonists": "Pressure from both superpowers to align; domestic actors with competing interests",
-                    "affected_parties": "Citizens whose data governance depends on these choices; businesses affected by regulatory divergence",
-                    "gatekeepers": "Trade negotiators; standards bodies; alliance structures",
+                    "protagonist": "Middle power governments navigating between blocs. CHALLENGE: These are not monolithic—internal actors (ministries, businesses, civil society) have competing interests. Concept treats 'middle power' as unified actor when it's actually a contested space.",
+                    "allies": "Other middle powers (potential coalitions); domestic tech champions. NOTE: Middle power coalitions (e.g., EU-India tech partnership) are underdeveloped in our framework—see [European Union] for EU-specific analysis but no coalition analysis.",
+                    "antagonists": "Pressure from both superpowers to align; domestic actors with competing interests. TENSION with [Frontier AI Labs]: Labs may be both allies (tech partners) and antagonists (sources of dependency).",
+                    "affected_parties": "Citizens whose data governance depends on these choices; businesses affected by regulatory divergence. Cross-reference: [Algorithmic Colonialism] analyzes similar dynamics for Global South.",
+                    "gatekeepers": "Trade negotiators; standards bodies; alliance structures. OBSERVATION: These are often controlled by major powers, limiting middle power agency.",
                 },
                 "TEMPORAL": {
-                    "origin": "2018-2020: Trade war makes non-alignment increasingly difficult",
-                    "evolution": "2021-2023: Middle powers develop distinct strategies (EU regulation, Japanese specialization)",
-                    "current_state": "2024: Strategies being tested as decoupling accelerates",
-                    "trajectory": "Key question: Can middle powers maintain hedging as pressure to choose sides intensifies?",
+                    "origin": "2018-2020: Trade war makes non-alignment increasingly difficult. Before this, middle powers could mostly avoid choosing.",
+                    "evolution": "2021-2023: Middle powers develop distinct strategies (EU regulation, Japanese specialization). Each represents a different response to the dilemma.",
+                    "current_state": "2024: Strategies being tested as decoupling accelerates. Evidence from [Peterson Institute: The Limits of Tech Decoupling] suggests actual decoupling is slower than rhetoric suggests—does this buy middle powers more time?",
+                    "trajectory": "Key question: Can middle powers maintain hedging as pressure to choose sides intensifies? PRAXIS NEED: Decision-making framework for when hedging is sustainable vs. when alignment is necessary.",
+                    "decision_points": "MISSING FROM FRAMEWORK: What events/metrics would signal a middle power should shift strategy? We describe the dilemma but don't help resolve it.",
                 },
             },
         },
@@ -430,26 +479,31 @@ of international cooperation.""",
                 "role": "De facto governors of AI development, making choices that affect everyone",
                 "key_tensions": ["Commercial vs. safety", "Open vs. closed", "Speed vs. caution"],
                 "assets": ["Technical capability", "Talent", "Capital", "Data", "Compute access"],
+                "cross_references": ["Compute Sovereignty", "United States", "Talent as Strategic Resource"],
+                "framework_challenge": "This actor category challenges the state-centric framing of most other units. If labs are the primary actors, concepts like [Compute Sovereignty] and actors like [United States] may be analyzing the wrong level. PREDICAMENT: Our framework lacks a concept for 'lab sovereignty' or 'corporate AI power' that would properly integrate this actor with state-level analysis.",
             },
             "grids": {
                 "LOGICAL": {
                     "claim": "Frontier labs exercise quasi-governmental power over AI development with minimal democratic accountability, creating a legitimacy crisis as capabilities grow.",
-                    "grounds": "A handful of labs decide what capabilities to develop, whether to release them, and what safety measures to implement. No democratic mandate for these choices.",
-                    "warrant": "Power without accountability is illegitimate in democratic theory; frontier labs have power without accountability.",
-                    "backing": "Historical parallel: private colonial companies (East India Company) exercised state-like power before being brought under government control.",
-                    "qualifier": "Labs do face market and reputational constraints; the question is whether these are sufficient.",
+                    "grounds": "A handful of labs decide what capabilities to develop, whether to release them, and what safety measures to implement. No democratic mandate for these choices. CONTRAST with [Compute Sovereignty]: States invest in compute, but labs control what that compute produces.",
+                    "warrant": "Power without accountability is illegitimate in democratic theory; frontier labs have power without accountability. This directly challenges state-centric analysis: even if [United States] has compute and [Talent as Strategic Resource], labs mediate both.",
+                    "backing": "Historical parallel: private colonial companies (East India Company) exercised state-like power before being brought under government control. IMPLICATION: Our framework may need a concept like 'Corporate AI Governance' to capture this dynamic, which is currently missing.",
+                    "qualifier": "Labs do face market and reputational constraints; the question is whether these are sufficient. They also face state power—export controls do affect labs. The state/lab power relationship is interdependent, not either/or. But our framework lacks good concepts for this interdependence.",
+                    "rebuttal": "Counter-argument: Labs exist within state-structured legal and economic systems. [United States] could, in principle, nationalize or heavily regulate labs. But has it? The lag between state capacity and state action is itself a form of lab autonomy.",
                 },
                 "ACTOR": {
-                    "protagonist": "Lab leadership making critical choices",
-                    "allies": "Investors; AI researchers (partially); governments (conditionally)",
-                    "antagonists": "AI safety critics; open source advocates; regulators; competitors",
-                    "affected_parties": "Everyone affected by AI systems these labs create",
+                    "protagonist": "Lab leadership making critical choices. KEY QUESTION: Are they protagonists of AI history, or are states ([United States], [China]) the real protagonists and labs just instruments?",
+                    "allies": "Investors; AI researchers (partially); governments (conditionally). Note: governments appear as both allies AND antagonists—unstable position.",
+                    "antagonists": "AI safety critics; open source advocates; regulators; competitors. Also potentially: states seeking to assert [Compute Sovereignty] over lab activities.",
+                    "affected_parties": "Everyone affected by AI systems these labs create. CROSS-REFERENCE: This includes all the populations analyzed in [Algorithmic Colonialism]—but that concept doesn't adequately address lab power.",
+                    "gatekeepers": "The labs themselves are the primary gatekeepers of AI capability. This is circular but important: who gates the gatekeepers? Not states, at present.",
                 },
                 "TEMPORAL": {
-                    "origin": "2015: OpenAI founded; DeepMind acquired",
-                    "evolution": "2019-2023: Rapid capability gains; commercialization; scaling",
-                    "current_state": "2024: Unprecedented power; growing scrutiny; some self-regulation",
-                    "trajectory": "Key question: Will labs be brought under democratic governance, or will they remain quasi-autonomous?",
+                    "origin": "2015: OpenAI founded; DeepMind acquired. State AI strategies ([Compute Sovereignty]) came AFTER lab emergence.",
+                    "evolution": "2019-2023: Rapid capability gains; commercialization; scaling. Labs pulled ahead of state governance during this period.",
+                    "current_state": "2024: Unprecedented power; growing scrutiny; some self-regulation. State response (AI Acts, executive orders) is reactive to lab choices, not proactive.",
+                    "trajectory": "Key question: Will labs be brought under democratic governance, or will they remain quasi-autonomous? Related: Will the [US-China Decoupling vs. Global Commons] dialectic play out at the state or lab level? Current framework assumes state level, but lab-level analysis is underdeveloped.",
+                    "key_inflection_points": "ChatGPT launch (Nov 2022) demonstrated labs' power to reshape society faster than any state process. This was the moment when lab power became undeniable.",
                 },
             },
         },
@@ -459,6 +513,9 @@ of international cooperation.""",
     # EVIDENCE SOURCES
     # =========================================================================
     "evidence_sources": [
+        # ---------------------------------------------------------------------
+        # SOURCE 1: RAND - supports the framework
+        # ---------------------------------------------------------------------
         {
             "source_type": EvidenceSourceType.MANUAL,
             "source_name": "RAND Corporation: The Geopolitics of AI",
@@ -674,6 +731,146 @@ of international cooperation.""",
                             "foreclosure_statements": ["Traditional state-centric geopolitical framing"],
                         },
                     ],
+                },
+            ],
+        },
+        # ---------------------------------------------------------------------
+        # SOURCE 5: Peterson Institute - EMPIRICAL FRICTION
+        # This source creates EMPIRICAL GAPS by showing reality doesn't match
+        # the framework's decoupling assumptions
+        # ---------------------------------------------------------------------
+        {
+            "source_type": EvidenceSourceType.MANUAL,
+            "source_name": "Peterson Institute: The Limits of Tech Decoupling (2024)",
+            "source_content": "Empirical analysis of US-China technology trade flows showing continued interdependence despite official decoupling policies.",
+            "fragments": [
+                {
+                    "content": "Despite export controls, US semiconductor equipment sales to China increased 75% in 2023, as companies found workarounds and China stockpiled before restrictions took effect.",
+                    "source_location": "Executive Summary, p. 2",
+                    "status": AnalysisStatus.NEEDS_DECISION,
+                    "relationship_type": EvidenceRelationship.CONTRADICTS,
+                    "target_unit_name": "US-China Decoupling vs. Global Commons",
+                    "why_needs_decision": "EMPIRICAL GAP: This contradicts the framework's assumption that decoupling is actually happening. Export controls exist but haven't severed interdependence. Our theoretical apparatus may be misdescribing reality.",
+                    "interpretations": [
+                        {
+                            "key": "delay",
+                            "title": "Decoupling is delayed, not prevented",
+                            "strategy": "Treat the evidence as showing a lag, not a failure of decoupling",
+                            "rationale": "Stockpiling and workarounds are temporary; decoupling will eventually bite",
+                            "relationship_type": EvidenceRelationship.QUALIFIES,
+                            "target_unit_name": "US-China Decoupling vs. Global Commons",
+                            "target_grid_slot": "qualifier",
+                            "is_recommended": False,
+                            "commitment_statement": "Current interdependence is temporary and will fade",
+                            "foreclosure_statements": ["Treating continued interdependence as structural"],
+                        },
+                        {
+                            "key": "selective",
+                            "title": "Decoupling is selective, not comprehensive",
+                            "strategy": "Develop new concept of 'selective decoupling' to capture the empirical pattern",
+                            "rationale": "Reality shows strategic goods decouple while commercial goods don't—our framework needs this distinction",
+                            "relationship_type": EvidenceRelationship.EXTENDS,
+                            "target_unit_name": "US-China Decoupling vs. Global Commons",
+                            "target_grid_slot": "claim",
+                            "is_recommended": True,
+                            "commitment_statement": "Need new concept: 'selective decoupling' rather than binary decoupling/integration",
+                            "foreclosure_statements": ["Binary framing of decoupling vs. integration"],
+                        },
+                    ],
+                },
+                {
+                    "content": "Chinese AI researchers continue to publish in top Western venues, collaborate on open-source projects, and maintain academic ties despite political tensions. The 'iron curtain' metaphor doesn't capture the porosity of actual knowledge flows.",
+                    "source_location": "Chapter 3, p. 45",
+                    "status": AnalysisStatus.NEEDS_DECISION,
+                    "relationship_type": EvidenceRelationship.CONTRADICTS,
+                    "target_unit_name": "Open Science vs. National Security",
+                    "why_needs_decision": "EMPIRICAL GAP: This suggests the tension between open science and national security is not playing out as a clean binary. Collaboration continues despite securitization. Our [Open Science vs. National Security] dialectic may be too stark.",
+                    "interpretations": [
+                        {
+                            "key": "porous",
+                            "title": "Knowledge barriers are inherently porous",
+                            "strategy": "Acknowledge that securitization has limits",
+                            "rationale": "Science flows through formal and informal channels; complete separation is impossible",
+                            "relationship_type": EvidenceRelationship.QUALIFIES,
+                            "target_unit_name": "Open Science vs. National Security",
+                            "target_grid_slot": "qualifier",
+                            "is_recommended": True,
+                            "commitment_statement": "Securitization can slow but not stop knowledge flows",
+                            "foreclosure_statements": ["Believing export controls can fully contain AI advances"],
+                        },
+                        {
+                            "key": "failure",
+                            "title": "Securitization is failing",
+                            "strategy": "Question whether current approaches are achieving their goals",
+                            "rationale": "If collaboration continues despite controls, controls may be security theater",
+                            "relationship_type": EvidenceRelationship.CONTRADICTS,
+                            "target_unit_name": "Open Science vs. National Security",
+                            "target_grid_slot": "claim",
+                            "is_recommended": False,
+                            "commitment_statement": "Current securitization approach is ineffective",
+                            "foreclosure_statements": ["Defending current export control regime"],
+                        },
+                    ],
+                },
+                {
+                    "content": "Frontier AI labs maintain global researcher networks even when their governments are in conflict. DeepMind has Chinese collaborators; Chinese labs cite US research. Lab interests diverge from state interests.",
+                    "source_location": "Chapter 4, p. 78",
+                    "status": AnalysisStatus.INTEGRATED,
+                    "relationship_type": EvidenceRelationship.SUPPORTS,
+                    "target_unit_name": "Frontier AI Labs",
+                    "target_grid_slot": "claim",
+                    "confidence": 0.91,
+                },
+            ],
+        },
+        # ---------------------------------------------------------------------
+        # SOURCE 6: AI Safety Cooperation evidence
+        # Shows that our framework LACKS a concept for safety cooperation
+        # ---------------------------------------------------------------------
+        {
+            "source_type": EvidenceSourceType.MANUAL,
+            "source_name": "Bletchley Declaration and AI Safety Summit (2023)",
+            "source_content": "Documentation from the first global AI Safety Summit showing emerging cooperation on AI safety across geopolitical rivals.",
+            "fragments": [
+                {
+                    "content": "The Bletchley Declaration was signed by 28 countries including both the US and China, representing the first formal agreement on AI safety risks between geopolitical rivals.",
+                    "source_location": "Declaration text",
+                    "status": AnalysisStatus.NEEDS_DECISION,
+                    "relationship_type": EvidenceRelationship.NEW_INSIGHT,
+                    "why_needs_decision": "CONCEPTUAL GAP: This is evidence of a phenomenon we have no concept for—'AI Safety Cooperation'. Our framework has [US-China Decoupling vs. Global Commons] and [Open Science vs. National Security], but neither captures safety-specific cooperation. We may need a new concept.",
+                    "interpretations": [
+                        {
+                            "key": "create",
+                            "title": "Create new concept: 'AI Safety Cooperation'",
+                            "strategy": "Add a new unit that captures cross-bloc safety collaboration as distinct from general science openness or general international cooperation",
+                            "rationale": "Safety creates unique incentive structures that enable cooperation where competition might otherwise dominate",
+                            "relationship_type": EvidenceRelationship.NEW_INSIGHT,
+                            "target_unit_name": None,  # No existing unit - this IS the gap
+                            "target_grid_slot": None,
+                            "is_recommended": True,
+                            "commitment_statement": "Safety cooperation is conceptually distinct and needs its own analytical treatment",
+                            "foreclosure_statements": ["Treating safety as just another domain of competition"],
+                        },
+                        {
+                            "key": "absorb",
+                            "title": "Treat as instance of [US-China Decoupling vs. Global Commons]",
+                            "strategy": "Fit the Bletchley Declaration into existing dialectic as evidence for the 'Global Commons' side",
+                            "rationale": "We don't need new concepts for every phenomenon; this is just cooperation on a global challenge",
+                            "relationship_type": EvidenceRelationship.SUPPORTS,
+                            "target_unit_name": "US-China Decoupling vs. Global Commons",
+                            "target_grid_slot": "claim",
+                            "is_recommended": False,
+                            "commitment_statement": "Existing frameworks suffice",
+                            "foreclosure_statements": ["Treating AI safety as conceptually special"],
+                        },
+                    ],
+                },
+                {
+                    "content": "The AI Safety Institute model—government-backed but collaborating internationally—represents a novel institutional form that doesn't fit cleanly into state vs. lab categories.",
+                    "source_location": "Summit proceedings, p. 23",
+                    "status": AnalysisStatus.PENDING,
+                    "relationship_type": EvidenceRelationship.NEW_INSIGHT,
+                    "confidence": 0.75,
                 },
             ],
         },
