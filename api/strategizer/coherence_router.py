@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
+import json
 
 from ..database import get_db
 from .models import (
@@ -735,10 +737,36 @@ async def save_note(
     )
 
     # Add to predicament notes (ensure it's a list)
-    notes = predicament.notes or []
-    # Use mode='json' to serialize datetime to ISO format string
+    # Deep copy existing notes to ensure SQLAlchemy detects the change
+    # Also handle any existing datetime objects from before the fix
+    existing_notes = predicament.notes or []
+
+    # Serialize existing notes to ensure no datetime objects remain
+    # (fixes legacy data that might have been stored incorrectly)
+    def serialize_note(n):
+        if isinstance(n, dict):
+            result = {}
+            for k, v in n.items():
+                if isinstance(v, datetime):
+                    result[k] = v.isoformat()
+                elif isinstance(v, dict):
+                    result[k] = serialize_note(v)
+                elif isinstance(v, list):
+                    result[k] = [serialize_note(item) if isinstance(item, (dict, datetime)) else item for item in v]
+                else:
+                    result[k] = v
+            return result
+        elif isinstance(n, datetime):
+            return n.isoformat()
+        return n
+
+    # Create new list with serialized existing notes + new note
+    notes = [serialize_note(n) for n in existing_notes]
     notes.append(note.model_dump(mode='json'))
+
+    # Assign and flag as modified to ensure SQLAlchemy tracks the change
     predicament.notes = notes
+    flag_modified(predicament, 'notes')
 
     await db.commit()
 
