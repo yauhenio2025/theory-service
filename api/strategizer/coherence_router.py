@@ -824,12 +824,14 @@ async def spawn_dialectic_from_note(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Transform a saved note into a new dialectic unit.
+    Transform a saved note into a new dialectic unit using LLM analysis.
 
-    The note's insights become the foundation for a new dialectic that
-    captures the tension discovered during analysis.
+    When auto_generate is True (default), the LLM analyzes the note content
+    to generate a well-structured dialectic with clear poles and definition.
+    User-provided values override the generated ones.
     """
     from .models import StrategizerUnit, UnitType, UnitTier, UnitStatus
+    from .services.coherence_monitor import CoherenceMonitor
 
     # Verify predicament and find note
     result = await db.execute(
@@ -852,21 +854,98 @@ async def spawn_dialectic_from_note(
 
     note = PredicamentNote(**note_data)
 
-    # Build definition from note content
-    definition = request.definition
-    if not definition:
-        # Try to extract from note content
-        content = note.content
-        if isinstance(content, dict):
-            definition = (
-                content.get("summary") or
-                content.get("overview") or
-                content.get("key_insight") or
-                content.get("main_finding") or
-                f"Dialectic spawned from analysis: {note.title}"
+    # Determine if we need LLM generation
+    llm_generated = False
+    generation_confidence = None
+    generated = None
+
+    # Use LLM generation if auto_generate is True and any field is empty
+    if request.auto_generate and (
+        not request.dialectic_name or
+        not request.definition or
+        not request.pole_a or
+        not request.pole_b
+    ):
+        try:
+            monitor = CoherenceMonitor()
+            generated = await monitor.generate_dialectic_from_note(
+                predicament=predicament,
+                note_data=note_data
             )
-        else:
-            definition = f"Dialectic spawned from analysis: {note.title}"
+            llm_generated = True
+            generation_confidence = generated.get("confidence", 0.5)
+        except Exception as e:
+            # If LLM fails, fall back to simple extraction
+            import logging
+            logging.getLogger(__name__).warning(f"LLM generation failed: {e}")
+            generated = None
+
+    # Build final values: user input > LLM generated > fallback
+    if generated:
+        # Use generated pole structures
+        pole_a_gen = generated.get("pole_a", {})
+        pole_b_gen = generated.get("pole_b", {})
+
+        dialectic_name = request.dialectic_name or generated.get("dialectic_name") or f"Dialectic from: {note.title}"
+        definition = request.definition or generated.get("definition") or predicament.description
+
+        # For poles, use the name from generated structure if available
+        pole_a = request.pole_a or pole_a_gen.get("name") or predicament.pole_a or "Pole A"
+        pole_b = request.pole_b or pole_b_gen.get("name") or predicament.pole_b or "Pole B"
+
+        # Rich content from LLM
+        dialectic_content = {
+            "thesis": pole_a,
+            "thesis_description": pole_a_gen.get("description", ""),
+            "antithesis": pole_b,
+            "antithesis_description": pole_b_gen.get("description", ""),
+            "synthesis_notes": generated.get("synthesis_notes", ""),
+            "navigation_strategies": generated.get("navigation_strategies", []),
+            "why_this_dialectic": generated.get("why_this_dialectic", ""),
+            "spawned_from_note": note_id,
+            "spawned_from_predicament": predicament_id,
+            "source_analysis": {
+                "action": note.action.model_dump() if hasattr(note.action, 'model_dump') else note.action,
+                "cells": [c.model_dump() if hasattr(c, 'model_dump') else c for c in note.cells],
+                "thinking_summary": note.thinking_summary
+            },
+            "llm_generated": True,
+            "generation_confidence": generation_confidence
+        }
+    else:
+        # Fallback to simple extraction (no LLM)
+        dialectic_name = request.dialectic_name or f"Dialectic from: {note.title}"
+
+        # Try to extract definition from note content
+        definition = request.definition
+        if not definition:
+            content = note.content
+            if isinstance(content, dict):
+                definition = (
+                    content.get("summary") or
+                    content.get("overview") or
+                    content.get("key_insight") or
+                    content.get("main_finding") or
+                    f"Dialectic spawned from analysis: {note.title}"
+                )
+            else:
+                definition = f"Dialectic spawned from analysis: {note.title}"
+
+        pole_a = request.pole_a or predicament.pole_a or "Pole A"
+        pole_b = request.pole_b or predicament.pole_b or "Pole B"
+
+        dialectic_content = {
+            "thesis": pole_a,
+            "antithesis": pole_b,
+            "synthesis": None,
+            "spawned_from_note": note_id,
+            "spawned_from_predicament": predicament_id,
+            "source_analysis": {
+                "action": note.action.model_dump() if hasattr(note.action, 'model_dump') else note.action,
+                "cells": [c.model_dump() if hasattr(c, 'model_dump') else c for c in note.cells],
+                "thinking_summary": note.thinking_summary
+            }
+        }
 
     # Create the dialectic unit
     dialectic = StrategizerUnit(
@@ -875,20 +954,9 @@ async def spawn_dialectic_from_note(
         unit_type=UnitType.DIALECTIC,
         display_type="Dialectic",
         tier=UnitTier.EMERGENT,
-        name=request.dialectic_name,
+        name=dialectic_name,
         definition=definition,
-        content={
-            "thesis": request.pole_a or predicament.pole_a or "Pole A",
-            "antithesis": request.pole_b or predicament.pole_b or "Pole B",
-            "synthesis": None,  # To be filled in
-            "spawned_from_note": note_id,
-            "spawned_from_predicament": predicament_id,
-            "source_analysis": {
-                "action": note.action.model_dump() if hasattr(note.action, 'model_dump') else note.action,
-                "cells": [c.model_dump() if hasattr(c, 'model_dump') else c for c in note.cells],
-                "thinking_summary": note.thinking_summary
-            }
-        },
+        content=dialectic_content,
         status=UnitStatus.DRAFT
     )
 
@@ -913,10 +981,16 @@ async def spawn_dialectic_from_note(
         updated_at=dialectic.updated_at
     )
 
+    message = f"Dialectic '{dialectic_name}' created from note"
+    if llm_generated:
+        message += f" (LLM-generated, confidence: {generation_confidence:.0%})"
+
     return SpawnDialecticFromNoteResponse(
         dialectic=dialectic_response,
         note_id=note_id,
-        message=f"Dialectic '{request.dialectic_name}' created from note"
+        message=message,
+        llm_generated=llm_generated,
+        generation_confidence=generation_confidence
     )
 
 

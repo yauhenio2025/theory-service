@@ -793,10 +793,11 @@ class NotesList(BaseModel):
 class SpawnDialecticFromNoteRequest(BaseModel):
     """Request to spawn a dialectic from a saved note."""
     # note_id is a path parameter, not in body
-    dialectic_name: str = Field(..., description="Name for the new dialectic")
-    definition: Optional[str] = Field(None, description="Optional definition override")
-    pole_a: Optional[str] = Field(None, description="Thesis/Pole A")
-    pole_b: Optional[str] = Field(None, description="Antithesis/Pole B")
+    dialectic_name: Optional[str] = Field(None, description="Name for the new dialectic (auto-generated if empty)")
+    definition: Optional[str] = Field(None, description="Optional definition override (auto-generated if empty)")
+    pole_a: Optional[str] = Field(None, description="Thesis/Pole A (auto-generated if empty)")
+    pole_b: Optional[str] = Field(None, description="Antithesis/Pole B (auto-generated if empty)")
+    auto_generate: bool = Field(True, description="Use LLM to generate dialectic structure from note content")
 
 
 class SpawnDialecticFromNoteResponse(BaseModel):
@@ -804,6 +805,8 @@ class SpawnDialecticFromNoteResponse(BaseModel):
     dialectic: UnitResponse
     note_id: str
     message: str = "Dialectic created from note"
+    llm_generated: bool = False
+    generation_confidence: Optional[float] = None
 
 
 # Update forward references

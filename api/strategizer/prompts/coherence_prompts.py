@@ -938,6 +938,70 @@ Return a JSON object:
 Return ONLY valid JSON."""
 
 
+# =============================================================================
+# DIALECTIC GENERATION FROM NOTE - LLM-powered dialectic extraction
+# =============================================================================
+
+DIALECTIC_FROM_NOTE_PROMPT = """You are a theoretical framework architect. Your task is to extract a dialectical structure from analytical notes.
+
+A dialectic captures a fundamental tension between two poles that cannot be simply resolved but must be navigated. Good dialectics are:
+- Non-trivial: Not "good vs bad" but genuine competing values/approaches
+- Generative: The tension produces insight when examined
+- Navigable: Both poles have merit depending on context
+
+PREDICAMENT CONTEXT:
+Title: {predicament_title}
+Type: {predicament_type}
+Description: {predicament_description}
+Existing Pole A: {existing_pole_a}
+Existing Pole B: {existing_pole_b}
+
+NOTE TO ANALYZE:
+Title: {note_title}
+Action Performed: {note_action}
+Cells Analyzed: {note_cells}
+Content: {note_content}
+Thinking Summary: {note_thinking}
+
+---
+
+TASK: Extract a dialectical structure from this analysis. The dialectic should capture the core tension revealed by the note.
+
+Provide:
+1. A clear, memorable NAME for the dialectic (format: "Pole A ↔ Pole B" or a conceptual name)
+2. A one-sentence DEFINITION that captures what this dialectic is about
+3. Well-articulated POLES (thesis and antithesis) - improve upon existing poles if they're vague
+4. Initial thoughts on SYNTHESIS or navigation strategies
+
+Return a JSON object:
+
+```json
+{{
+  "dialectic_name": "Name for the dialectic (can use ↔ format or conceptual name)",
+  "definition": "One-sentence definition of what this dialectic captures",
+  "pole_a": {{
+    "name": "Short name for thesis (2-4 words)",
+    "description": "What this pole represents and when it's prioritized"
+  }},
+  "pole_b": {{
+    "name": "Short name for antithesis (2-4 words)",
+    "description": "What this pole represents and when it's prioritized"
+  }},
+  "synthesis_notes": "Initial thoughts on how to navigate this tension",
+  "navigation_strategies": ["Strategy 1 for balancing the poles", "Strategy 2"],
+  "why_this_dialectic": "Why this is the right dialectical framing for the note's insights",
+  "confidence": 0.0-1.0
+}}
+```
+
+IMPORTANT:
+- The dialectic should emerge from the NOTE content, not just repeat the predicament
+- Make the poles specific and substantive, not generic
+- The definition should be actionable - someone should understand what they're navigating
+
+Return ONLY valid JSON."""
+
+
 CELL_ACTION_DRAFT_CONTENT = """You are a strategic writer crafting analytical content.
 
 {context}

@@ -43,6 +43,8 @@ from ..prompts.coherence_prompts import (
     # Dynamic cell action prompts (new approach)
     GENERATE_CELL_ACTIONS_PROMPT,
     EXECUTE_DYNAMIC_ACTION_PROMPT,
+    # Dialectic generation from notes
+    DIALECTIC_FROM_NOTE_PROMPT,
     # Legacy cell action prompts (kept for reference)
     CELL_ACTION_CONTEXT,
     CELL_ACTION_WHAT_WOULD_IT_TAKE,
@@ -1049,6 +1051,95 @@ Content: {cell.get('content', 'No analysis provided')}
 
         except Exception as e:
             return {"error": f"Action execution failed: {str(e)}"}
+
+    # =========================================================================
+    # DIALECTIC GENERATION FROM NOTE
+    # =========================================================================
+
+    async def generate_dialectic_from_note(
+        self,
+        predicament: StrategizerPredicament,
+        note_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generate dialectic structure from a saved note using LLM.
+
+        Analyzes the note content and generates a well-structured dialectic
+        with clear poles, definition, and navigation strategies.
+
+        Args:
+            predicament: The predicament containing the note
+            note_data: The note dict with title, content, action, cells, etc.
+
+        Returns:
+            Dict with dialectic_name, definition, pole_a, pole_b, and more
+        """
+        # Format note content for the prompt
+        note_content = note_data.get("content", {})
+        if isinstance(note_content, dict):
+            note_content_str = json.dumps(note_content, indent=2)
+        else:
+            note_content_str = str(note_content)
+
+        # Format cells info
+        cells = note_data.get("cells", [])
+        cells_str = "\n".join([
+            f"- {c.get('row_label', 'Row')} × {c.get('col_label', 'Col')}: {c.get('rating', 'N/A')}"
+            for c in cells
+        ]) or "(no cells)"
+
+        # Format action info
+        action = note_data.get("action", {})
+        action_str = f"{action.get('label', 'Unknown action')}: {action.get('description', '')}"
+
+        # Build the prompt
+        prompt = DIALECTIC_FROM_NOTE_PROMPT.format(
+            predicament_title=predicament.title,
+            predicament_type=predicament.predicament_type.value if predicament.predicament_type else "theoretical",
+            predicament_description=predicament.description,
+            existing_pole_a=predicament.pole_a or "(not specified)",
+            existing_pole_b=predicament.pole_b or "(not specified)",
+            note_title=note_data.get("title", "Untitled Note"),
+            note_action=action_str,
+            note_cells=cells_str,
+            note_content=note_content_str,
+            note_thinking=note_data.get("thinking_summary", "(no thinking summary)")
+        )
+
+        try:
+            # Use Sonnet for fast generation
+            response = self.client.messages.create(
+                model=self.sonnet_model,
+                max_tokens=2000,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = response.content[0].text
+            result = self._parse_json_response(response_text, {
+                "dialectic_name": f"Dialectic from: {note_data.get('title', 'Note')}",
+                "definition": predicament.description,
+                "pole_a": {"name": predicament.pole_a or "Pole A", "description": ""},
+                "pole_b": {"name": predicament.pole_b or "Pole B", "description": ""},
+                "synthesis_notes": "",
+                "navigation_strategies": [],
+                "why_this_dialectic": "",
+                "confidence": 0.5
+            })
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to generate dialectic from note: {str(e)}")
+            return {
+                "error": str(e),
+                "dialectic_name": f"Dialectic from: {note_data.get('title', 'Note')}",
+                "definition": predicament.description,
+                "pole_a": {"name": predicament.pole_a or "Pole A", "description": ""},
+                "pole_b": {"name": predicament.pole_b or "Pole B", "description": ""},
+                "synthesis_notes": "",
+                "navigation_strategies": [],
+                "confidence": 0.0
+            }
 
     # =========================================================================
     # HELPER METHODS

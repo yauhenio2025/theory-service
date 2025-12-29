@@ -590,32 +590,44 @@
             </div>
             <form id="spawnDialecticForm">
                 <div class="modal-body">
-                    <div class="alert alert-info">
+                    <div class="alert alert-info mb-3">
                         <strong>Note:</strong> <span id="spawnFromNoteTitle"></span>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="spawnDialecticName" class="form-label">Dialectic Name</label>
-                        <input type="text" class="form-control" id="spawnDialecticName" required
-                               placeholder="e.g., Technical Capability ↔ Regulatory Authority">
+                    <!-- LLM Generation Toggle -->
+                    <div class="form-check form-switch mb-3 p-3 bg-light rounded border">
+                        <input class="form-check-input" type="checkbox" id="spawnAutoGenerate" checked>
+                        <label class="form-check-label" for="spawnAutoGenerate">
+                            <i class="bi bi-robot"></i> <strong>Use AI to generate dialectic structure</strong>
+                        </label>
+                        <div class="form-text text-muted small mt-1">
+                            The LLM will analyze your note and generate a well-structured dialectic with clear poles and definition.
+                            Leave fields empty below to use AI-generated values, or fill them to override.
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="spawnDefinition" class="form-label">Definition (Optional)</label>
+                        <label for="spawnDialecticName" class="form-label">Dialectic Name <span class="text-muted small">(optional if AI enabled)</span></label>
+                        <input type="text" class="form-control" id="spawnDialecticName"
+                               placeholder="Leave empty for AI to suggest, e.g., Technical Capability ↔ Regulatory Authority">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="spawnDefinition" class="form-label">Definition <span class="text-muted small">(optional)</span></label>
                         <textarea class="form-control" id="spawnDefinition" rows="2"
-                                  placeholder="Leave empty to auto-extract from note content"></textarea>
+                                  placeholder="Leave empty for AI to extract from note content"></textarea>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="spawnPoleA" class="form-label">Pole A (Thesis)</label>
+                            <label for="spawnPoleA" class="form-label">Pole A (Thesis) <span class="text-muted small">(optional)</span></label>
                             <input type="text" class="form-control" id="spawnPoleA"
-                                   placeholder="First pole of tension">
+                                   placeholder="Leave empty for AI suggestion">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="spawnPoleB" class="form-label">Pole B (Antithesis)</label>
+                            <label for="spawnPoleB" class="form-label">Pole B (Antithesis) <span class="text-muted small">(optional)</span></label>
                             <input type="text" class="form-control" id="spawnPoleB"
-                                   placeholder="Second pole of tension">
+                                   placeholder="Leave empty for AI suggestion">
                         </div>
                     </div>
 
@@ -623,7 +635,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="spawnDialecticSubmitBtn">
                         <i class="bi bi-diagram-3"></i> Create Dialectic
                     </button>
                 </div>
@@ -1733,13 +1745,14 @@ function openSpawnDialecticModal(noteId) {
         return;
     }
 
-    // Pre-populate form
+    // Pre-populate form - leave empty for AI generation by default
     document.getElementById('spawnFromNoteTitle').textContent = note.title;
     document.getElementById('spawnFromNoteId').value = noteId;
-    document.getElementById('spawnDialecticName').value = note.title;
+    document.getElementById('spawnDialecticName').value = '';  // Leave empty for AI
     document.getElementById('spawnDefinition').value = '';
-    document.getElementById('spawnPoleA').value = '{{ predicament.pole_a or "" }}';
-    document.getElementById('spawnPoleB').value = '{{ predicament.pole_b or "" }}';
+    document.getElementById('spawnPoleA').value = '';  // Leave empty for AI
+    document.getElementById('spawnPoleB').value = '';  // Leave empty for AI
+    document.getElementById('spawnAutoGenerate').checked = true;
 
     const modal = new bootstrap.Modal(document.getElementById('spawnDialecticModal'));
     modal.show();
@@ -1750,17 +1763,34 @@ document.getElementById('spawnDialecticForm')?.addEventListener('submit', async 
     e.preventDefault();
 
     const noteId = document.getElementById('spawnFromNoteId').value;
+    const autoGenerate = document.getElementById('spawnAutoGenerate').checked;
+    const submitBtn = document.getElementById('spawnDialecticSubmitBtn');
+    const originalBtnHtml = submitBtn.innerHTML;
+
     const data = {
-        note_id: noteId,
-        dialectic_name: document.getElementById('spawnDialecticName').value,
+        dialectic_name: document.getElementById('spawnDialecticName').value || null,
         definition: document.getElementById('spawnDefinition').value || null,
         pole_a: document.getElementById('spawnPoleA').value || null,
-        pole_b: document.getElementById('spawnPoleB').value || null
+        pole_b: document.getElementById('spawnPoleB').value || null,
+        auto_generate: autoGenerate
     };
+
+    // Show loading state if using AI
+    if (autoGenerate) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> AI is analyzing...';
+    }
 
     try {
         const result = await API.spawnDialecticFromNote(projectId, predicamentId, noteId, data);
-        Toast.success(`Dialectic "${data.dialectic_name}" created!`);
+
+        // Build success message
+        let successMsg = `Dialectic "${result.dialectic.name}" created!`;
+        if (result.llm_generated) {
+            const confidence = Math.round((result.generation_confidence || 0) * 100);
+            successMsg += ` (AI-generated, ${confidence}% confidence)`;
+        }
+        Toast.success(successMsg);
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('spawnDialecticModal'));
@@ -1772,6 +1802,10 @@ document.getElementById('spawnDialecticForm')?.addEventListener('submit', async 
         }
     } catch (error) {
         Toast.error('Failed to create dialectic: ' + error.message);
+    } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
     }
 });
 
